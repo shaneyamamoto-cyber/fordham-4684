@@ -127,6 +127,16 @@
     </div>
   </div>
 
+  <div class="sect">
+    <div class="label">Rails — light rail + backrests</div>
+    <div class="stack" id="railBoxes">
+      <div class="row"><label><input type="checkbox" data-rail="LW2"> LW2 — bench wall</label></div>
+      <div class="row"><label><input type="checkbox" data-rail="SW2"> SW2 — return wall</label></div>
+      <div class="row"><label><input type="checkbox" data-rail="SW1"> SW1 — window wall</label></div>
+      <div class="row"><label><input type="checkbox" data-rail="LW1"> LW1 — door wall</label></div>
+    </div>
+  </div>
+
   <div class="hint">
     Seat heights are fixed by the YamaZina bench rules: foot bench 32&Prime; AFF,
     top bench 50&Prime; AFF, top depth 24&Prime;, foot reach 44&Prime;.
@@ -172,6 +182,7 @@
       heater: { posX: W - GUARD_R - SPEC.ftIn(0,6), posZ: SPEC.ftIn(0,9) },
       benchA: { offset: 0, length: W },
       benchB: { wall: 'SW2', offset: 0, length: D },
+      railWalls: { LW1:false, LW2:true, SW1:false, SW2:true },
       landing: Object.assign({}, LANDING_DEF),
     };
   }
@@ -196,6 +207,7 @@
         if(full.bench.runA){ if(full.bench.runA.offset!=null) d.benchA.offset=full.bench.runA.offset; if(full.bench.runA.length!=null) d.benchA.length=full.bench.runA.length; }
         if(full.bench.runB){ if(full.bench.runB.wall) d.benchB.wall=full.bench.runB.wall; if(full.bench.runB.offset!=null) d.benchB.offset=full.bench.runB.offset; if(full.bench.runB.length!=null) d.benchB.length=full.bench.runB.length; }
       }
+      if(full.railWalls){ ['LW1','LW2','SW1','SW2'].forEach(function(k){ if(full.railWalls[k]!=null) d.railWalls[k]=!!full.railWalls[k]; }); }
       if(full.landing){ if(full.landing.w!=null) d.landing.w=full.landing.w; if(full.landing.d!=null) d.landing.d=full.landing.d; }
       setBadge('sync: shared state ('+(env.by||'?')+', '+new Date(env.savedAt).toLocaleTimeString()+')', true);
     } else {
@@ -210,6 +222,7 @@
     saveTimer = setTimeout(save, 160);
   }
   function save(){
+    saveTimer = null;
     if(!full) full = {};
     full.window = Object.assign(full.window||{}, { w: vm.win.w, h: vm.win.h, z: vm.win.z, y: vm.win.y });
     full.door = Object.assign(full.door||{}, { posX: vm.door.posX, widthFt: vm.door.widthFt, panelHeightFt: vm.door.panelHeightFt });
@@ -217,6 +230,7 @@
     full.bench = full.bench || {};
     full.bench.runA = Object.assign(full.bench.runA||{}, { offset: vm.benchA.offset, length: vm.benchA.length });
     full.bench.runB = Object.assign(full.bench.runB||{}, { wall: vm.benchB.wall, offset: vm.benchB.offset, length: vm.benchB.length });
+    full.railWalls = Object.assign(full.railWalls||{}, vm.railWalls);
     store.saveWork(full, '2d');
     setBadge('sync: saved '+new Date().toLocaleTimeString()+' (2d)', true);
   }
@@ -275,7 +289,7 @@
   var planW = W*SC, planH = D*SC;
   var elevW = D*SC, elevH = SPEC.CEIL_FLAT*SC;
   var sheetW = M + Math.max(planW, elevW) + M + 120;
-  var PX0 = M, PY0 = M + 30;                       // plan origin (top-left of room rect)
+  var PX0 = M, PY0 = M + 78;                       // plan origin — extra headroom for the door-wall annotations
   var EX0 = M, EY0 = PY0 + planH + 150;            // elevation stacked below the plan
   var sheetH = EY0 + elevH + M + 40;
 
@@ -285,9 +299,12 @@
   svg.setAttribute('viewBox', '0 0 '+sheetW+' '+sheetH);
   document.getElementById('sheet').appendChild(svg);
 
-  // plan mapping: room x -> right, room z (0 at LW1/door wall) -> DOWN edge of view.
+  // plan mapping — TRUE view from above (matches the 3D's top view): room x ->
+  // right, room z -> down the sheet, so the door wall LW1 (z=0) is the TOP edge
+  // and the bench wall LW2 (z=DEPTH) is the bottom. Walking in the door you face
+  // down the drawing; the window wall SW1 is the right edge.
   function px(x){ return PX0 + x*SC; }
-  function pz(z){ return PY0 + (D - z)*SC; }   // z=0 (LW1) at bottom
+  function pz(z){ return PY0 + z*SC; }
   // elevation (SW1 seen from inside): z -> right, y -> up
   function ez(z){ return EX0 + z*SC; }
   function ey(y){ return EY0 + (SPEC.CEIL_FLAT - y)*SC; }
@@ -333,8 +350,8 @@
 
   function renderPlan(){
     var g = el('g', {});
-    txt(PX0, PY0-38, 'PLAN — FINISHED INTERIOR', 'viewTitle', 'start', g);
-    txt(PX0, PY0-24, 'LW1 (door wall) at bottom · SW2 left · SW1 right · scale '+SC+'px/ft', 'viewSub', 'start', g);
+    txt(PX0, PY0-64, 'PLAN — FINISHED INTERIOR (SEEN FROM ABOVE)', 'viewTitle', 'start', g);
+    txt(PX0, PY0-50, 'LW1 (door wall) at top · SW2 left · SW1 (window) right · scale '+SC+'px/ft', 'viewSub', 'start', g);
 
     // wall band: finished interior rect inside the raw stud envelope
     var lin = SPEC.WALL_LINING*SC;
@@ -343,27 +360,27 @@
 
     // ---- benches ----
     var a = vm.benchA;
-    // Run A hugs LW2 (top edge of view). Foot bench box FOOT_Z0..LOW_DEPTH off the wall,
-    // i.e. from z = D-LOW_DEPTH to z = D-FOOT_Z0.
-    el('rect', {x:px(a.offset), y:pz(D-FOOT_Z0), width:a.length*SC, height:(LOW_DEPTH-FOOT_Z0)*SC, fill:'#e9dfcd', stroke:'#8a5a2b','stroke-width':1}, g);
+    // Run A hugs LW2 (bottom edge of the view). Foot bench box FOOT_Z0..LOW_DEPTH
+    // off the wall, i.e. z from D-LOW_DEPTH to D-FOOT_Z0.
+    el('rect', {x:px(a.offset), y:pz(D-LOW_DEPTH), width:a.length*SC, height:(LOW_DEPTH-FOOT_Z0)*SC, fill:'#e9dfcd', stroke:'#8a5a2b','stroke-width':1}, g);
     // top bench (50" AFF): wall to HIGH_DEPTH
-    el('rect', {x:px(a.offset), y:pz(D), width:a.length*SC, height:HIGH_DEPTH*SC, fill:'#e0d2b8', stroke:'#8a5a2b','stroke-width':1.25}, g);
-    txt(px(a.offset+a.length/2), pz(D)+13, 'TOP BENCH · 50″ AFF', 'tag', 'middle', g);
-    txt(px(a.offset+a.length/2), pz(D-FOOT_Z0)+13, 'FOOT BENCH · 32″ AFF', 'tag', 'middle', g);
+    el('rect', {x:px(a.offset), y:pz(D-HIGH_DEPTH), width:a.length*SC, height:HIGH_DEPTH*SC, fill:'#e0d2b8', stroke:'#8a5a2b','stroke-width':1.25}, g);
+    txt(px(a.offset+a.length/2), pz(D-HIGH_DEPTH)+13, 'TOP BENCH · 50″ AFF', 'tag', 'middle', g);
+    txt(px(a.offset+a.length/2), pz(D-LOW_DEPTH)+13, 'FOOT BENCH · 32″ AFF', 'tag', 'middle', g);
 
     // Run B on its wall
     var b = vm.benchB, bIsSW1 = (b.wall === 'SW1');
     var bx0 = bIsSW1 ? px(W-HIGH_DEPTH) : px(0);
-    el('rect', {x:bx0, y:pz(b.offset+b.length), width:HIGH_DEPTH*SC, height:b.length*SC, fill:'#e0d2b8', stroke:'#8a5a2b','stroke-width':1.25}, g);
+    el('rect', {x:bx0, y:pz(b.offset), width:HIGH_DEPTH*SC, height:b.length*SC, fill:'#e0d2b8', stroke:'#8a5a2b','stroke-width':1.25}, g);
     var fx0 = bIsSW1 ? px(W-LOW_DEPTH) : px(FOOT_Z0);
-    el('rect', {x:fx0, y:pz(b.offset+b.length), width:(LOW_DEPTH-FOOT_Z0)*SC, height:b.length*SC, fill:'#e9dfcd', stroke:'#8a5a2b','stroke-width':1}, g);
+    el('rect', {x:fx0, y:pz(b.offset), width:(LOW_DEPTH-FOOT_Z0)*SC, height:b.length*SC, fill:'#e9dfcd', stroke:'#8a5a2b','stroke-width':1}, g);
     var btag = txt(bIsSW1 ? px(W-HIGH_DEPTH/2) : px(HIGH_DEPTH/2), pz(b.offset+b.length/2), 'RETURN · '+b.wall, 'tag', 'middle', g);
     btag.setAttribute('transform','rotate(-90 '+btag.getAttribute('x')+' '+btag.getAttribute('y')+')');
 
     // ---- landing (inside, tracks door X) ----
-    el('rect', {x:px(vm.door.posX - vm.landing.w/2), y:pz(vm.landing.d), width:vm.landing.w*SC, height:vm.landing.d*SC,
+    el('rect', {x:px(vm.door.posX - vm.landing.w/2), y:pz(0), width:vm.landing.w*SC, height:vm.landing.d*SC,
       fill:'none', stroke:'rgba(35,35,31,0.5)','stroke-dasharray':'4 3','stroke-width':1}, g);
-    txt(px(vm.door.posX), pz(vm.landing.d)-4, 'LANDING', 'tag', 'middle', g);
+    txt(px(vm.door.posX), pz(vm.landing.d)+11, 'LANDING', 'tag', 'middle', g);
 
     // ---- window on SW1 (right wall): break in the wall band ----
     var wz = vm.win;
@@ -374,15 +391,15 @@
 
     // ---- door on LW1 (bottom edge) with swing arc ----
     var dr = vm.door, dx0 = px(dr.posX - dr.widthFt/2), dx1 = px(dr.posX + dr.widthFt/2);
-    el('line', {x1:dx0, y1:pz(0)+1, x2:dx1, y2:pz(0)+1, stroke:'#fbfaf7','stroke-width':4}, g);
-    el('line', {x1:dx0, y1:pz(0)+lin, x2:dx1, y2:pz(0)+lin, stroke:'#fbfaf7','stroke-width':4}, g);
+    el('line', {x1:dx0, y1:pz(0)-1, x2:dx1, y2:pz(0)-1, stroke:'#fbfaf7','stroke-width':4}, g);
+    el('line', {x1:dx0, y1:pz(0)-lin, x2:dx1, y2:pz(0)-lin, stroke:'#fbfaf7','stroke-width':4}, g);
     var doorG = el('g', {'class':'draggable', 'data-drag':'door'}, g);
-    el('line', {x1:dx0, y1:pz(0), x2:dx0, y2:pz(0)-dr.widthFt*SC, stroke:'#23231f','stroke-width':1.5}, doorG);
-    el('path', {d:'M '+dx0+' '+(pz(0)-dr.widthFt*SC)+' A '+(dr.widthFt*SC)+' '+(dr.widthFt*SC)+' 0 0 1 '+dx1+' '+pz(0),
+    el('line', {x1:dx0, y1:pz(0), x2:dx0, y2:pz(0)+dr.widthFt*SC, stroke:'#23231f','stroke-width':1.5}, doorG);
+    el('path', {d:'M '+dx0+' '+(pz(0)+dr.widthFt*SC)+' A '+(dr.widthFt*SC)+' '+(dr.widthFt*SC)+' 0 0 0 '+dx1+' '+pz(0),
       fill:'none', stroke:'rgba(35,35,31,0.5)','stroke-width':0.75,'stroke-dasharray':'3 3'}, doorG);
-    el('rect', {x:dx0-6, y:pz(0)-10, width:(dr.widthFt*SC)+12, height:16, fill:'transparent'}, doorG);
-    txt(px(dr.posX), pz(0)+16, 'DOOR '+fmtIn(dr.widthFt), 'tag', 'middle', g);
-    dimH(px(0), dx0, pz(0)+30, fmt(dr.posX - dr.widthFt/2), 'dim hot', g);
+    el('rect', {x:dx0-6, y:pz(0)-8, width:(dr.widthFt*SC)+12, height:16, fill:'transparent'}, doorG);
+    txt(px(dr.posX), pz(0)-lin-8, 'DOOR '+fmtIn(dr.widthFt), 'tag', 'middle', g);
+    dimH(px(0), dx0, pz(0)-lin-22, fmt(dr.posX - dr.widthFt/2), 'dim hot', g);
 
     // ---- heater ----
     var h = vm.heater;
@@ -390,12 +407,20 @@
     el('circle', {cx:px(h.posX), cy:pz(h.posZ), r:GUARD_R*SC, fill:'none', stroke:'#8a5a2b','stroke-width':1,'stroke-dasharray':'2 2'}, hg);
     el('circle', {cx:px(h.posX), cy:pz(h.posZ), r:HEATER_R*SC, fill:'#d8cdb6', stroke:'#23231f','stroke-width':1.25}, hg);
     txt(px(h.posX), pz(h.posZ)+3, 'HUUM', 'tag', 'middle', hg);
-    dimV(pz(h.posZ), pz(0), px(h.posX)+GUARD_R*SC+10, fmtIn(h.posZ)+' C/L', 'dim', g);
+    dimV(pz(0), pz(h.posZ), px(h.posX)+GUARD_R*SC+10, fmtIn(h.posZ)+' C/L', 'dim', g);
+
+    // ---- rails (light rail + backrests share one per-wall toggle set) ----
+    var RQ = 0.14; // offset of the rail line off its wall, ft
+    function railLine(x1,y1,x2,y2){ el('line', {x1:x1,y1:y1,x2:x2,y2:y2, stroke:'#b8874b','stroke-width':2,'stroke-dasharray':'7 4'}, g); }
+    if(vm.railWalls.LW2) railLine(px(0.1), pz(D-RQ), px(W-0.1), pz(D-RQ));
+    if(vm.railWalls.LW1) railLine(px(0.1), pz(RQ), px(W-0.1), pz(RQ));
+    if(vm.railWalls.SW1) railLine(px(W-RQ), pz(0.1), px(W-RQ), pz(D-0.1));
+    if(vm.railWalls.SW2) railLine(px(RQ), pz(0.1), px(RQ), pz(D-0.1));
 
     // ---- overall dims ----
-    dimH(px(0), px(W), PY0-8, fmt(W)+' FINISHED', 'dim', g);
-    dimV(pz(D), pz(0), px(0)-14, fmt(D)+' FINISHED', 'dim', g);
-    dimH(px(vm.benchA.offset), px(vm.benchA.offset+vm.benchA.length), pz(D-LOW_DEPTH)-6, fmt(vm.benchA.length)+' RUN A', 'dim', g);
+    dimH(px(0), px(W), pz(D)+lin+16, fmt(W)+' FINISHED', 'dim', g);
+    dimV(pz(0), pz(D), px(0)-14, fmt(D)+' FINISHED', 'dim', g);
+    dimH(px(vm.benchA.offset), px(vm.benchA.offset+vm.benchA.length), pz(D)+lin+34, fmt(vm.benchA.length)+' RUN A', 'dim', g);
   }
 
   function renderElevation(){
@@ -465,6 +490,12 @@
       vm.benchB.wall = ev.target.value === 'SW1' ? 'SW1' : 'SW2';
       clampAll(); render(); scheduleSave();
     });
+    Array.prototype.forEach.call(document.querySelectorAll('#railBoxes input[data-rail]'), function(cb){
+      cb.addEventListener('change', function(){
+        vm.railWalls[cb.getAttribute('data-rail')] = cb.checked;
+        render(); scheduleSave();
+      });
+    });
     document.getElementById('pullBtn').addEventListener('click', function(){ readStore(); render(); });
   }
   function syncSidebar(){
@@ -480,6 +511,9 @@
     setPair('s_ba_len','v_ba_len', vm.benchA.length); setPair('s_ba_off','v_ba_off', vm.benchA.offset);
     setPair('s_bb_len','v_bb_len', vm.benchB.length); setPair('s_bb_off','v_bb_off', vm.benchB.offset);
     document.getElementById('sel_bb_wall').value = vm.benchB.wall;
+    Array.prototype.forEach.call(document.querySelectorAll('#railBoxes input[data-rail]'), function(cb){
+      cb.checked = !!vm.railWalls[cb.getAttribute('data-rail')];
+    });
   }
 
   // ----------------------------------------------------------------- drag --
@@ -510,7 +544,7 @@
       vm.win.h = drag.start.win.h + dyFt;
     } else if(drag.kind === 'heater'){
       vm.heater.posX = drag.start.heater.posX + dxFt;
-      vm.heater.posZ = drag.start.heater.posZ - dyFt;  // plan: svg y down = -z
+      vm.heater.posZ = drag.start.heater.posZ + dyFt;  // plan from above: svg y down = +z
     } else if(drag.kind === 'door'){
       vm.door.posX = drag.start.door.posX + dxFt;
     }
@@ -527,6 +561,11 @@
   // ---- live sync from the 3D tab ----
   store.onWorkChange(function(env){
     if(!env || env.by === '2d') return;
+    // Never stomp an in-flight local edit: mid-drag, or with a debounced save
+    // pending, the local view-model is newer than the incoming envelope. The
+    // next 3D write (it publishes its re-clamped truth after every apply)
+    // re-converges us.
+    if(drag || saveTimer) return;
     readStore(); render();
   });
 

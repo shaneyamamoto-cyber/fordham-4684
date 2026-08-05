@@ -1106,7 +1106,7 @@ const VALANCE_H = ftIn(5,0);
 let valanceGroupRef = null, valanceEditableEntry = null;
 const valanceLedLights = [];
 const valanceLedMaterials = [];
-let RAIL_WALLS = { LW1:false, LW2:true, SW1:true, SW2:true }; // shared by all 3 rails
+let RAIL_WALLS = { LW1:false, LW2:true, SW1:false, SW2:true }; // shared by all 3 rails — SW1 (window wall) off per 2026-08-05 direction: keep the window wall clear
 function buildValanceGroup(){
   const g = valanceGroupRef || new THREE.Group();
   disposeGroupChildren(g);
@@ -2524,7 +2524,7 @@ for(let i=0;i<70;i++){
 // Pulled into a real constructor function (not just an inline forEach) so "+ Add Downlight"
 // (point-and-click ceiling placement, wired up further down near the raycaster) can create
 // more of these later using the exact same real fixture+light pair, not a fake stand-in.
-const DOWNLIGHT_LABELS = ['Back Left','Back Right','Mid Left','Mid Right','Front Center'];
+const DOWNLIGHT_LABELS = ['Left','Right'];
 let addedDownlightCount = 0;
 // Real photometric profile (Kurt Versen C7303, 250W PAR-38 SP — the uploaded 20.IES file) instead
 // of a generic point light: candela drops to 50% of peak (34000cd) at roughly 5° off-axis and to
@@ -2563,10 +2563,10 @@ function createDownlight(x, z, label, isAdded){
   return registerEditable(fixture, 'down', label);
 }
 {
+  // Two-fixture layout (2026-08-05 direction): centered in depth, one offset
+  // left and one offset right. "+ Add downlight" still places extras anywhere.
   const positions = [
-    [WIDTH*0.22, DEPTH*0.18], [WIDTH*0.78, DEPTH*0.18],
-    [WIDTH*0.22, DEPTH*0.52], [WIDTH*0.78, DEPTH*0.52],
-    [WIDTH*0.5,  DEPTH*0.85],
+    [WIDTH*0.25, DEPTH*0.5], [WIDTH*0.75, DEPTH*0.5],
   ];
   positions.forEach(([x,z],i)=> createDownlight(x, z, 'Downlight — '+(DOWNLIGHT_LABELS[i] || ('#'+(i+1)))));
 }

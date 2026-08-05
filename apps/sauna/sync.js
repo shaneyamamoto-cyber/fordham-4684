@@ -27,7 +27,12 @@
     applying = true;
     try {
       window.applyDesignState(env.state);
-      lastJson = JSON.stringify(env.state);
+      // Force the next autosave tick to publish the RE-CLAMPED truth: the
+      // setters may have corrected illegal values while applying, and the 2D
+      // sheet should converge to what was actually accepted. Resetting the
+      // diff baseline makes the (already proven) tick path do that within
+      // 1.5s, and the tick then goes quiet — no echo churn between views.
+      lastJson = '';
       return true;
     } catch (e) {
       console.error('sauna sync: failed to apply shared work state', e);

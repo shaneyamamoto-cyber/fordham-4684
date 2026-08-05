@@ -3,6 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+// Platform: serve the dc-runtime's CDN deps from the local vendor tree so this
+// page works offline, same as the sauna. support.js checks window.__resources
+// for URL overrides before touching the network.
+window.__resources = {
+  "https://unpkg.com/react@18.3.1/umd/react.production.min.js": "../../platform/vendor/react/react.production.min.js",
+  "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js": "../../platform/vendor/react/react-dom.production.min.js",
+  "https://unpkg.com/@babel/standalone@7.29.0/babel.min.js": "../../platform/vendor/babel/babel.min.js"
+};
+</script>
 <script src="./support.js"></script>
 </head>
 <body>

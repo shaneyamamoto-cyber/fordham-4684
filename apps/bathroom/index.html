@@ -60,12 +60,11 @@
   </div>
 
   <div class="note">
-    <b>Note on dependencies:</b> the planner and look book run on the dc-runtime
-    (<code>support.js</code>) which loads React from unpkg, and the 3D viewer loads three.js
-    from unpkg via an import map — so these pages need internet access. The sauna project is
-    fully self-contained; vendoring these deps into <code>platform/vendor/</code> is on the
-    roadmap (see <code>docs/ARCHITECTURE.md</code>). Geometry source of truth and AI-render
-    constraints live in <code>reference/</code>.
+    <b>Fully self-contained:</b> React, Babel and three.js are vendored in
+    <code>platform/vendor/</code>, so this suite runs offline like the sauna. Saves persist
+    through the platform store under <code>yamazina.bathroom.*</code> keys (data from the
+    standalone prototype's <code>bathPlanner.*</code> keys migrates automatically). Geometry
+    source of truth and AI-render constraints live in <code>reference/</code>.
   </div>
 </div>
 </body>

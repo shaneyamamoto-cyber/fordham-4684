@@ -3,6 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../../platform/core/store.js"></script>
+<script>
+// Platform storage: constructing the store migrates any legacy bathPlanner.*
+// keys into the yamazina.bathroom.* namespace before the app reads them.
+window.PlatformStore("bathroom");
+</script>
+<script>
+// Platform: serve the dc-runtime's CDN deps from the local vendor tree so this
+// page works offline, same as the sauna. support.js checks window.__resources
+// for URL overrides before touching the network.
+window.__resources = {
+  "https://unpkg.com/react@18.3.1/umd/react.production.min.js": "../../platform/vendor/react/react.production.min.js",
+  "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js": "../../platform/vendor/react/react-dom.production.min.js",
+  "https://unpkg.com/@babel/standalone@7.29.0/babel.min.js": "../../platform/vendor/babel/babel.min.js"
+};
+</script>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -1197,7 +1213,7 @@ class Component extends DCLogic {
     };
     document.addEventListener("focusin", this._onFocusIn);
     try {
-      const raw = localStorage.getItem("bathPlanner.v1");
+      const raw = localStorage.getItem("yamazina.bathroom.versions.v1");
       if (raw) {
         const d = JSON.parse(raw);
         const allV = d.versions || [];
@@ -1211,7 +1227,7 @@ class Component extends DCLogic {
     } catch (e) { /* first run */ }
     // restore the live working design so a trip to 3D and back doesn't reset unsaved edits
     try {
-      const w = localStorage.getItem("bathPlanner.work.v1");
+      const w = localStorage.getItem("yamazina.bathroom.work.v1");
       if (w) {
         const d = JSON.parse(w);
         const keep = {};
@@ -1325,7 +1341,7 @@ class Component extends DCLogic {
   saveWork() {
     const s = this.state, out = {};
     Component.WORK_KEYS.forEach(function (k) { out[k] = s[k]; });
-    try { localStorage.setItem("bathPlanner.work.v1", JSON.stringify(out)); } catch (e) { /* quota */ }
+    try { localStorage.setItem("yamazina.bathroom.work.v1", JSON.stringify(out)); } catch (e) { /* quota */ }
   }
 
   componentWillUnmount() {
@@ -1636,7 +1652,7 @@ class Component extends DCLogic {
   save(extra) {
     const s = Object.assign({}, this.state, extra || {});
     try {
-      localStorage.setItem("bathPlanner.v1", JSON.stringify({
+      localStorage.setItem("yamazina.bathroom.versions.v1", JSON.stringify({
         defects: s.defects, runLabel: s.runLabel, shot: s.shot, patched: s.patched,
         versions: s.versions, current: s.current
       }));

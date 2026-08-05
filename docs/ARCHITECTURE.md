@@ -84,27 +84,33 @@ refactor (see `HANDOFF-README.md`, "Geometry Contract").
 
 ## Roadmap
 
-1. **Vendor the bathroom deps** — React 18 UMD + Babel standalone (dc-runtime) and
-   three 0.184 module build into `platform/vendor/`, so both projects run offline.
-2. **Bathroom onto PlatformStore** — swap its internal `bathPlanner.v1` /
-   `bathPlanner.work.v1` keys for `PlatformStore('bathroom')` (with legacy migration, same
-   pattern as the sauna), giving it the same versions/work contract.
+1. ~~**Vendor the bathroom deps**~~ — DONE: React 18 UMD, Babel standalone and the
+   three 0.184 module build live in `platform/vendor/`; the dc pages override the CDN URLs
+   via the runtime's `window.__resources` hook. Both projects now run fully offline.
+2. ~~**Bathroom onto PlatformStore**~~ — DONE: the planner and 3D viewer read/write
+   `yamazina.bathroom.*` keys; constructing `PlatformStore('bathroom')` migrates legacy
+   `bathPlanner.*` data in place. (Slot shapes stay project-defined.)
 3. **Bathroom 3D live-sync** — today the 3D reads the *locked* version on load. Add a
    `sync.js`-style bridge so the working layout previews in 3D without locking.
 4. **Grow the sauna 2D sheet** — deck/stair, floor hole, landing size, fixture positions
    (bucket/stool/thermometer), and a second elevation (LW1 door wall). The state contract
    already carries all of it; it's drawing work, not architecture work.
-5. **Unify the 2D editor engine** — extract the bathroom planner's interaction core
+5. **Card-consistent editing (explicit user direction 2026-08-05)** — the bathroom
+   planner's card-based edit workflow is the model; the sauna's element controls should
+   converge on it. First steps shipped: per-wall rail/backrest toggles as a 2D card, rails
+   default off the window wall, two-downlight default. Full parity = every sauna element
+   gets the same card treatment in both views.
+6. **Unify the 2D editor engine** — extract the bathroom planner's interaction core
    (drag/resize with readouts, multi-select, group/lock, history) into
    `platform/editor2d/` and rebase both 2D sheets on it. This is the "one harmonized 2D
    planner" end state; the sauna sheet's vanilla-SVG approach is the seed.
-6. **Photographic textures in bathroom 3D** — reuse the sauna's embedded-texture pipeline
+7. **Photographic textures in bathroom 3D** — reuse the sauna's embedded-texture pipeline
    (`assets/textures.js` data files + repeat-per-board math) for the bathroom's tile/wood.
-7. **Fixture Options bridge** — wire the bathroom fixture picker's 5 selections into the
+8. **Fixture Options bridge** — wire the bathroom fixture picker's 5 selections into the
    planner + 3D via the shared work state (open item #1 from the handoff).
-8. **Budget for bathroom** — populate `window.Budget` from the bathroom design spec, same
+9. **Budget for bathroom** — populate `window.Budget` from the bathroom design spec, same
    recompute-on-demand pattern as `computeBudget()` in the sauna.
-9. **Version retention policy** — the store keeps every named save; add pruning/compare UI
+10. **Version retention policy** — the store keeps every named save; add pruning/compare UI
    (open item #5 from the handoff).
 
 ## Testing

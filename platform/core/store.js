@@ -23,8 +23,15 @@
   var PREFIX = 'yamazina.';
 
   // legacy key -> {project, slot} — how pre-platform prototypes stored data.
+  // Migration is a raw string copy: each project owns its slot's SHAPE
+  // (sauna versions: bare array; bathroom versions: {versions, current, ...}),
+  // the platform owns the KEY namespace. The loadVersions/saveVersions
+  // conveniences below assume the array shape — projects with richer shapes
+  // read their slots through their own code against the same keys.
   var MIGRATIONS = [
     { legacyKey: 'sauna3d_versions_v1', project: 'sauna', slot: 'versions' },
+    { legacyKey: 'bathPlanner.v1', project: 'bathroom', slot: 'versions' },
+    { legacyKey: 'bathPlanner.work.v1', project: 'bathroom', slot: 'work' },
   ];
 
   function key(project, slot) {
