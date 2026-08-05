@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Bathroom — 3D from the locked layout</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.184.0/build/three.module.js",
+    "three/addons/controls/OrbitControls.js": "https://unpkg.com/three@0.184.0/examples/jsm/controls/OrbitControls.js",
+    "three/addons/exporters/OBJExporter.js": "https://unpkg.com/three@0.184.0/examples/jsm/exporters/OBJExporter.js",
+    "three/addons/exporters/GLTFExporter.js": "https://unpkg.com/three@0.184.0/examples/jsm/exporters/GLTFExporter.js"
+  },
+  "integrity": {
+    "https://unpkg.com/three@0.184.0/build/three.module.js": "sha384-8FCZ1eVO6it4+pbec2aDtnTrwjWXZLJRC+MAGCIPDgsYnUrl/E0A2YlF8ioMKI/J",
+    "https://unpkg.com/three@0.184.0/build/three.core.js": "sha384-dw2ooPewaEIrAgl6oFDBmmBWCE9oW9LxRGcfwZ0hLvEprzo202wXl7vCYHRlSnOT",
+    "https://unpkg.com/three@0.184.0/examples/jsm/controls/OrbitControls.js": "sha384-4rziNxOBZKQ69i+w+f89KJ55TCYquwchVbByQwmaOeIOXdOU2PLDn3kOfXHwIJC9",
+    "https://unpkg.com/three@0.184.0/examples/jsm/exporters/OBJExporter.js": "sha384-nbwtoZENJD3Vq+ACK0CuGQdPMuDWHkamC2KJD70EV5nfg6jQjfppKOea07YJN+N3",
+    "https://unpkg.com/three@0.184.0/examples/jsm/exporters/GLTFExporter.js": "sha384-VofkvpG6HERhFCYbsUOHeNXBCqID2nfqkQqnVzE1jc/oPcz+qJ13ADdXH08hE+cQ"
+  }
+}
+</script>
+<style>
+  html, body { margin: 0; height: 100%; background: #efece5; font-family: Archivo, Helvetica, Arial, sans-serif; }
+  three-d-stage:not(:defined) { visibility: hidden; }
+  three-d-stage { display: block; width: 100vw; height: 100vh; }
+  #hud {
+    position: fixed; left: 18px; top: 16px; z-index: 10; pointer-events: none;
+    background: rgba(251,250,247,0.9); border: 1px solid rgba(35,35,31,0.18);
+    padding: 10px 13px; border-radius: 2px; max-width: 330px;
+  }
+  #hud b { font: 600 11px/1 'IBM Plex Mono', monospace; letter-spacing: 0.14em; color: #8a5a2b; }
+  #hud .src { font: 600 13px/1.3 Archivo, sans-serif; color: #23231f; margin-top: 6px; }
+  #hud .sub { font: 400 11px/1.5 'IBM Plex Mono', monospace; color: rgba(35,35,31,0.6); margin-top: 5px; }
+  #hud a { color: #8a5a2b; pointer-events: auto; }
+  #back {
+    position: fixed; left: 18px; bottom: 18px; z-index: 10;
+    display: block; padding: 11px 16px; border: 1px solid #23231f; background: #23231f;
+    color: #fbfaf7; font: 600 10px/1 'IBM Plex Mono', monospace; letter-spacing: 0.12em;
+    border-radius: 2px; text-decoration: none;
+  }
+</style>
+</head>
+<body>
+<div id="hud">
+  <b>BATHROOM — 3D</b>
+  <div class="src" id="srcName">reading locked layout…</div>
+  <div class="sub" id="srcSub"></div>
+  <div class="sub">re-lock a version in the planner, then reload this page</div>
+  <button id="exportViewBtn" type="button" style="margin-top:10px;width:100%;pointer-events:auto;cursor:pointer;padding:8px 10px;border:1px solid #23231f;background:#23231f;color:#fbfaf7;font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;border-radius:2px">EXPORT VIEW + SPEC</button>
+</div>
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#3d5457"/><g transform="translate(30,28)" fill="none" stroke="#e6e3d9" stroke-width="3"><path d="M0 14 20 2l20 12v28L20 54 0 42z"/><path d="M0 14 20 26l20-12M20 26v28"/></g></svg>
+</template>
+<a id="back" href="./planner.html">← BACK TO THE PLANNER</a>
+<three-d-stage name="bathroom" background="#efece5"></three-d-stage>
+<script src="./three-d-stage.js"></script>
+<script type="module">
+import * as THREE from 'three';
+
+const IN = 0.0254;
+
+const FALLBACK = {
+  height: 92, kneeH: 0, slopeRun: 32, trimTone: 'copper', drawersLeft: 2, drawersRight: 3, bankW: 10.9, bankGap: 1.5,
+  wallsOff: {}, splashLinked: true,
+  surf: {
+    bay:    { fin:'tile',  color:'#9aa79b', tileL:48, tileW:24, shape:'rect', pattern:'offset2' },
+    splash: { fin:'stone', color:'#4a5442', tileL:60, tileW:45, shape:'rect', pattern:'stack' },
+    wall:   { fin:'paint', color:'#e8e3d8', tileL:24, tileW:12, shape:'rect', pattern:'stack' },
+    floor:  { fin:'stone', color:'#bdb5a6', tileL:24, tileW:24, shape:'rect', pattern:'offset2' }
+  },
+  poly: [{x:0,d:14.5},{x:60.5,d:14.5},{x:60.5,d:0},{x:169,d:0},{x:169,d:-56.5},{x:0,d:-56.5}],
+  items: [
+    {id:'splash',name:'Splash panel',x:55.5,w:60,y:29,h:45,dep:0.5,face:0,radius:12,trim:true},
+    {id:'vshelf',name:'Vanity wall shelf',x:92.5,w:10,y:41.13,h:1.75,dep:5,face:0},
+    {id:'wc',name:'Toilet',x:169,w:16,y:0,h:29,dep:26,face:0,wall:'end',d:26.75,flip:true},
+    {id:'base',name:'Baseboard',x:0,w:169,y:0,h:4,dep:0.75,face:0},
+    {id:'wet',name:'Shower zone',x:0,w:32,y:0,h:96,dep:60,face:14.5,zoneOnly:true},
+    {id:'tub',name:'Tub',x:0,w:32,y:0,h:20,dep:60,face:14.5},
+    {id:'tower',name:'Storage tower',x:44.5,w:16,y:0,h:84,dep:14.5,face:14.5,
+      bays:[{t:'door',h:26},{t:'drawer',h:8},{t:'void',h:13},{t:'drawer',h:8},{t:'void',h:13},{t:'door',h:16}]},
+    {id:'van',name:'Vanity',x:67.5,w:36,y:9,h:20,dep:12,face:0},
+    {id:'vessel',name:'Wall basin',x:67.5,w:23.6,y:29,h:7,dep:13.8,face:0},
+    {id:'stone',name:'Stone landing',x:92.6,w:10.9,y:29,h:2.5,dep:13.8,face:0},
+    {id:'taphl',name:'Tap handle — left',x:73.5,w:3,y:41,h:3,dep:3,face:0,shape:'round'},
+    {id:'tap',name:'Tap spout',x:78,w:2.5,y:41,h:3,dep:7,face:0,shape:'round'},
+    {id:'taphr',name:'Tap handle — right',x:82.5,w:3,y:41,h:3,dep:3,face:0,shape:'round'},
+    {id:'light',name:'Sconce — left',x:59.5,w:2.5,y:48,h:19,dep:3.5,face:0,shape:'soft'},
+    {id:'light2',name:'Sconce — right',x:109,w:2.5,y:48,h:19,dep:3.5,face:0,shape:'soft'},
+    {id:'mir',name:'Mirror',x:63.5,w:44,y:44,h:26,dep:2,face:0,frame:1.25,frameTone:'#b87a55',radius:13},
+    {id:'dcase',name:'Door casing',x:108,w:35,y:0,h:82.5,dep:0.75,face:0},
+    {id:'door',name:'Door — 30" RO',x:110.5,w:30,y:0,h:80,dep:1,face:0},
+    {id:'glass',name:'Glass panel',x:32,w:30,y:20,h:56,dep:0.5,face:0,wall:'end',d:0},
+    {id:'shelf',name:'Three floating shelves',x:32,w:12,y:34,h:30,dep:18,face:14.5,shelfN:3,shelfGap:12,shelfThick:2,led:true},
+    {id:'nichesh',name:'Lit tile niche',x:6,w:30,y:40.25,h:14,dep:4,face:14.5,recess:true},
+    {id:'rain',name:'Rainhead',x:11,w:10,y:80,h:4,dep:12,face:14.5},
+    {id:'mixer',name:'Mixer / diverter',x:13,w:6,y:41.38,h:6,dep:3,face:14.5},
+    {id:'spout',name:'Tub spout',x:13,w:6,y:26,h:3,dep:6,face:14.5},
+    {id:'bar2',name:'Towel bar — tub upper',x:37.25,w:18,y:29,h:2,dep:4,face:14.5,wall:'slope',d:14},
+    {id:'bar3',name:'Towel bar — tub lower',x:35.5,w:18,y:32,h:2,dep:4,face:14.5},
+    {id:'ring',name:'Hand towel ring',x:62.5,w:7,y:40.63,h:7.25,dep:4,face:0}
+  ]
+};
+
+function loadLayout() {
+  try {
+    const raw = localStorage.getItem('bathPlanner.v1');
+    if (!raw) return { data: FALLBACK, name: 'built-in plan', note: 'no saved version found' };
+    const d = JSON.parse(raw);
+    const vs = d.versions || [];
+    if (!vs.length) return { data: FALLBACK, name: 'built-in plan', note: 'planner has no locked versions yet' };
+    const pick = vs.filter(v => v.name === d.current)[0] || vs.slice().sort((a, b) => b.ts - a.ts)[0];
+    return { data: Object.assign({}, FALLBACK, pick.data), name: pick.name,
+      note: 'locked ' + new Date(pick.ts).toLocaleString() };
+  } catch (e) {
+    return { data: FALLBACK, name: 'built-in plan', note: 'could not read saved versions' };
+  }
+}
+
+const L = loadLayout();
+const S = L.data;
+document.getElementById('srcName').textContent = L.name;
+
+const SF = S.surf || {};
+// a wall RUN with no surface entry of its own inherits from its base key
+const RUN_BASE = { bay_back:'bay', step_return:'bay', vanity:'wall', end_left:'wall', end_right:'wall' };
+const sc = function (k, dflt) {
+  const e = SF[k] || SF[RUN_BASE[k]];
+  return (e && e.color) ? new THREE.Color(e.color).getHex() : dflt;
+};
+
+const MAT = {
+  walnut:   new THREE.MeshStandardMaterial({ name: 'walnut',   color: 0x8a5325, roughness: 0.62, metalness: 0.05 }),
+  stone:    new THREE.MeshStandardMaterial({ name: 'stonetile',color: sc('bay', 0x9aa79b), roughness: 0.55, metalness: 0.03, side: THREE.FrontSide }),
+  floor:    new THREE.MeshStandardMaterial({ name: 'floortile',color: sc('floor', 0xbdb5a6), roughness: 0.7,  metalness: 0.02 }),
+  plaster:  new THREE.MeshStandardMaterial({ name: 'plaster',  color: sc('wall', 0xe8e3d8), roughness: 0.92, metalness: 0.0, side: THREE.FrontSide }),
+  white:    new THREE.MeshStandardMaterial({ name: 'white',    color: 0xf7f6f2, roughness: 0.28, metalness: 0.02 }),
+  brass:    new THREE.MeshStandardMaterial({ name: 'brass',    color: 0xc9a35c, roughness: 0.32, metalness: 0.38 }),
+  trim:     new THREE.MeshStandardMaterial({ name: 'trim',     color: S.trimTone === 'rose' ? 0xb76e79 : S.trimTone === 'copper' ? 0xb87a55 : 0x7d6552, roughness: 0.35, metalness: 0.38 }),
+  glass:    new THREE.MeshPhysicalMaterial({ name: 'glass',    color: 0xcfe0e3, roughness: 0.08, metalness: 0.0, transmission: 0.35, transparent: true, opacity: 0.62, thickness: 0.02 }),
+  solid:    new THREE.MeshStandardMaterial({ name: 'solidsurface', color: 0xe6e0d4, roughness: 0.4, metalness: 0.02 }),
+  litvoid:  new THREE.MeshStandardMaterial({ name: 'litniche', color: 0xffd9a0, roughness: 0.5, metalness: 0.0, emissive: 0xffb765, emissiveIntensity: 0.85 }),
+  slope:    new THREE.MeshStandardMaterial({ name: 'dormer',   color: sc('slope', 0xe8e3d8), roughness: 0.88, metalness: 0.0, side: THREE.FrontSide }),
+  bayback:  new THREE.MeshStandardMaterial({ name: 'baybacktile', color: sc('bay_back', 0x9aa79b), roughness: 0.55, metalness: 0.03, side: THREE.FrontSide }),
+  steppier: new THREE.MeshStandardMaterial({ name: 'steppiertile', color: sc('step_return', 0x9aa79b), roughness: 0.55, metalness: 0.03 }),
+  vanity:   new THREE.MeshStandardMaterial({ name: 'vanitywall', color: sc('vanity', 0xe8e3d8), roughness: 0.7, metalness: 0.02, side: THREE.FrontSide }),
+  endL:     new THREE.MeshStandardMaterial({ name: 'endwallL',  color: sc('end_left', 0xe8e3d8), roughness: 0.92, metalness: 0.0, side: THREE.FrontSide }),
+  endR:     new THREE.MeshStandardMaterial({ name: 'endwallR',  color: sc('end_right', 0xe8e3d8), roughness: 0.92, metalness: 0.0, side: THREE.FrontSide }),
+  splashm:  new THREE.MeshStandardMaterial({ name: 'splashtile', color: sc('splash', 0xc8cec4), roughness: 0.55, metalness: 0.03 }),
+  skirt:    new THREE.MeshStandardMaterial({ name: 'tubskirttile', color: sc('skirt', 0x9aa79b), roughness: 0.55, metalness: 0.03 }),
+  teak:     new THREE.MeshStandardMaterial({ name: 'teak', color: 0xb98b53, roughness: 0.5, metalness: 0.04 })
+};
+
+const MAT_FOR = {
+  tower: MAT.walnut, van: MAT.walnut, shelf: MAT.walnut, vshelf: MAT.walnut,
+  tub: MAT.white, vessel: MAT.white, door: MAT.plaster, base: MAT.plaster, wc: MAT.white,
+  splash: MAT.splashm, nichesh: MAT.stone,
+  stone: MAT.solid,
+  glass: MAT.glass,
+  bar: MAT.brass, bar2: MAT.brass, ring: MAT.brass, rain: MAT.brass, mixer: MAT.brass, spout: MAT.brass, tap: MAT.brass,
+  mir: MAT.white
+};
+
+const xs = S.poly.map(p => p.x), ds = S.poly.map(p => p.d);
+const X0 = Math.min(...xs), X1 = Math.max(...xs);
+const D0 = Math.min(...ds), D1 = Math.max(...ds);
+const H = S.height;
+const BAY = D1;                      // bay back wall depth behind the 0" plane
+const BAY_X1 = 60.5;
+const CX = (X0 + X1) / 2;            // centre offsets, in inches
+const CZ = -(D0 + D1) / 2;
+
+// planner (x inches, d inches, y inches) -> three (metres, y-up, centred)
+function P(x, y, d) { return new THREE.Vector3((x - CX) * IN, y * IN, (-d - CZ) * IN); }
+
+const room = new THREE.Group();
+room.name = 'bathroom';
+
+// rounded-rectangle profile: rTL/rTR/rBR/rBL in world units, extruded along z
+function roundedProfile(W, Hh, rTL, rTR, rBR, rBL) {
+  const x = -W / 2, y = -Hh / 2, cap = Math.min(W, Hh) / 2;
+  const a = Math.min(rTL, cap), b = Math.min(rTR, cap), c = Math.min(rBR, cap), e = Math.min(rBL, cap);
+  const s = new THREE.Shape();
+  s.moveTo(x + e, y);
+  s.lineTo(x + W - c, y);
+  if (c) s.quadraticCurveTo(x + W, y, x + W, y + c); else s.lineTo(x + W, y);
+  s.lineTo(x + W, y + Hh - b);
+  if (b) s.quadraticCurveTo(x + W, y + Hh, x + W - b, y + Hh); else s.lineTo(x + W, y + Hh);
+  s.lineTo(x + a, y + Hh);
+  if (a) s.quadraticCurveTo(x, y + Hh, x, y + Hh - a); else s.lineTo(x, y + Hh);
+  s.lineTo(x, y + e);
+  if (e) s.quadraticCurveTo(x, y, x + e, y); else s.lineTo(x, y);
+  return s;
+}
+
+function box(name, mat, w, h, dep, x, y, d, shape, rad) {
+  const W = Math.max(Math.abs(w), 0.1) * IN, Hh = Math.max(Math.abs(h), 0.1) * IN, D = Math.max(Math.abs(dep), 0.1) * IN;
+  let g;
+  if (shape === 'round') {
+    g = new THREE.CylinderGeometry(0.5, 0.5, 1, 40);
+    g.scale(Math.min(W, D), Hh, Math.min(W, D));
+  } else if (shape === 'soft' || (rad && shape !== 'square')) {
+    // 'soft' = 2" on all four corners; a bare radius = an arched top, matching the elevation
+    const r = (shape === 'soft' ? 2 : rad) * IN;
+    const prof = shape === 'soft' ? roundedProfile(W, Hh, r, r, r, r)
+      : roundedProfile(W, Hh, r, r, 0, 0);
+    g = new THREE.ExtrudeGeometry(prof, { depth: D, bevelEnabled: false, curveSegments: 12 });
+    g.translate(0, 0, -D / 2);
+  } else {
+    g = new THREE.BoxGeometry(W, Hh, D);
+  }
+  const m = new THREE.Mesh(g, mat);
+  m.name = name;
+  m.castShadow = true; m.receiveShadow = true;
+  m.position.copy(P(x, y, d));
+  room.add(m);
+  return m;
+}
+
+// real hardware shapes — cylinders/tori/discs instead of flat boxes, for the fittings
+// that read as hardware rather than casework. Built in the SAME box() bounding volume
+// (same x/y/d centre, same w/h/dep extents) so wall-siding and depth match everything
+// else; sub-meshes are added straight to `room`.
+function hwMesh(g, mat, name, x, y, d, rotX, rotZ) {
+  const m = new THREE.Mesh(g, mat);
+  m.name = name; m.castShadow = true; m.receiveShadow = true;
+  m.position.copy(P(x, y, d));
+  if (rotX) m.rotation.x += rotX;
+  if (rotZ) m.rotation.z += rotZ;
+  room.add(m);
+  return m;
+}
+const HW3D = {
+  taphl: crossHandle, taphr: crossHandle,
+  tap: gooseneckSpout, spout: gooseneckSpout,
+  rain: rainhead,
+  mixer: diverterPlate,
+  bar2: towelBar, bar3: towelBar,
+  ring: towelRing,
+  light: sconce, light2: sconce
+};
+function crossHandle(it, mat, nm) {
+  const base = it.face > 0 ? BAY : 0, proj = it.dep, cx = it.x + it.w / 2, cy = it.y + it.h / 2;
+  const dz = base - proj / 2, dir = it.face > 0 ? 1 : -1;
+  const rD = Math.min(it.w, it.h) / 2 * 0.92 * IN;
+  hwMesh(new THREE.CylinderGeometry(rD, rD, proj * 0.32 * IN, 28), mat, nm + '_escutcheon', cx, cy, dz, Math.PI / 2);
+  const armL = it.w * 0.82 * IN, armT = it.w * 0.16 * IN;
+  const armZ = dz + dir * proj * 0.22;
+  [0, Math.PI / 2].forEach((rot, i) => {
+    const g = new THREE.CylinderGeometry(armT / 2, armT / 2, armL, 16);
+    hwMesh(g, mat, nm + '_arm' + i, cx, cy, armZ, Math.PI / 2 + 0, rot);
+  });
+  hwMesh(new THREE.SphereGeometry(armT * 0.9, 16, 12), mat, nm + '_cap', cx, cy, armZ + dir * armT);
+}
+function gooseneckSpout(it, mat, nm) {
+  // straight, not curved — a bent-elbow gooseneck read as a trunk at this scale
+  const base = it.face > 0 ? BAY : 0, proj = it.dep, cx = it.x + it.w / 2, dir = it.face > 0 ? 1 : -1;
+  const dz = base - proj / 2;
+  const topY = it.y + it.h, r = Math.min(it.w, 3) / 2 * IN;
+  hwMesh(new THREE.CylinderGeometry(r * 1.5, r * 1.5, proj * 0.28 * IN, 24), mat, nm + '_escutcheon', cx, topY - 0.4, dz, Math.PI / 2);
+  const dropH = it.h * 0.82;
+  hwMesh(new THREE.CylinderGeometry(r * 0.55, r * 0.55, dropH * IN, 20), mat, nm + '_pipe', cx, topY - dropH / 2 - 0.4, dz + dir * proj * 0.12);
+  hwMesh(new THREE.SphereGeometry(r * 0.62, 16, 12), mat, nm + '_tip', cx, topY - dropH - 0.4, dz + dir * proj * 0.12);
+}
+function rainhead(it, mat, nm) {
+  const base = it.face > 0 ? BAY : 0, proj = it.dep, cx = it.x + it.w / 2, cy = it.y + it.h / 2, dir = it.face > 0 ? 1 : -1;
+  const dz = base - proj / 2;
+  hwMesh(new THREE.CylinderGeometry(it.h * 0.28 * IN, it.h * 0.28 * IN, proj * 0.6 * IN, 16), mat, nm + '_arm',
+    cx, cy, dz - dir * proj * 0.05, Math.PI / 2);
+  const discR = Math.min(it.w, proj) * 0.46 * IN;
+  hwMesh(new THREE.CylinderGeometry(discR, discR, it.h * 0.35 * IN, 32), mat, nm + '_disc',
+    cx, cy, dz + dir * proj * 0.35);
+}
+function diverterPlate(it, mat, nm) {
+  const base = it.face > 0 ? BAY : 0, proj = it.dep, cx = it.x + it.w / 2, cy = it.y + it.h / 2, dir = it.face > 0 ? 1 : -1;
+  const dz = base - proj / 2;
+  box(nm + '_plate', mat, it.w, it.h, proj * 0.3, cx, cy, dz, 'soft', 0.5);
+  const leverLen = it.w * 0.55 * IN, leverR = it.w * 0.09 * IN;
+  const lever = hwMesh(new THREE.CylinderGeometry(leverR, leverR, leverLen, 14), mat, nm + '_lever',
+    cx, cy, dz + dir * proj * 0.35, 0, 0);
+  lever.rotation.z = Math.PI / 3.2;
+}
+function towelBar(it, mat, nm) {
+  const base = it.face > 0 ? BAY : 0, proj = it.dep, cy = it.y + it.h / 2, dir = it.face > 0 ? 1 : -1;
+  const dz = base - proj / 2;
+  const rodR = it.h * 0.22 * IN, postR = it.h * 0.34 * IN, postLen = proj * 0.7 * IN;
+  hwMesh(new THREE.CylinderGeometry(rodR, rodR, it.w * 0.94 * IN, 16), mat, nm + '_rod', it.x + it.w / 2, cy, dz + dir * proj * 0.15, 0, Math.PI / 2);
+  [it.x + it.w * 0.03, it.x + it.w * 0.97].forEach((px, i) => {
+    hwMesh(new THREE.CylinderGeometry(postR, postR, postLen, 14), mat, nm + '_post' + i, px, cy, dz, Math.PI / 2);
+  });
+}
+function towelRing(it, mat, nm) {
+  const base = it.face > 0 ? BAY : 0, proj = it.dep, cx = it.x + it.w / 2, cy = it.y + it.h / 2, dir = it.face > 0 ? 1 : -1;
+  const dz = base - proj / 2;
+  hwMesh(new THREE.CylinderGeometry(it.w * 0.16 * IN, it.w * 0.16 * IN, proj * 0.5 * IN, 14), mat, nm + '_post', cx, cy, dz, Math.PI / 2);
+  const R = Math.min(it.w, it.h) / 2 * 0.82 * IN, tube = it.h * 0.09 * IN;
+  hwMesh(new THREE.TorusGeometry(R, tube, 16, 32), mat, nm + '_ring', cx, cy, dz + dir * proj * 0.3);
+}
+function sconce(it, mat, nm) {
+  const base = it.face > 0 ? BAY : 0, proj = it.dep, cx = it.x + it.w / 2, cy = it.y + it.h / 2;
+  const dz = base - proj / 2;
+  const r = it.w / 2 * IN;
+  // axis stays vertical (Y) — this is a standing column flush to the wall, not a
+  // wall-perpendicular puck, so it must NOT be rotated to face the room like the taps
+  hwMesh(new THREE.CylinderGeometry(r, r, it.h * IN, 24), mat, nm + '_body', cx, cy, dz);
+  const glow = new THREE.MeshStandardMaterial({ name: 'sconce_glow', color: 0xf5e6b8, emissive: 0xf5e6b8, emissiveIntensity: 0.6, roughness: 0.6 });
+  hwMesh(new THREE.CylinderGeometry(r * 0.6, r * 0.6, it.h * 0.82 * IN, 20), glow, nm + '_diffuser', cx, cy, dz + (it.face > 0 ? -1 : 1) * proj * 0.2);
+}
+
+// ---- shell -------------------------------------------------------------
+const shape = new THREE.Shape();
+S.poly.forEach((p, i) => { i ? shape.lineTo(p.x, p.d) : shape.moveTo(p.x, p.d); });
+shape.closePath();
+const floorGeo = new THREE.ExtrudeGeometry(shape, { depth: 1.5, bevelEnabled: false });
+floorGeo.rotateX(-Math.PI / 2);
+floorGeo.scale(IN, IN, IN);
+const floor = new THREE.Mesh(floorGeo, MAT.floor);
+floor.name = 'floor';
+floor.receiveShadow = true;
+floor.position.set(-CX * IN, 0, -CZ * IN);
+room.add(floor);
+
+// Walls are single-sided planes facing INTO the room, so the near ones vanish
+// from outside and you always see the interior (dollhouse view).
+function wall(name, mat, w, h, x, y, d, rotY, rotX) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w * IN, h * IN), mat);
+  m.name = name;
+  m.receiveShadow = true;
+  m.position.copy(P(x, y, d));
+  if (rotY) m.rotation.y = rotY;
+  if (rotX) m.rotation.x = rotX;
+  room.add(m);
+  return m;
+}
+
+const HP = Math.PI / 2;
+const OFF = S.wallsOff || {};
+if (!OFF.bay_back)   wall('wall_bay_back',    MAT.bayback,   BAY_X1 - X0, H, X0 + (BAY_X1 - X0) / 2, H / 2, BAY);
+if (!OFF.back_face)  wall('wall_back_face',   MAT.vanity,   X1 - BAY_X1, H, BAY_X1 + (X1 - BAY_X1) / 2, H / 2, 0);
+if (!OFF.end_right)  wall('wall_end_right',   MAT.endR, D1 - D0, H, X1, H / 2, (D1 + D0) / 2, -HP);
+if (!OFF.end_left)   wall('wall_end_left',    MAT.endL, D1 - D0, H, X0, H / 2, (D1 + D0) / 2, HP);
+if (!OFF.ceiling)    wall('ceiling',          MAT.plaster, X1 - X0, D1 - (D0 + S.slopeRun), (X0 + X1) / 2, H, (D1 + D0 + S.slopeRun) / 2, 0, HP);
+
+// the bay step is a real pier of wall, not a floating card — give it thickness so the
+// reveal reads as solid from every angle in the dollhouse view
+if (!OFF.step_return) {
+  const t = 4.5;
+  const g = new THREE.BoxGeometry(t * IN, H * IN, BAY * IN);
+  const m = new THREE.Mesh(g, MAT.steppier);
+  m.name = 'wall_step_return';
+  m.castShadow = true; m.receiveShadow = true;
+  m.position.copy(P(BAY_X1 + t / 2, H / 2, BAY / 2));
+  room.add(m);
+}
+
+// dormer: springs from the floor at the front wall and rakes back to the ceiling
+if (!OFF.dormer) {
+  const run = S.slopeRun, knee = S.kneeH, rise = H - knee;
+  const len = Math.sqrt(run * run + rise * rise);
+  const ang = Math.atan2(run, rise);
+  const g = new THREE.PlaneGeometry((X1 - X0) * IN, len * IN);
+  const m = new THREE.Mesh(g, MAT.slope);
+  m.name = 'dormer_slope';
+  m.receiveShadow = true;
+  m.position.copy(P((X0 + X1) / 2, knee + rise / 2, D0 + run / 2));
+  m.rotation.x = Math.PI - ang;
+  room.add(m);
+  if (knee > 0) wall('dormer_knee', MAT.plaster, X1 - X0, knee, (X0 + X1) / 2, knee / 2, D0);
+}
+
+// ---- fittings ----------------------------------------------------------
+function rake(y) {
+  if (S.slopeRun <= 0 || y <= S.kneeH) return 0;
+  return Math.min(S.slopeRun, (y - S.kneeH) / Math.max(1, H - S.kneeH) * S.slopeRun);
+}
+
+const rimH = (S.items.filter(i => i.id === 'glass')[0] || {}).y || 20;
+const usedNames = {};
+function meshName(it) {
+  let base = it.name.replace(/\s*—\s*/g, '_').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').toLowerCase();
+  if (!base) base = it.id;
+  let nm = base, k = 2;
+  while (usedNames[nm]) nm = base + '_' + (k++);
+  usedNames[nm] = 1;
+  return nm;
+}
+
+S.items.forEach(it => {
+  let mat = MAT_FOR[it.id] || MAT.walnut;
+  if (it.swatch) {
+    const key = 'sw' + it.swatch.replace('#', '');
+    if (!MAT[key]) {
+      MAT[key] = new THREE.MeshStandardMaterial({ name: (it.id || 'part') + '_finish',
+        color: new THREE.Color(it.swatch).getHex(),
+        roughness: /c9a35c|b76e79|7d6552|b87a55/i.test(it.swatch) ? 0.32 : 0.6,
+        metalness: /c9a35c|b76e79|7d6552|b87a55/i.test(it.swatch) ? 0.38 : 0.05 });
+    }
+    if (it.id !== 'glass') mat = MAT[key];
+  }
+  const nm = meshName(it);
+  const proj = it.recess ? -it.dep : it.dep;   // recessed items cut INTO the wall
+  if (it.zoneOnly || it.id === 'wet') return;   // the wet-area envelope is a drawing aid, not a solid
+  if (HW3D[it.id]) { HW3D[it.id](it, mat, nm); return; }
+  if (it.id === 'tub') {
+    // skirted bath: tiled end cap, stone rim, acrylic basin. An END-WALL tub has its
+    // axes swapped — `w` runs INTO the room and `dep` runs across it.
+    const endWall = it.wall === 'end';
+    const across = Math.max(12, endWall ? it.dep : it.w);
+    const along = (function (v) { return v >= 12 ? v : 60; })(endWall ? it.w : it.dep);
+    const dFar = endWall ? D1 - (it.d || 0) : BAY;
+    const bw = across - 2;
+    const rh = it.h >= 8 ? it.h : rimH;
+    const cx = it.x + 1 + bw / 2, cd = dFar - along / 2;
+    // The rim is a FRAME, not a lid — a solid cap read as a bench with no lip at the
+    // foot end. And the skirt is HOLLOW, or the frame just exposes its tiled top face.
+    const R = 2.25;                                   // rim width
+    const OW = (bw + 1.5) / 2, OL = (along + 1.5) / 2;
+    const IW = Math.max(1, OW - R), IL = Math.max(1, OL - R);
+    const sh = rh - 2.25;                             // skirt height, under the rim
+    const pw = Math.max(0.75, bw / 2 - IW), pd = Math.max(0.75, along / 2 - IL);
+    box('tub_skirt', MAT.skirt, pw, sh, along, cx - bw / 2 + pw / 2, sh / 2, cd);
+    box('tub_skirt_far', MAT.skirt, pw, sh, along, cx + bw / 2 - pw / 2, sh / 2, cd);
+    box('tub_skirt_head', MAT.skirt, IW * 2, sh, pd, cx, sh / 2, cd + along / 2 - pd / 2);
+    box('tub_skirt_foot', MAT.skirt, IW * 2, sh, pd, cx, sh / 2, cd - along / 2 + pd / 2);
+    box('tub_floor', MAT.white, IW * 2, 2.5, IL * 2, cx, 1.25, cd);
+    const capY = rh - 1.125;
+    box('tub_rim_left',  MAT.solid, R, 2.25, OL * 2, cx - OW + R / 2, capY, cd);
+    box('tub_rim_right', MAT.solid, R, 2.25, OL * 2, cx + OW - R / 2, capY, cd);
+    box('tub_rim_head',  MAT.solid, IW * 2, 2.25, R, cx, capY, cd + OL - R / 2);
+    box('tub_rim_foot',  MAT.solid, IW * 2, 2.25, R, cx, capY, cd - OL + R / 2);
+    return;
+  }
+  if (it.id === 'wc') {
+    // a real toilet silhouette rather than a slab: tank, pedestal, bowl, seat, lid
+    const dir = it.flip ? -1 : 1;                 // +1 projects toward +x, -1 toward -x
+    const wallX = it.x;
+    const at = function (off) { return wallX + dir * off; };   // off = inches out from the wall
+    const dFar = D1 - (it.d || 0), cz = dFar - it.w / 2;
+    const tankD = 8, bowlL = it.dep - tankD, seatY = 15.5;
+    // tank against the wall
+    box('wc_tank', MAT.white, tankD, it.h - 13, it.w - 2, at(tankD / 2), 13 + (it.h - 13) / 2, cz);
+    box('wc_lid', MAT.white, tankD + 1, 1.2, it.w - 1, at(tankD / 2), it.h + 0.6, cz);
+    // pedestal foot, tapering visually via a smaller box
+    box('wc_pedestal', MAT.white, bowlL * 0.62, 13, it.w * 0.46, at(tankD + bowlL * 0.34), 6.5, cz);
+    // bowl — an ellipse in plan
+    const bowl = box('wc_bowl', MAT.white, bowlL, 7.5, it.w - 1.5, at(tankD + bowlL / 2), 13 + 3.75, cz, 'round');
+    bowl.scale.x = bowlL / Math.min(bowlL, it.w - 1.5);
+    bowl.scale.z = (it.w - 1.5) / Math.min(bowlL, it.w - 1.5);
+    const seat = box('wc_seat', MAT.white, bowlL * 0.98, 1.1, it.w - 2, at(tankD + bowlL / 2), seatY + 1.6, cz, 'round');
+    seat.scale.x = (bowlL * 0.98) / Math.min(bowlL * 0.98, it.w - 2);
+    seat.scale.z = (it.w - 2) / Math.min(bowlL * 0.98, it.w - 2);
+    return;
+  }
+  if (it.id === 'dcase') {
+    // a real door frame — two jambs and a head, with the door opening cut through —
+    // not a solid slab. Jamb width matches how far the casing extends past the door.
+    const base0 = it.face > 0 ? BAY : 0, dz0 = base0 - proj / 2;
+    const doorIt = S.items.filter(function (i) { return i.id === 'door'; })[0];
+    const legW = doorIt ? (doorIt.x - it.x) : 2.5;
+    const openL = it.x + legW, openR = it.x + it.w - legW;
+    const headBot = doorIt ? doorIt.y + doorIt.h : it.h - legW;
+    box(nm + '_jamb_l', mat, legW, it.h, proj, it.x + legW / 2, it.y + it.h / 2, dz0);
+    box(nm + '_jamb_r', mat, legW, it.h, proj, it.x + it.w - legW / 2, it.y + it.h / 2, dz0);
+    box(nm + '_head', mat, openR - openL, it.h - headBot, proj, (openL + openR) / 2, headBot + (it.h - headBot) / 2, dz0);
+    return;
+  }
+  if (it.id === 'base') {
+    // the baseboard dies into the door casing rather than running through the opening
+    // into the unmodelled hallway beyond it
+    const base0 = it.face > 0 ? BAY : 0, dz0 = base0 - proj / 2;
+    const dcaseIt = S.items.filter(function (i) { return i.id === 'dcase'; })[0];
+    if (dcaseIt) {
+      const gapL = dcaseIt.x, gapR = dcaseIt.x + dcaseIt.w;
+      box(nm + '_a', mat, gapL - it.x, it.h, proj, it.x + (gapL - it.x) / 2, it.y + it.h / 2, dz0);
+      box(nm + '_b', mat, (it.x + it.w) - gapR, it.h, proj, gapR + ((it.x + it.w) - gapR) / 2, it.y + it.h / 2, dz0);
+    } else {
+      box(nm, mat, it.w, it.h, proj, it.x + it.w / 2, it.y + it.h / 2, dz0);
+    }
+    return;
+  }
+  if (it.shelfN) {
+    // floating boards, no carcass — matches the elevation
+    const n = Math.max(1, Math.min(10, it.shelfN)), th = it.shelfThick || 2, gp = (it.shelfGap == null ? 12 : it.shelfGap);
+    for (let k = 0; k < n; k++) {
+      const by = it.y + k * (th + gp);
+      const sbase = it.face > 0 ? BAY : 0;
+      box(nm + '_board' + (k + 1), mat, it.w, th, it.dep, it.x + it.w / 2, by + th / 2, sbase - it.dep / 2);
+      // warm LED strip tucked under the front edge
+      if (it.led) box(nm + '_led' + (k + 1), MAT.litvoid, it.w - 1, 0.5, 0.6,
+        it.x + it.w / 2, by - 0.25, sbase - it.dep + 0.5);
+    }
+    return;
+  }
+  if (it.zone) {
+    // A wall-area finish is a thin skin ON the wall. Anchor it to the wall that actually
+    // exists at its x — a zone over the bay must sit on the bay plane, not float 14.5"
+    // proud on the vanity plane in front of the taps.
+    const base0 = (it.x + it.w / 2) < BAY_X1 ? BAY : 0;
+    box(nm, mat, it.w, it.h, 0.4, it.x + it.w / 2, it.y + it.h / 2, base0 - 0.2);
+    return;
+  }
+  if (it.bays && it.bays.length) {
+    const fixed = it.bays.reduce(function (a, b) { return a + (b.h || 0); }, 0);
+    const autoN = it.bays.filter(function (b) { return !b.h; }).length;
+    const spare = Math.max(0, it.h - fixed);
+    const base0 = it.face > 0 ? BAY : 0;
+    let cy = it.y;
+    // hollow carcass — a solid block would bury the lit voids inside it
+    const T = 0.75, cxm = it.x + it.w / 2, zMid = base0 - it.dep / 2;
+    box(nm + '_back', mat, it.w, it.h, T, cxm, it.y + it.h / 2, base0 - T / 2);
+    box(nm + '_sideL', mat, T, it.h, it.dep, it.x + T / 2, it.y + it.h / 2, zMid);
+    box(nm + '_sideR', mat, T, it.h, it.dep, it.x + it.w - T / 2, it.y + it.h / 2, zMid);
+    box(nm + '_top', mat, it.w, T, it.dep, cxm, it.y + it.h - T / 2, zMid);
+    box(nm + '_bottom', mat, it.w, T, it.dep, cxm, it.y + T / 2, zMid);
+    it.bays.forEach(function (bb, bi) {
+      const bh = bb.h || (autoN ? spare / autoN : 0);
+      if (bh <= 0) return;
+      if (bi > 0) box(nm + '_shelf' + bi, mat, it.w - T * 2, T, it.dep - T, cxm, cy, zMid - T / 2);
+      if (bb.t === 'void') {
+        // glowing back panel of an open bay, set just in front of the carcass back
+        box(nm + '_void' + (bi + 1), MAT.litvoid, it.w - T * 2, bh - T, 0.6,
+          cxm, cy + bh / 2, base0 - T - 0.3);
+      } else {
+        box(nm + '_' + bb.t + (bi + 1), mat, it.w - 1, bh - 0.6, 0.8,
+          it.x + it.w / 2, cy + bh / 2, base0 - it.dep - 0.4);
+        // cupboard doors get a VERTICAL pull near the opening edge; drawers keep a
+        // horizontal pull centred on the front — matches the elevation convention
+        if (bb.t === 'door') {
+          const pullLen = Math.min(5, bh * 0.32);
+          box(nm + '_pull' + (bi + 1), MAT.brass, 0.5, pullLen, 0.9,
+            it.x + it.w - 1.9, cy + bh / 2, base0 - it.dep - 1.1);
+        } else {
+          const pw = Math.min(6, it.w * 0.34);
+          box(nm + '_pull' + (bi + 1), MAT.brass, pw, 0.5, 0.9,
+            it.x + it.w / 2, cy + bh / 2, base0 - it.dep - 1.1);
+        }
+      }
+      cy += bh;
+    });
+    return;
+  }
+  if (it.frame) {
+    const base = it.face > 0 ? BAY : 0;
+    const f = it.frame, fd = Math.max(it.dep, f * 0.9);
+    const zc = base - fd / 2, cxm = it.x + it.w / 2, cym = it.y + it.h / 2;
+    const tone = new THREE.Color(it.frameTone || '#b98b53').getHex();
+    const fm = MAT.teak.color.getHex() === tone ? MAT.teak
+      : new THREE.MeshStandardMaterial({ name: 'frame', color: tone, roughness: 0.5, metalness: 0.04 });
+    box(nm + '_glass', mat, it.w - f * 2, it.h - f * 2, 0.4, cxm, cym, base - 0.2 - fd * 0.35);
+    box(nm + '_frame_left',   fm, f, it.h, fd, it.x + f / 2, cym, zc);
+    box(nm + '_frame_right',  fm, f, it.h, fd, it.x + it.w - f / 2, cym, zc);
+    box(nm + '_frame_top',    fm, it.w - f * 2, f, fd, cxm, it.y + it.h - f / 2, zc);
+    box(nm + '_frame_bottom', fm, it.w - f * 2, f, fd, cxm, it.y + f / 2, zc);
+    return;
+  }
+  if (it.wall === 'end') {
+    // plane parallel to the end walls: thickness in x, length along depth
+    const dFar = D1 - (it.d || 0), dNear = dFar - it.w;
+    const dir = it.flip ? -1 : 1;
+    box(nm, mat, Math.abs(proj), it.h, it.w, it.x + dir * proj / 2, it.y + it.h / 2, (dFar + dNear) / 2, it.shape);
+
+  } else if (it.wall === 'slope') {
+    const dOut = D0 + rake(it.y + it.h / 2);
+    box(nm, mat, it.w, it.h, Math.abs(proj), it.x + it.w / 2, it.y + it.h / 2, dOut + proj / 2, it.shape, it.radius);
+  } else {
+    const base = it.face > 0 ? BAY : 0;
+    box(nm, mat, it.w, it.h, Math.abs(proj), it.x + it.w / 2, it.y + it.h / 2, base - proj / 2, it.shape, it.radius);
+  }
+});
+
+// vanity drawer fronts + pulls, driven by the same numbers as the elevation
+(function () {
+  const v = S.items.filter(i => i.id === 'van')[0];
+  if (!v) return;
+  const nL = Math.max(1, S.drawersLeft), nR = Math.max(1, S.drawersRight);
+  const wR = S.bankW, gap = S.bankGap, wL = v.w - wR - gap;
+  if (wL <= 0) return;
+  const zFace = -v.dep;                      // vanity front face, in planner depth
+  const front = (tag, x0, w0, y0, h0, pullW) => {
+    box('drawer_' + tag, MAT.walnut, w0 - 0.5, h0 - 0.5, 0.75, x0 + w0 / 2, y0 + h0 / 2, zFace - 0.4);
+    box('pull_' + tag, MAT.brass, pullW, 0.45, 0.9, x0 + w0 / 2, y0 + h0 / 2, zFace - 1.1);
+  };
+  const hL = v.h / nL;
+  for (let i = 0; i < nL; i++) front('L' + (i + 1), v.x, wL, v.y + i * hL, hL, Math.min(6, wL * 0.26));
+  const hR = v.h / nR;
+  for (let j = 0; j < nR; j++) front('R' + (j + 1), v.x + wL + gap, wR, v.y + j * hR, hR, Math.min(3.25, wR * 0.3));
+})();
+
+// backsplash trim reveal on the rounded panel edge — ONE continuous rounded outline,
+// not three mitred square boxes, so it follows the panel's rounded top corners instead
+// of cutting them off square. The bottom stays uncovered (it sits behind the cabinet).
+(function () {
+  const sp = S.items.filter(i => i.id === 'splash')[0];
+  if (!sp) return;
+  const t = 0.75 * IN, r = (sp.radius || 0) * IN;
+  const W = sp.w * IN, Hh = sp.h * IN, D = 0.9 * IN;
+  const outer = roundedProfile(W, Hh, r, r, 0, 0);
+  outer.holes.push(roundedProfile(W - 2 * t, Hh - 2 * t, Math.max(0, r - t), Math.max(0, r - t), 0, 0));
+  const g = new THREE.ExtrudeGeometry(outer, { depth: D, bevelEnabled: false, curveSegments: 16 });
+  g.translate(0, 0, -D / 2);
+  const m = new THREE.Mesh(g, MAT.trim);
+  m.name = 'splash_trim';
+  m.castShadow = true; m.receiveShadow = true;
+  m.position.copy(P(sp.x + sp.w / 2, sp.y + sp.h / 2, -0.9));
+  room.add(m);
+})();
+
+const stage = document.querySelector('three-d-stage');
+const { THREE: T3 } = await stage.ready;
+stage.setObject(room);
+
+// The step-return pier is a solid box, so unlike the single-sided walls it never culls
+// itself — it stood in front of the tap wall. Hide it whenever the camera is outside the bay.
+(function () {
+  const pier = room.getObjectByName('wall_step_return');
+  if (!pier) return;
+  (function tick() {
+    const c = stage._camera;
+    if (c) pier.visible = c.position.x <= pier.position.x;
+    requestAnimationFrame(tick);
+  })();
+})();
+
+document.getElementById('srcSub').textContent =
+  L.note + ' · ' + S.items.length + ' fittings · ' +
+  Math.round(X1 - X0) + '" × ' + Math.round(D1 - D0) + '" × ' + H + '" ceiling';
+
+// "locked photo with 2D details" — the exact framing (camera math, in the same
+// x/y/d inch frame as design-spec.json) plus a plate PNG of the current view,
+// so an image generator can be handed one shot and told precisely where it was
+// taken from, instead of guessing the angle from the picture alone.
+(function () {
+  const btn = document.getElementById('exportViewBtn');
+  const dl = (blob, name) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  };
+  btn.addEventListener('click', () => {
+    const camera = stage._camera, controls = stage._controls, renderer = stage._renderer;
+    renderer.render(stage._scene, camera);
+    const toIn = (v) => ({
+      x: Math.round((v.x / IN + CX) * 100) / 100,
+      y: Math.round((v.y / IN) * 100) / 100,
+      d: Math.round((-(v.z / IN) - CZ) * 100) / 100
+    });
+    const dx = camera.position.x - controls.target.x, dy = camera.position.y - controls.target.y, dz = camera.position.z - controls.target.z;
+    const distanceIn = Math.round((Math.sqrt(dx * dx + dy * dy + dz * dz) / IN) * 100) / 100;
+    const azimuthDeg = Math.round((Math.atan2(dx, dz) * 180 / Math.PI) * 10) / 10;
+    const elevationDeg = Math.round((Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)) * 180 / Math.PI) * 10) / 10;
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const view = {
+      exported: new Date().toISOString(),
+      sourceVersion: L.name,
+      lockedNote: L.note,
+      room: { wallRun: Math.round((X1 - X0) * 100) / 100, depthIn: Math.round((D1 - D0) * 100) / 100, ceilingIn: H },
+      camera: {
+        positionIn: toIn(camera.position),
+        targetIn: toIn(controls.target),
+        distanceIn: distanceIn,
+        azimuthDeg: azimuthDeg,
+        elevationDeg: elevationDeg,
+        fovDeg: camera.fov,
+        aspect: Math.round((renderer.domElement.width / renderer.domElement.height) * 1000) / 1000
+      },
+      note: "positionIn/targetIn are inches in the SAME x/y/d frame as design-spec.json (x along the 169\" wall run, y = height AFF, d = depth into the room). azimuthDeg is rotation around the vertical axis measured from +d toward +x (0deg = looking straight down +d); elevationDeg is degrees above horizontal. Hand this JSON + the plate PNG + design-spec.json + CONSTRAINTS.json to the image generator so it knows exactly where the shot was taken from, not just what it shows.",
+      plate: stamp + '-plate.png'
+    };
+    dl(new Blob([JSON.stringify(view, null, 2)], { type: 'application/json' }), stamp + '-view.json');
+    renderer.domElement.toBlob((blob) => dl(blob, stamp + '-plate.png'), 'image/png');
+  });
+})();
+</script>
+</body>
+</html>

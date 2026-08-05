@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fixture &amp; Fitting Options</title>
+<meta name="design_doc_mode" content="canvas">
+<style>
+  body{margin:0;background:#f4f2ec;font-family:Archivo,system-ui,sans-serif;color:#23231f}
+  .dv-turn{padding:44px 48px 36px;border-bottom:1px solid rgba(35,35,31,.1)}
+  .dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 6px}
+  .dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#23231f;color:#fff;border-radius:4px;text-decoration:none}
+  .dv-tname{font:600 20px/1.2 Archivo,sans-serif;color:#23231f}
+  .dv-tsub{font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,.55);margin:0 0 24px;max-width:640px}
+  .grp{margin-bottom:34px}
+  .grp-h{font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(35,35,31,.55);margin-bottom:14px;display:flex;align-items:baseline;gap:10px}
+  .grp-h .line{height:1px;background:rgba(35,35,31,.16);flex:1}
+  .dv-opts{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+  .dv-opt{flex:none;display:flex;flex-direction:column;gap:8px;width:200px}
+  .dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(35,35,31,.08);color:#23231f;border-radius:5px;text-decoration:none}
+  .dv-olabel{display:flex;align-items:baseline;gap:8px;font:600 13px/1.3 Archivo,sans-serif;color:#23231f}
+  .dv-card{background:#fbfaf7;border:1px solid rgba(35,35,31,.12);border-radius:4px;overflow:hidden}
+  .ic{height:150px;display:flex;align-items:center;justify-content:center;background:#efece5}
+  .note{padding:10px 11px 12px;font:400 11px/1.45 Archivo,sans-serif;color:rgba(35,35,31,.6)}
+  .locked{outline:2px solid #b87a55}
+  .locked-tag{position:relative}
+  .locked-tag::after{content:"CURRENT";position:absolute;top:-1px;right:-1px;background:#b87a55;color:#fbfaf7;font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;padding:4px 6px;z-index:2}
+  .dv-next{margin:8px 0 0;font:12px/1.5 Archivo,sans-serif;color:rgba(35,35,31,.55)}
+  a{color:#8a5a2b}
+  .dv-opt.chosen .dv-card{outline:2px solid #23231f;outline-offset:-1px}
+  .dv-opt.chosen .dv-oid{background:#23231f;color:#fff}
+
+  #combo-bar{position:sticky;top:0;z-index:50;background:#23231f;color:#fbfaf7;padding:16px 48px;display:flex;align-items:center;gap:26px;flex-wrap:wrap;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+  #combo-bar .cb-title{font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;color:rgba(251,250,247,.5)}
+  .cb-preview{display:flex;gap:14px;align-items:center}
+  .cb-slot{width:52px;height:52px;background:#fbfaf7;border-radius:4px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .cb-slot svg{width:38px;height:38px}
+  .cb-controls{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
+  .cb-field{display:flex;flex-direction:column;gap:3px}
+  .cb-field label{font:600 8.5px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;color:rgba(251,250,247,.5)}
+  .cb-field select{font:500 11px/1 Archivo,sans-serif;padding:6px 8px;border-radius:3px;border:1px solid rgba(251,250,247,.25);background:#33322d;color:#fbfaf7}
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#23231f"/><g transform="translate(24,30)" fill="none" stroke="#b87a55" stroke-width="3"><rect x="0" y="0" width="20" height="20" rx="3"/><rect x="30" y="0" width="20" height="20" rx="3"/><circle cx="10" cy="45" r="10"/><circle cx="40" cy="45" r="10"/></g></svg>
+</template>
+
+<div id="combo-bar">
+  <span class="cb-title">YOUR COMBINATION</span>
+  <div class="cb-preview" id="cb-preview"></div>
+  <div class="cb-controls" id="cb-controls"></div>
+</div>
+
+<section class="dv-turn" id="t1">
+  <div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Fixture &amp; fitting options</span></div>
+  <p class="dv-tsub">Two or three takes per category, drawn in the same silhouette language already used on the elevation. React with an id (e.g. "go with 1c") and I'll wire it into the planner's hardware set and the 3D model.</p>
+
+  <div class="grp" data-cat="Toilet">
+    <div class="grp-h">TOILET — ONE-PIECE, LOW-PROFILE<div class="line"></div></div>
+    <div class="dv-opts">
+      <div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Compact elongated</div>
+        <div class="dv-card"><div class="ic"><svg width="120" height="130" viewBox="0 0 120 130">
+          <rect x="18" y="10" width="84" height="34" rx="10" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+          <path d="M22 44 h76 v20 q0 40 -38 40 q-38 0 -38 -40 z" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+          <ellipse cx="60" cy="70" rx="26" ry="30" fill="none" stroke="#23231f" stroke-width="2.5" opacity=".55"/>
+        </svg></div><div class="note">Short tank-to-bowl depth, rounded seat. Reads modern without being a full wall-hung install.</div></div>
+      </div>
+      <div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Skirted smooth-side</div>
+        <div class="dv-card"><div class="ic"><svg width="120" height="130" viewBox="0 0 120 130">
+          <rect x="16" y="8" width="88" height="30" rx="8" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+          <path d="M20 38 h80 v14 q4 46 -40 46 q-44 0 -40 -46 z" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+          <path d="M28 40 q32 -8 64 0" fill="none" stroke="#23231f" stroke-width="2" opacity=".35"/>
+        </svg></div><div class="note">Skirted trapway hides all plumbing curves — a single unbroken surface, easiest to keep clean.</div></div>
+      </div>
+      <div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Squared architectural</div>
+        <div class="dv-card"><div class="ic"><svg width="120" height="130" viewBox="0 0 120 130">
+          <rect x="18" y="10" width="84" height="32" rx="4" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+          <path d="M22 42 h76 v18 q0 42 -38 42 q-38 0 -38 -42 z" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+          <rect x="34" y="52" width="52" height="42" rx="14" fill="none" stroke="#23231f" stroke-width="2.5" opacity=".55"/>
+        </svg></div><div class="note">Crisper edges throughout, less taper. Pairs with the squared vanity and mirror corners.</div></div>
+      </div>
+      <div class="dv-opt" id="1q"><div class="dv-olabel"><a class="dv-oid" href="#1q">1q</a>Wall-hung, concealed tank</div>
+        <div class="dv-card"><div class="ic"><svg width="120" height="130" viewBox="0 0 120 130">
+          <rect x="38" y="10" width="20" height="10" rx="2" fill="#f4f2ec" stroke="#23231f" stroke-width="2.5"/>
+          <path d="M20 34 h76 v18 q0 42 -38 42 q-38 0 -38 -42 z" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+          <line x1="12" y1="34" x2="12" y2="90" stroke="#23231f" stroke-width="2" opacity=".3" stroke-dasharray="3 4"/>
+        </svg></div><div class="note">Bowl floats off the floor, tank hidden in the wall — just a small flush plate shows. Cleanest floor line of the set.</div></div>
+      </div>
+      <div class="dv-opt" id="1r"><div class="dv-olabel"><a class="dv-oid" href="#1r">1r</a>Two-piece traditional</div>
+        <div class="dv-card"><div class="ic"><svg width="120" height="130" viewBox="0 0 120 130">
+          <rect x="24" y="8" width="72" height="46" rx="6" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+          <line x1="24" y1="54" x2="96" y2="54" stroke="#23231f" stroke-width="2" opacity=".4"/>
+          <path d="M22 56 h76 v16 q0 42 -38 42 q-38 0 -38 -42 z" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+        </svg></div><div class="note">Separate tank bolted to the bowl, visible seam. The familiar everyday shape — easiest to source and service.</div></div>
+      </div>
+      <div class="dv-opt" id="1s"><div class="dv-olabel"><a class="dv-oid" href="#1s">1s</a>Corner-fit compact</div>
+        <div class="dv-card"><div class="ic"><svg width="120" height="130" viewBox="0 0 120 130">
+          <path d="M20 44 L60 10 L100 44 V60 Q100 96 60 96 Q20 96 20 60 Z" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+          <ellipse cx="60" cy="68" rx="24" ry="22" fill="none" stroke="#23231f" stroke-width="2" opacity=".5"/>
+        </svg></div><div class="note">Triangular tank back tucks into a corner. Only worth it if the layout needs the floor space back.</div></div>
+      </div>
+      <div class="dv-opt" id="1t"><div class="dv-olabel"><a class="dv-oid" href="#1t">1t</a>High-tank pull-chain</div>
+        <div class="dv-card"><div class="ic"><svg width="120" height="130" viewBox="0 0 120 130">
+          <rect x="38" y="6" width="44" height="26" rx="4" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+          <line x1="46" y1="32" x2="46" y2="48" stroke="#b87a55" stroke-width="2"/>
+          <circle cx="46" cy="51" r="3" fill="#b87a55"/>
+          <path d="M24 60 h72 v14 q0 42 -36 42 q-36 0 -36 -42 z" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+        </svg></div><div class="note">Tank mounted high on the wall, chain pull. A deliberate period-revival move, not a low-profile pick.</div></div>
+      </div>
+      <div class="dv-opt" id="1u"><div class="dv-olabel"><a class="dv-oid" href="#1u">1u</a>Round-bowl space saver</div>
+        <div class="dv-card"><div class="ic"><svg width="120" height="130" viewBox="0 0 120 130">
+          <rect x="20" y="10" width="80" height="32" rx="9" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+          <path d="M26 42 h68 v16 q0 34 -34 34 q-34 0 -34 -34 z" fill="#f4f2ec" stroke="#23231f" stroke-width="3"/>
+          <circle cx="60" cy="68" r="22" fill="none" stroke="#23231f" stroke-width="2.5" opacity=".55"/>
+        </svg></div><div class="note">Round rather than elongated bowl — a few inches shorter front-to-back where clearance is tight.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grp" data-cat="Mirror">
+    <div class="grp-h">MIRROR<div class="line"></div></div>
+    <div class="dv-opts">
+      <div class="dv-opt locked-tag" id="1d"><div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Pill / stadium</div>
+        <div class="dv-card locked"><div class="ic"><svg width="150" height="110" viewBox="0 0 150 110">
+          <rect x="15" y="15" width="120" height="80" rx="40" fill="#eef1ee" stroke="#b87a55" stroke-width="5"/>
+        </svg></div><div class="note">Fully rounded ends, slim copper frame. What's on the elevation now.</div></div>
+      </div>
+      <div class="dv-opt" id="1e"><div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Rounded rectangle</div>
+        <div class="dv-card"><div class="ic"><svg width="150" height="110" viewBox="0 0 150 110">
+          <rect x="15" y="15" width="120" height="80" rx="14" fill="#eef1ee" stroke="#b87a55" stroke-width="5"/>
+        </svg></div><div class="note">Softened corners only. Quieter, reads slightly more traditional over the vanity.</div></div>
+      </div>
+      <div class="dv-opt" id="1f"><div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Arched top</div>
+        <div class="dv-card"><div class="ic"><svg width="150" height="110" viewBox="0 0 150 110">
+          <path d="M15 95 V55 Q15 15 75 15 Q135 15 135 55 V95 Z" fill="#eef1ee" stroke="#b87a55" stroke-width="5"/>
+        </svg></div><div class="note">Full arch crown, flat bottom. The most vertical of the four — good if the basin feels wide.</div></div>
+      </div>
+      <div class="dv-opt" id="1g"><div class="dv-olabel"><a class="dv-oid" href="#1g">1g</a>Round</div>
+        <div class="dv-card"><div class="ic"><svg width="150" height="110" viewBox="0 0 150 110">
+          <circle cx="75" cy="55" r="42" fill="#eef1ee" stroke="#b87a55" stroke-width="5"/>
+        </svg></div><div class="note">No corners at all. Reads smallest of the four at this basin width — best as a pair.</div></div>
+      </div>
+      <div class="dv-opt" id="1v"><div class="dv-olabel"><a class="dv-oid" href="#1v">1v</a>Backlit rectangle</div>
+        <div class="dv-card"><div class="ic"><svg width="150" height="110" viewBox="0 0 150 110">
+          <rect x="10" y="10" width="130" height="90" rx="6" fill="none" stroke="#f0e2c4" stroke-width="6" opacity=".8"/>
+          <rect x="20" y="20" width="110" height="70" rx="3" fill="#eef1ee" stroke="#b87a55" stroke-width="3"/>
+        </svg></div><div class="note">Plain rectangle with a halo of light traced around the frame edge — the mirror itself is nearly invisible.</div></div>
+      </div>
+      <div class="dv-opt" id="1w"><div class="dv-olabel"><a class="dv-oid" href="#1w">1w</a>Octagon</div>
+        <div class="dv-card"><div class="ic"><svg width="150" height="110" viewBox="0 0 150 110">
+          <polygon points="48,15 102,15 135,45 135,65 102,95 48,95 15,65 15,45" fill="#eef1ee" stroke="#b87a55" stroke-width="5"/>
+        </svg></div><div class="note">Eight flat facets. More geometric than any of the other four — a deliberate accent piece, not a quiet backdrop.</div></div>
+      </div>
+      <div class="dv-opt" id="1x"><div class="dv-olabel"><a class="dv-oid" href="#1x">1x</a>Round pair</div>
+        <div class="dv-card"><div class="ic"><svg width="150" height="110" viewBox="0 0 150 110">
+          <circle cx="52" cy="55" r="32" fill="#eef1ee" stroke="#b87a55" stroke-width="5"/>
+          <circle cx="114" cy="55" r="26" fill="#eef1ee" stroke="#b87a55" stroke-width="5"/>
+        </svg></div><div class="note">Two rounds at different sizes, one per basin — only makes sense if the basin ever becomes a double.</div></div>
+      </div>
+      <div class="dv-opt" id="1y"><div class="dv-olabel"><a class="dv-oid" href="#1y">1y</a>Frameless beveled</div>
+        <div class="dv-card"><div class="ic"><svg width="150" height="110" viewBox="0 0 150 110">
+          <rect x="15" y="15" width="120" height="80" rx="4" fill="#eef1ee" stroke="#c9c5ba" stroke-width="2"/>
+          <line x1="15" y1="55" x2="35" y2="15" stroke="#fff" stroke-width="2" opacity=".6"/>
+        </svg></div><div class="note">No visible frame at all — just a polished bevel catching light at the edge. Coolest, most minimal of the set.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grp" data-cat="Tap">
+    <div class="grp-h">TAP / FAUCET SET<div class="line"></div></div>
+    <div class="dv-opts">
+      <div class="dv-opt locked-tag" id="1h"><div class="dv-olabel"><a class="dv-oid" href="#1h">1h</a>3-piece wall, cross handles</div>
+        <div class="dv-card locked"><div class="ic"><svg width="140" height="110" viewBox="0 0 140 110">
+          <line x1="70" y1="14" x2="70" y2="46" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <path d="M70 46 q0 22 22 22" fill="none" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <g stroke="#b87a55" stroke-width="6" stroke-linecap="round">
+            <line x1="30" y1="30" x2="30" y2="46"/><line x1="22" y1="38" x2="38" y2="38"/>
+            <line x1="110" y1="30" x2="110" y2="46"/><line x1="102" y1="38" x2="118" y2="38"/>
+          </g>
+        </svg></div><div class="note">Spout centred, two cross handles flanking. Locked on the current design.</div></div>
+      </div>
+      <div class="dv-opt" id="1i"><div class="dv-olabel"><a class="dv-oid" href="#1i">1i</a>2-hole, single lever</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="110" viewBox="0 0 140 110">
+          <line x1="70" y1="14" x2="70" y2="46" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <path d="M70 46 q0 22 22 22" fill="none" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <rect x="30" y="34" width="20" height="8" rx="4" fill="#b87a55"/>
+        </svg></div><div class="note">Spout plus a single lever escutcheon. Fewer holes, quieter wall — reads more minimal.</div></div>
+      </div>
+      <div class="dv-opt" id="1j"><div class="dv-olabel"><a class="dv-oid" href="#1j">1j</a>Wall-mount lever pair</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="110" viewBox="0 0 140 110">
+          <line x1="70" y1="14" x2="70" y2="46" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <path d="M70 46 q0 22 22 22" fill="none" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <g stroke="#b87a55" stroke-width="7" stroke-linecap="round">
+            <line x1="20" y1="38" x2="40" y2="38"/><line x1="100" y1="38" x2="120" y2="38"/>
+          </g>
+        </svg></div><div class="note">Long straight levers instead of crosses. Same 3-hole layout, more architectural, less ornate.</div></div>
+      </div>
+      <div class="dv-opt" id="1aa"><div class="dv-olabel"><a class="dv-oid" href="#1aa">1aa</a>Single-lever monobloc</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="110" viewBox="0 0 140 110">
+          <line x1="70" y1="20" x2="70" y2="52" stroke="#b87a55" stroke-width="9" stroke-linecap="round"/>
+          <path d="M70 52 q0 20 20 20" fill="none" stroke="#b87a55" stroke-width="9" stroke-linecap="round"/>
+          <rect x="58" y="20" width="24" height="9" rx="4" fill="#b87a55"/>
+        </svg></div><div class="note">One body, one lever on top — a single hole in the wall does everything. The quietest possible tap.</div></div>
+      </div>
+      <div class="dv-opt" id="1ab"><div class="dv-olabel"><a class="dv-oid" href="#1ab">1ab</a>Bridge-style</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="110" viewBox="0 0 140 110">
+          <path d="M40 30 v14 q0 10 30 10 q30 0 30 -10 v-14" fill="none" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <path d="M70 54 q0 18 18 18" fill="none" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <line x1="40" y1="18" x2="40" y2="30" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <line x1="100" y1="18" x2="100" y2="30" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+        </svg></div><div class="note">A horizontal tube joins the two handles above the spout. Old-world plumbing-supply look.</div></div>
+      </div>
+      <div class="dv-opt" id="1ac"><div class="dv-olabel"><a class="dv-oid" href="#1ac">1ac</a>Wheel handles</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="110" viewBox="0 0 140 110">
+          <line x1="70" y1="14" x2="70" y2="46" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <path d="M70 46 q0 22 22 22" fill="none" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <g stroke="#b87a55" stroke-width="4" fill="none">
+            <circle cx="30" cy="38" r="11"/><line x1="20" y1="38" x2="40" y2="38"/><line x1="30" y1="28" x2="30" y2="48"/>
+            <circle cx="110" cy="38" r="11"/><line x1="100" y1="38" x2="120" y2="38"/><line x1="110" y1="28" x2="110" y2="48"/>
+          </g>
+        </svg></div><div class="note">Spoked wheel handles instead of crosses — reads more industrial-vintage than the locked set.</div></div>
+      </div>
+      <div class="dv-opt" id="1ad"><div class="dv-olabel"><a class="dv-oid" href="#1ad">1ad</a>Waterfall spout</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="110" viewBox="0 0 140 110">
+          <rect x="40" y="18" width="60" height="14" rx="3" fill="#b87a55"/>
+          <line x1="70" y1="32" x2="70" y2="46" stroke="#b87a55" stroke-width="8"/>
+          <g stroke="#b87a55" stroke-width="6" stroke-linecap="round">
+            <line x1="30" y1="30" x2="30" y2="46"/><line x1="110" y1="30" x2="110" y2="46"/>
+          </g>
+        </svg></div><div class="note">Flat slab spout, water sheets off the full width rather than a single stream. Most modern of the set.</div></div>
+      </div>
+      <div class="dv-opt" id="1ae"><div class="dv-olabel"><a class="dv-oid" href="#1ae">1ae</a>Gooseneck high-arc</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="110" viewBox="0 0 140 110">
+          <path d="M70 14 v20 q0 30 24 30 q0 -20 -14 -20" fill="none" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <g stroke="#b87a55" stroke-width="6" stroke-linecap="round">
+            <line x1="30" y1="30" x2="30" y2="46"/><line x1="22" y1="38" x2="38" y2="38"/>
+          </g>
+        </svg></div><div class="note">Tall single arch, single handle to the side. Clears a deep vessel basin better than the locked 3-piece.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grp" data-cat="Showerhead">
+    <div class="grp-h">SHOWERHEAD<div class="line"></div></div>
+    <div class="dv-opts">
+      <div class="dv-opt locked-tag" id="1k"><div class="dv-olabel"><a class="dv-oid" href="#1k">1k</a>Ceiling rainhead</div>
+        <div class="dv-card locked"><div class="ic"><svg width="140" height="130" viewBox="0 0 140 130">
+          <line x1="70" y1="10" x2="70" y2="46" stroke="#b87a55" stroke-width="7"/>
+          <rect x="30" y="46" width="80" height="12" rx="6" fill="#b87a55"/>
+          <g stroke="#b87a55" stroke-width="3" stroke-linecap="round" opacity=".5">
+            <line x1="45" y1="64" x2="45" y2="80"/><line x1="70" y1="64" x2="70" y2="86"/><line x1="95" y1="64" x2="95" y2="80"/>
+          </g>
+        </svg></div><div class="note">Ceiling-fed, wide flat head straight down. What's on the current design.</div></div>
+      </div>
+      <div class="dv-opt" id="1l"><div class="dv-olabel"><a class="dv-oid" href="#1l">1l</a>Wall-arm rain</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="130" viewBox="0 0 140 130">
+          <line x1="24" y1="34" x2="60" y2="34" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <path d="M60 34 q26 4 26 26" fill="none" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <rect x="56" y="58" width="60" height="11" rx="5.5" fill="#b87a55"/>
+        </svg></div><div class="note">Wall-mounted gooseneck arm out to the same wide head — no ceiling penetration needed.</div></div>
+      </div>
+      <div class="dv-opt" id="1m"><div class="dv-olabel"><a class="dv-oid" href="#1m">1m</a>Handheld + slide bar</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="130" viewBox="0 0 140 130">
+          <line x1="70" y1="10" x2="70" y2="94" stroke="#b87a55" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="70" cy="60" r="6" fill="#b87a55"/>
+          <path d="M70 60 q22 4 22 26" fill="none" stroke="#b87a55" stroke-width="5" stroke-linecap="round"/>
+          <ellipse cx="92" cy="94" rx="10" ry="14" fill="#b87a55"/>
+        </svg></div><div class="note">Vertical slide bar with a detachable handheld. Most flexible; adds a visible rail to the wall.</div></div>
+      </div>
+      <div class="dv-opt" id="1af"><div class="dv-olabel"><a class="dv-oid" href="#1af">1af</a>Dual: rain + handheld</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="130" viewBox="0 0 140 130">
+          <line x1="55" y1="10" x2="55" y2="40" stroke="#b87a55" stroke-width="6"/>
+          <rect x="25" y="40" width="60" height="10" rx="5" fill="#b87a55"/>
+          <line x1="104" y1="22" x2="104" y2="56" stroke="#b87a55" stroke-width="5" stroke-linecap="round"/>
+          <ellipse cx="104" cy="62" rx="9" ry="12" fill="#b87a55"/>
+        </svg></div><div class="note">Fixed rain head plus a second handheld unit on its own bar. Two spray patterns without a diverter dance.</div></div>
+      </div>
+      <div class="dv-opt" id="1ag"><div class="dv-olabel"><a class="dv-oid" href="#1ag">1ag</a>Adjustable angled arm</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="130" viewBox="0 0 140 130">
+          <line x1="24" y1="24" x2="66" y2="52" stroke="#b87a55" stroke-width="7" stroke-linecap="round"/>
+          <circle cx="66" cy="52" r="7" fill="none" stroke="#b87a55" stroke-width="4"/>
+          <ellipse cx="100" cy="64" rx="26" ry="12" fill="#b87a55" transform="rotate(18 100 64)"/>
+        </svg></div><div class="note">Ball-joint elbow lets the head tilt — useful where ceiling height or standing height varies.</div></div>
+      </div>
+      <div class="dv-opt" id="1ah"><div class="dv-olabel"><a class="dv-oid" href="#1ah">1ah</a>Thermostatic panel</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="130" viewBox="0 0 140 130">
+          <rect x="55" y="14" width="30" height="96" rx="6" fill="#efece5" stroke="#b87a55" stroke-width="5"/>
+          <circle cx="70" cy="34" r="5" fill="#b87a55"/>
+          <circle cx="70" cy="58" r="5" fill="#b87a55"/>
+          <rect x="62" y="82" width="16" height="6" rx="3" fill="#b87a55"/>
+        </svg></div><div class="note">One vertical control tower runs rain, handheld and body jets off shared valving. Tidiest wall, priciest install.</div></div>
+      </div>
+      <div class="dv-opt" id="1ai"><div class="dv-olabel"><a class="dv-oid" href="#1ai">1ai</a>Body jets column</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="130" viewBox="0 0 140 130">
+          <line x1="70" y1="14" x2="70" y2="110" stroke="#b87a55" stroke-width="5" opacity=".3"/>
+          <circle cx="70" cy="30" r="7" fill="#b87a55"/><circle cx="70" cy="58" r="7" fill="#b87a55"/>
+          <circle cx="70" cy="86" r="7" fill="#b87a55"/>
+        </svg></div><div class="note">Three small jets stacked on the tub-side wall. Supplementary to a main head, not a replacement for one.</div></div>
+      </div>
+      <div class="dv-opt" id="1aj"><div class="dv-olabel"><a class="dv-oid" href="#1aj">1aj</a>Square rain panel</div>
+        <div class="dv-card"><div class="ic"><svg width="140" height="130" viewBox="0 0 140 130">
+          <line x1="70" y1="10" x2="70" y2="46" stroke="#b87a55" stroke-width="7"/>
+          <rect x="35" y="46" width="70" height="70" rx="4" fill="none" stroke="#b87a55" stroke-width="6"/>
+        </svg></div><div class="note">Flat square head instead of the rounded rectangle — reads more architectural, less soft.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grp" data-cat="Lighting">
+    <div class="grp-h">LIGHTING — VANITY SCONCE<div class="line"></div></div>
+    <div class="dv-opts">
+      <div class="dv-opt locked-tag" id="1n"><div class="dv-olabel"><a class="dv-oid" href="#1n">1n</a>Copper cylinder</div>
+        <div class="dv-card locked"><div class="ic"><svg width="100" height="150" viewBox="0 0 100 150">
+          <rect x="30" y="10" width="40" height="120" rx="20" fill="#f0e2c4" stroke="#b87a55" stroke-width="5"/>
+        </svg></div><div class="note">Vertical opal-diffuser cylinder, warm light. Locked pair flanking the mirror now.</div></div>
+      </div>
+      <div class="dv-opt" id="1o"><div class="dv-olabel"><a class="dv-oid" href="#1o">1o</a>Brass + ribbed glass</div>
+        <div class="dv-card"><div class="ic"><svg width="100" height="150" viewBox="0 0 100 150">
+          <line x1="50" y1="10" x2="50" y2="34" stroke="#b87a55" stroke-width="6"/>
+          <path d="M32 34 Q50 24 68 34 L64 90 Q50 100 36 90 Z" fill="#f0e2c4" stroke="#b87a55" stroke-width="4"/>
+        </svg></div><div class="note">Short arm, ribbed glass bell shade. Warmer, more traditional glow than the plain cylinder.</div></div>
+      </div>
+      <div class="dv-opt" id="1p"><div class="dv-olabel"><a class="dv-oid" href="#1p">1p</a>Linear bar above mirror</div>
+        <div class="dv-card"><div class="ic"><svg width="160" height="90" viewBox="0 0 160 90"><rect x="20" y="40" width="120" height="10" rx="5" fill="#b87a55"/>
+          <line x1="80" y1="40" x2="80" y2="24" stroke="#b87a55" stroke-width="5"/>
+        </svg></div><div class="note">One slim bar centred above the mirror instead of a flanking pair — needs less wall width.</div></div>
+      </div>
+      <div class="dv-opt" id="1ak"><div class="dv-olabel"><a class="dv-oid" href="#1ak">1ak</a>Industrial cage</div>
+        <div class="dv-card"><div class="ic"><svg width="100" height="150" viewBox="0 0 100 150">
+          <line x1="50" y1="10" x2="50" y2="34" stroke="#b87a55" stroke-width="6"/>
+          <circle cx="50" cy="70" r="36" fill="none" stroke="#b87a55" stroke-width="3"/>
+          <path d="M20 46 Q50 30 80 46 M20 94 Q50 110 80 94" fill="none" stroke="#b87a55" stroke-width="3"/>
+          <circle cx="50" cy="70" r="10" fill="#f0e2c4"/>
+        </svg></div><div class="note">Bare bulb behind a wire cage. Industrial-vintage, the most casual option here.</div></div>
+      </div>
+      <div class="dv-opt" id="1al"><div class="dv-olabel"><a class="dv-oid" href="#1al">1al</a>Picture light, arched arm</div>
+        <div class="dv-card"><div class="ic"><svg width="100" height="150" viewBox="0 0 100 150">
+          <path d="M50 20 q0 30 -26 30" fill="none" stroke="#b87a55" stroke-width="6" stroke-linecap="round"/>
+          <rect x="6" y="44" width="36" height="11" rx="5.5" fill="#b87a55"/>
+        </svg></div><div class="note">Curved arm reaching out over the mirror top, light aimed down. Mounts above rather than beside it.</div></div>
+      </div>
+      <div class="dv-opt" id="1am"><div class="dv-olabel"><a class="dv-oid" href="#1am">1am</a>Drum shade</div>
+        <div class="dv-card"><div class="ic"><svg width="100" height="150" viewBox="0 0 100 150">
+          <line x1="50" y1="10" x2="50" y2="46" stroke="#b87a55" stroke-width="6"/>
+          <rect x="18" y="46" width="64" height="52" rx="6" fill="#f0e2c4" stroke="#b87a55" stroke-width="4"/>
+        </svg></div><div class="note">Short, wide fabric-look drum instead of a tall cylinder. Softer, more residential-traditional glow.</div></div>
+      </div>
+      <div class="dv-opt" id="1an"><div class="dv-olabel"><a class="dv-oid" href="#1an">1an</a>LED edge strip</div>
+        <div class="dv-card"><div class="ic"><svg width="100" height="150" viewBox="0 0 100 150">
+          <rect x="40" y="14" width="20" height="110" rx="4" fill="#f0e2c4"/>
+          <rect x="32" y="10" width="36" height="118" rx="6" fill="none" stroke="#f0e2c4" stroke-width="3" stroke-dasharray="2 5" opacity=".7"/>
+        </svg></div><div class="note">No visible fixture body at all — a thin LED channel glowing behind the mirror's edge.</div></div>
+      </div>
+      <div class="dv-opt" id="1ao"><div class="dv-olabel"><a class="dv-oid" href="#1ao">1ao</a>Single globe</div>
+        <div class="dv-card"><div class="ic"><svg width="100" height="150" viewBox="0 0 100 150">
+          <line x1="50" y1="10" x2="50" y2="60" stroke="#b87a55" stroke-width="6"/>
+          <circle cx="50" cy="92" r="30" fill="#f0e2c4" stroke="#b87a55" stroke-width="4"/>
+        </svg></div><div class="note">One round glass globe on a stem, no shade. Simplest silhouette of the five — reads almost mid-century.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="dv-next">Try next: "go with <a class="dv-oid" href="#1c">1c</a> and <a class="dv-oid" href="#1o">1o</a>" · "show more mirror shapes" · "keep everything locked, just swap the tap to <a class="dv-oid" href="#1i">1i</a>"</p>
+</section>
+
+<script>
+(function(){
+  var cats = Array.from(document.querySelectorAll('.grp[data-cat]'));
+  var preview = document.getElementById('cb-preview');
+  var controls = document.getElementById('cb-controls');
+  var state = {};
+
+  cats.forEach(function(grp){
+    var cat = grp.getAttribute('data-cat');
+    var opts = Array.from(grp.querySelectorAll('.dv-opt'));
+    var initial = opts.find(function(o){ return o.classList.contains('locked-tag'); }) || opts[0];
+    state[cat] = initial.id;
+
+    var slot = document.createElement('div');
+    slot.className = 'cb-slot';
+    slot.id = 'cb-slot-' + cat;
+    preview.appendChild(slot);
+
+    var field = document.createElement('div');
+    field.className = 'cb-field';
+    var label = document.createElement('label');
+    label.textContent = cat;
+    var sel = document.createElement('select');
+    sel.id = 'cb-sel-' + cat;
+    opts.forEach(function(o){
+      var op = document.createElement('option');
+      op.value = o.id;
+      op.textContent = o.id + ' — ' + o.querySelector('.dv-olabel').textContent.replace(o.id, '').trim();
+      sel.appendChild(op);
+    });
+    sel.value = initial.id;
+    field.appendChild(label); field.appendChild(sel);
+    controls.appendChild(field);
+
+    sel.addEventListener('change', function(){
+      opts.forEach(function(o){ o.classList.remove('chosen'); });
+      var chosen = document.getElementById(sel.value);
+      chosen.classList.add('chosen');
+      renderSlot(cat, chosen);
+    });
+
+    renderSlot(cat, initial);
+    initial.classList.add('chosen');
+  });
+
+  function renderSlot(cat, optEl){
+    var slot = document.getElementById('cb-slot-' + cat);
+    var svg = optEl.querySelector('.ic svg');
+    slot.innerHTML = svg ? svg.outerHTML : '';
+  }
+})();
+</script>
+</body>
+</html>

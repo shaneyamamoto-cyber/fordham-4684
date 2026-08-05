@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#4a5442"/><g transform="translate(28,28)"><rect x="0" y="0" width="20" height="20" fill="#b87a55"/><rect x="24" y="0" width="20" height="20" fill="#d8cdb6"/><rect x="0" y="24" width="20" height="20" fill="#8a5a33"/><rect x="24" y="24" width="20" height="20" fill="#c3cdc2"/></g></svg>
+</template>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #f4f2ec; }
+  a { color: #8a5a2b; }
+  a:hover { color: #5c3a18; }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#f4f2ec;padding:0 0 90px;font-family:Archivo,sans-serif;color:#23231f">
+  <div style="max-width:1240px;margin:0 auto;padding:52px 40px 0">
+
+    <div style="display:flex;align-items:flex-end;gap:24px;border-bottom:1px solid rgba(35,35,31,0.18);padding-bottom:22px;margin-bottom:14px">
+      <div style="flex:1">
+        <div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:rgba(35,35,31,0.5);margin-bottom:11px">ELEMENTS &amp; MATERIALS</div>
+        <div style="font:600 46px/1 Archivo,sans-serif;letter-spacing:-0.02em">Look Book</div>
+      </div>
+      <div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.6);max-width:340px;text-wrap:pretty">Every sample below is cut from your own reference photography. The tile fields are true seamless repeats built from those cuts — use them as fills, not as drawings.</div>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:48px">
+      <a href="./planner.html" style="padding:9px 14px;border:1px solid #23231f;background:#23231f;color:#fbfaf7;font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;border-radius:2px;text-decoration:none">← ELEVATION PLANNER</a>
+      <a href="./3d.html" style="padding:9px 14px;border:1px solid rgba(35,35,31,0.3);color:#23231f;font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;border-radius:2px;text-decoration:none">3D MODEL</a>
+    </div>
+
+    <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">
+      <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em">01 &nbsp; TILE FIELDS — SEAMLESS REPEATS</div>
+      <div style="height:1px;background:rgba(35,35,31,0.16);flex:1"></div>
+    </div>
+    <div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.55);margin-bottom:24px;max-width:640px">Each of these is a single PNG that tiles perfectly in any direction — real stone sampled from the renders, laid into a real bond with real grout. Drop them straight into a fill, a 3D material or a mockup.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px;margin-bottom:14px">
+      <sc-for list="{{ tiles }}" as="t" hint-placeholder-count="9">
+        <div style="background:#fbfaf7;border:1px solid rgba(35,35,31,0.12);border-radius:2px;overflow:hidden">
+          <div style="{{ t.swatch }}"></div>
+          <div style="padding:11px 12px 13px">
+            <div style="font:600 13px/1.2 Archivo,sans-serif;margin-bottom:4px">{{ t.name }}</div>
+            <div style="font:400 11px/1.45 Archivo,sans-serif;color:rgba(35,35,31,0.55)">{{ t.note }}</div>
+            <div style="font:500 9px/1.4 'IBM Plex Mono',monospace;color:rgba(35,35,31,0.38);margin-top:8px">{{ t.file }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:rgba(35,35,31,0.5);margin:34px 0 8px">COLOURWAYS — SAME STONE, SAME BOND</div>
+    <div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.55);margin-bottom:20px;max-width:640px">The running-bond field re-pigmented. Real stone luminance and veining underneath, so they behave like glazed body tile rather than flat colour.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:14px;margin-bottom:26px">
+      <sc-for list="{{ colourways }}" as="c" hint-placeholder-count="8">
+        <div style="background:#fbfaf7;border:1px solid rgba(35,35,31,0.12);border-radius:2px;overflow:hidden">
+          <div style="{{ c.swatch }}"></div>
+          <div style="padding:10px 11px 12px">
+            <div style="font:600 12px/1.2 Archivo,sans-serif;margin-bottom:3px">{{ c.name }}</div>
+            <div style="font:400 10px/1.4 Archivo,sans-serif;color:rgba(35,35,31,0.55)">{{ c.note }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="font:400 11px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.45);margin-bottom:48px;max-width:640px">For photographic PBR sets with normal, roughness and displacement maps, <a href="https://ambientcg.com/" target="_blank" rel="noopener">ambientCG</a> and <a href="https://polyhaven.com/textures" target="_blank" rel="noopener">Poly Haven</a> are both CC0 — drop the downloads into <span style="font-family:'IBM Plex Mono',monospace">materials/tiles/</span> alongside these.</div>
+
+    <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">
+      <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em">02 &nbsp; STONE &amp; SLAB — CUTOUTS</div>
+      <div style="height:1px;background:rgba(35,35,31,0.16);flex:1"></div>
+    </div>
+    <div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.55);margin-bottom:24px;max-width:640px">The real goods, uncropped from context. Use these to judge colour and figure — the repeats above are built from them.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px;margin-bottom:48px">
+      <sc-for list="{{ stone }}" as="s" hint-placeholder-count="7">
+        <div style="background:#fbfaf7;border:1px solid rgba(35,35,31,0.12);border-radius:2px;overflow:hidden">
+          <div style="{{ s.swatch }}"></div>
+          <div style="padding:11px 12px 13px">
+            <div style="font:600 13px/1.2 Archivo,sans-serif;margin-bottom:4px">{{ s.name }}</div>
+            <div style="font:400 11px/1.45 Archivo,sans-serif;color:rgba(35,35,31,0.55)">{{ s.note }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">
+      <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em">03 &nbsp; WOOD &amp; CABINET FACE</div>
+      <div style="height:1px;background:rgba(35,35,31,0.16);flex:1"></div>
+    </div>
+    <div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.55);margin-bottom:24px;max-width:640px">Each one is an actual drawer front from the studies — species, sheen, pull and reveal all readable at real scale.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px;margin-bottom:48px">
+      <sc-for list="{{ wood }}" as="w" hint-placeholder-count="12">
+        <div style="background:#fbfaf7;border:1px solid rgba(35,35,31,0.12);border-radius:2px;overflow:hidden">
+          <div style="{{ w.swatch }}"></div>
+          <div style="padding:11px 12px 13px">
+            <div style="font:600 13px/1.2 Archivo,sans-serif;margin-bottom:4px">{{ w.name }}</div>
+            <div style="font:400 11px/1.45 Archivo,sans-serif;color:rgba(35,35,31,0.55)">{{ w.note }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">
+      <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em">04 &nbsp; CABINET FRONT VOCABULARY</div>
+      <div style="height:1px;background:rgba(35,35,31,0.16);flex:1"></div>
+    </div>
+    <div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.55);margin-bottom:24px;max-width:640px">Written specs, not pictures — I can't pull product photography into the project, so these are the detail sets to hand the image model. All sized to the same 36″ × 12″ × 20″ carcass so they stay swappable.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:16px;margin-bottom:48px">
+      <sc-for list="{{ fronts }}" as="c" hint-placeholder-count="8">
+        <div style="background:#fbfaf7;border:1px solid rgba(35,35,31,0.12);border-radius:2px;padding:16px 17px 18px;display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;gap:9px">
+            <div style="{{ c.chip }}"></div>
+            <div style="font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:rgba(35,35,31,0.45)">{{ c.era }}</div>
+          </div>
+          <div style="font:600 14px/1.2 Archivo,sans-serif">{{ c.name }}</div>
+          <div style="font:400 12px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.6);text-wrap:pretty">{{ c.note }}</div>
+          <div style="height:1px;background:rgba(35,35,31,0.1)"></div>
+          <div style="font:500 10px/1.6 'IBM Plex Mono',monospace;color:rgba(35,35,31,0.5)">{{ c.spec }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">
+      <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em">05 &nbsp; METAL</div>
+      <div style="height:1px;background:rgba(35,35,31,0.16);flex:1"></div>
+    </div>
+    <div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.55);margin-bottom:24px;max-width:640px">One metal throughout — taps, pulls, mirror frame, sconce bodies and splash trim all match. Mixing reads as a mistake at this scale.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:48px">
+      <sc-for list="{{ metal }}" as="m" hint-placeholder-count="6">
+        <div style="background:#fbfaf7;border:1px solid rgba(35,35,31,0.12);border-radius:2px;overflow:hidden">
+          <div style="{{ m.swatch }}"></div>
+          <div style="padding:11px 12px 13px">
+            <div style="font:600 13px/1.2 Archivo,sans-serif;margin-bottom:4px">{{ m.name }}</div>
+            <div style="font:400 11px/1.45 Archivo,sans-serif;color:rgba(35,35,31,0.55)">{{ m.note }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">
+      <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em">06 &nbsp; MIRRORS</div>
+      <div style="height:1px;background:rgba(35,35,31,0.16);flex:1"></div>
+    </div>
+    <div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.55);margin-bottom:24px;max-width:640px">Every mirror in the references, cut out. The frame profile and corner radius are what separate these — the glass is the same in all of them.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:16px;margin-bottom:48px;align-items:start">
+      <sc-for list="{{ mirrors }}" as="r" hint-placeholder-count="8">
+        <div style="background:#fbfaf7;border:1px solid rgba(35,35,31,0.12);border-radius:2px;overflow:hidden">
+          <div style="{{ r.swatch }}"></div>
+          <div style="padding:11px 12px 13px">
+            <div style="font:600 13px/1.2 Archivo,sans-serif;margin-bottom:4px">{{ r.name }}</div>
+            <div style="font:400 11px/1.45 Archivo,sans-serif;color:rgba(35,35,31,0.55)">{{ r.note }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">
+      <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em">07 &nbsp; FURNITURE &amp; FIXTURE</div>
+      <div style="height:1px;background:rgba(35,35,31,0.16);flex:1"></div>
+    </div>
+    <div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.55);margin-bottom:24px;max-width:640px">Whole-object cutouts, for pasting into elevations and collage studies.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:16px;margin-bottom:48px;align-items:start">
+      <sc-for list="{{ furniture }}" as="f" hint-placeholder-count="5">
+        <div style="background:#fbfaf7;border:1px solid rgba(35,35,31,0.12);border-radius:2px;overflow:hidden">
+          <div style="{{ f.swatch }}"></div>
+          <div style="padding:11px 12px 13px">
+            <div style="font:600 13px/1.2 Archivo,sans-serif;margin-bottom:4px">{{ f.name }}</div>
+            <div style="font:400 11px/1.45 Archivo,sans-serif;color:rgba(35,35,31,0.55)">{{ f.note }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">
+      <div style="font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:0.16em">08 &nbsp; TEXTILE</div>
+      <div style="height:1px;background:rgba(35,35,31,0.16);flex:1"></div>
+    </div>
+    <div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.55);margin-bottom:24px;max-width:640px">Thin so far — the references carry almost no cloth. Send fabric shots and weaves and they land here.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px;margin-bottom:20px">
+      <sc-for list="{{ textile }}" as="x" hint-placeholder-count="1">
+        <div style="background:#fbfaf7;border:1px solid rgba(35,35,31,0.12);border-radius:2px;overflow:hidden">
+          <div style="{{ x.swatch }}"></div>
+          <div style="padding:11px 12px 13px">
+            <div style="font:600 13px/1.2 Archivo,sans-serif;margin-bottom:4px">{{ x.name }}</div>
+            <div style="font:400 11px/1.45 Archivo,sans-serif;color:rgba(35,35,31,0.55)">{{ x.note }}</div>
+          </div>
+        </div>
+      </sc-for>
+      <div style="border:1px dashed rgba(35,35,31,0.28);border-radius:2px;display:flex;align-items:center;justify-content:center;padding:22px;min-height:180px">
+        <div style="font:400 12px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.45);text-align:center;text-wrap:pretty">Drop in towel, robe, mat and weave references — I'll cut and seamless-tile them the same way.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  renderVals() {
+    // background-image instead of <img>: an <img src="{{ hole }}"> fires a literal
+    // fetch for the unresolved hole during the placeholder phase
+    const cover = (h) => (o) => Object.assign({}, o, {
+      swatch: { height: h + "px", backgroundImage: 'url("' + o.src + '")',
+        backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }
+    });
+    const contain = (h) => (o) => Object.assign({}, o, {
+      swatch: { height: h + "px", background: "#efece5", backgroundImage: 'url("' + o.src + '")',
+        backgroundSize: "contain", backgroundPosition: "center", backgroundRepeat: "no-repeat" }
+    });
+    const tile = (file, w, h, name, note) => ({
+      name: name, note: note, file: "materials/tiles/" + file,
+      swatch: {
+        height: "150px",
+        backgroundImage: 'url("materials/tiles/' + file + '")',
+        backgroundRepeat: "repeat",
+        backgroundSize: Math.round(w * 0.62) + "px " + Math.round(h * 0.62) + "px"
+      }
+    });
+    return {
+      tiles: [
+        tile("running-half-greenstone.png", 245, 250, "Running bond ½", "48×24 green stone, staggered half. The locked shower wall."),
+        tile("stack-greenstone.png", 133, 133, "Stack bond", "12×12 green stone, grid-aligned. Quieter, more graphic."),
+        tile("large-format-mineral.png", 423, 303, "Large format", "36×24 dark mineral, minimal grout. Reads as slab at distance."),
+        tile("brick-mineral.png", 245, 130, "Brick bond", "Narrow dark mineral, half offset. Busiest of the mineral set."),
+        tile("chevron-greenstone.png", 220, 150, "Chevron", "Green stone in mirrored slanted bands. Directional — pick a wall it flatters."),
+        tile("subway-marble.png", 185, 190, "Subway 12×6", "Pale marble, running bond. The safe wet-wall default."),
+        tile("third-offset-marble.png", 304, 204, "Third offset plank", "24×4 marble plank, ⅓ stagger. Lengthens a short wall."),
+        tile("hexagon-travertine.png", 210, 121, "Hexagon 6″", "Travertine hex. Floor-first — it fights a busy wall."),
+        tile("penny-round-travertine.png", 58, 116, "Penny round 2″", "Travertine penny. Shower floor only; the grout does the gripping.")
+      ],
+      colourways: [
+        { f: "terracotta", name: "Terracotta", note: "Warm burnt clay. Reads earthy against walnut, fights green stone." },
+        { f: "ochre",      name: "Ochre",      note: "Mustard gold. The deco option — pairs with dark bronze, not brass." },
+        { f: "oxblood",    name: "Oxblood",    note: "Deep wine. Only survives on one wall; everywhere it turns to a cave." },
+        { f: "slate-blue", name: "Slate blue", note: "Cool grey-blue. The only cold field here — needs warm wood to hold." },
+        { f: "charcoal",   name: "Charcoal",   note: "Near-black body. Grout carries the whole pattern." },
+        { f: "sand",       name: "Sand",       note: "Warm neutral. Disappears politely behind the cabinetry." },
+        { f: "olive",      name: "Olive",      note: "Muted green-grey. Closest to the locked mineral, drier." },
+        { f: "ivory",      name: "Ivory",      note: "Off-white with the stone figure still legible. Safest field." }
+      ].map(function (o) {
+        return Object.assign({}, o, {
+          swatch: { height: "132px", backgroundImage: 'url("materials/tiles/running-half-' + o.f + '.png")',
+            backgroundRepeat: "repeat", backgroundSize: "152px 155px" }
+        });
+      }),
+      fronts: [
+        { era: "MID-CENTURY", name: "Reeded front", note: "Half-round vertical beads run the full drawer face, unbroken across the two-drawer stack so the reeding reads as one panel.", spec: "3/8″ bead · 5/8″ pitch · no pull, 1.25″ finger channel under each drawer", chip: "#8a5a33" },
+        { era: "MID-CENTURY", name: "Tapered plinth", note: "Cabinet lifts off the floor on four splayed round legs rather than hanging from the wall. Furniture-like, not built-in.", spec: "Leg 1.5″ dia., 7° splay, 9″ tall · toe shadow gap 9″ AFF", chip: "#6b4630" },
+        { era: "MID-CENTURY", name: "Integrated finger pull", note: "No hardware at all. The pull is a rebate cut into the top edge of each front, catching a shadow line.", spec: "1.25″ deep rebate at 30° · continuous full width", chip: "#7a4a2b" },
+        { era: "MID-CENTURY", name: "Inset framed case", note: "Fronts sit flush inside a visible hardwood frame rather than overlaying it. Reveals do the drawing.", spec: "1.75″ stile/rail · 1/8″ even reveal · dovetail corners", chip: "#a8763f" },
+        { era: "DECO", name: "Stepped plinth", note: "Base steps back in two returns before it meets the floor, so the cabinet appears to rise from a ziggurat.", spec: "Two 1.5″ setbacks over 4″ · painted to match the base, not the case", chip: "#5c3326" },
+        { era: "DECO", name: "Fluted with brass banding", note: "Fluting stopped short at top and bottom by a flat metal band that wraps the full carcass.", spec: "0.75″ band, mitred at corners · flutes stop 2.5″ from each band", chip: "#c9a35c" },
+        { era: "DECO", name: "Book-matched burl panel", note: "Two mirrored veneer leaves centred on the cabinet, framed by a contrasting ebonised border.", spec: "Centre seam on cabinet centreline · 1.25″ ebonised border, all four sides", chip: "#7d4a2e" },
+        { era: "DECO", name: "Waterfall grain", note: "One continuous flitch runs across all fronts and turns down the end panel without a break.", spec: "Sequence-matched · grain continuous across 1/8″ reveals · returns at 90°", chip: "#4a3a30" }
+      ].map(function (o) {
+        return Object.assign({}, o, {
+          chip: { width: "22px", height: "22px", flex: "0 0 22px", borderRadius: "50%", background: o.chip,
+            border: "1px solid rgba(35,35,31,0.18)" }
+        });
+      }),
+      mirrors: [
+        { src: "materials/mirror/pill-landscape.png", name: "Pill — landscape", note: "Stadium ends, slim copper frame. On the locked design, centred on the 60″ splash.", h: 150 },
+        { src: "materials/mirror/pill-portrait.png", name: "Pill — portrait", note: "Same profile turned upright. Taller room, narrower splash.", h: 250 },
+        { src: "materials/mirror/rounded-rect-teak.png", name: "Rounded rect — teak frame", note: "Generous radius, wide teak frame, bar light above. The hero room mirror.", h: 400 },
+        { src: "materials/mirror/rounded-rect-tall.png", name: "Rounded rect — tall", note: "Brass frame, tight radius, portrait. Reads taller than the tile panel behind it.", h: 370 },
+        { src: "materials/mirror/rounded-rect-square.png", name: "Rounded rect — square", note: "Nearly square, soft radius. The calmest of the three brass frames.", h: 365 },
+        { src: "materials/mirror/rounded-rect-arched.png", name: "Rounded rect — arched", note: "Radius opened at the top corners only, edging toward an arch.", h: 390 },
+        { src: "materials/mirror/round-magnifier.png", name: "Round magnifier", note: "Brass swing-arm shaving mirror. Always secondary, always off to one side.", h: 210 },
+        { src: "materials/mirror/round-magnifier-arm.png", name: "Round magnifier — extended", note: "Same fitting with the arm out, showing the wall plate and joint.", h: 210 },
+        { src: "materials/mirror/arch-teak-reveal.png", name: "Arched — brass, teak reveal", note: "Full arch top, slim brass frame, dark teak door visible behind the glass.", h: 340 },
+        { src: "materials/mirror/arch-brass-tall.png", name: "Arched — tall pair, left", note: "One of a matched pair over a double vanity. Taller arch than the other three.", h: 340 },
+        { src: "materials/mirror/arch-brass-short.png", name: "Arched — tall pair, right", note: "The second of the pair, set lower to clear the ceiling line.", h: 280 },
+        { src: "materials/mirror/rect-wood-frame-pair.png", name: "Rectangular — wood frame pair", note: "Two identical rectangular mirrors, warm wood frame, no radius at all.", h: 250 }
+      // contain, not cover: on a framed mirror the vertical extremes ARE the frame,
+      // so cover crops off the only thing this section compares
+      ].map(function (o) { return contain(o.h)(o); }),
+      stone: [
+        { src: "materials/tile/green-stone-tile.png", name: "Green stone — shower wall", note: "Large-format with the lit niche cut in. Warm grey-green, soft veining." },
+        { src: "materials/tile/green-mineral-slab.png", name: "Dark green mineral slab", note: "The locked splash. Single slab, no grout, deep saturated green." },
+        { src: "materials/tile/herringbone-marble.png", name: "Herringbone marble", note: "Pale, cool, tight figure. From the alcove tub reference." },
+        { src: "materials/tile/travertine-floor.png", name: "Travertine floor", note: "Warm sand, honed, minimal grout. Large format." },
+        { src: "materials/tile/floor-stone.png", name: "Honed floor stone", note: "The hero room floor — greyer and cooler than the travertine." },
+        { src: "materials/tile/mineral-A-patch.png", name: "Mineral patch field", note: "Small-format mineral tile as an offset panel behind the mirror." },
+        { src: "materials/tile/mineral-B-stepped.png", name: "Stepped mineral field", note: "Same tile, stair-stepped edge running toward the built-in." },
+        { src: "materials/tile/mineral-C-band.png", name: "Low wide band", note: "Waist-height run, wall to wall. The quietest of the three." },
+        { src: "materials/tile/zellige-small.png", name: "Zellige — small format", note: "Handmade square tile, glossy, irregular. Warm ivory with visible glaze pooling." },
+        { src: "materials/tile/zellige-wall.png", name: "Zellige — full wall", note: "Same tile at wall scale, stacked grid. Catches light unevenly, tile to tile." },
+        { src: "materials/tile/large-format-stone-wall.png", name: "Large format stone wall", note: "Warm taupe, minimal grout, book-matched veining across panels." },
+        { src: "materials/tile/ribbed-stone-wall.png", name: "Ribbed stone", note: "Vertical fluted texture cast into large-format stone. Directional, catches raking light." },
+        { src: "materials/tile/pebble-shower-floor.png", name: "Pebble shower floor", note: "River-pebble mosaic on mesh. The one texture in this set meant to be walked on wet." },
+        { src: "materials/tile/warm-grey-floor.png", name: "Warm grey floor", note: "Honed large format, minimal grout. Cooler and flatter than the travertine." },
+        { src: "materials/tile/ivory-floor-tile.png", name: "Ivory floor tile", note: "Softly linear ivory porcelain, warmer than the grey option." },
+        { src: "materials/tile/herringbone-tub-surround.png", name: "Herringbone tub surround", note: "Dolomite honed marble mosaic in herringbone, wrapping a tub alcove with a lit niche." },
+        { src: "materials/tile/travertine-slab-edge.png", name: "Travertine — counter edge", note: "Thick honed travertine slab, visible pitted texture at the eased edge." },
+        { src: "materials/tile/white-quartz-counter.png", name: "White quartz counter", note: "Flat white engineered stone, minimal veining. The coolest counter option here." }
+      ].map(cover(150)),
+      wood: [
+        { src: "materials/wood/teak.png", name: "Teak", note: "Warm gold-brown, straight tight grain. Lightest of the three species." },
+        { src: "materials/wood/mahogany.png", name: "Mahogany", note: "Deep red-brown, even. Holds brass and bronze equally well." },
+        { src: "materials/wood/rosewood-mosaic.png", name: "Rosewood mosaic", note: "Book-matched figured panels. Loudest face — needs a quiet splash." },
+        { src: "materials/wood/teak-grid.png", name: "Teak grid", note: "Teak with a squared drawer grid and dark bar pulls." },
+        { src: "materials/wood/waterfall-walnut.png", name: "Waterfall walnut", note: "Three stacked drawers, grain running continuously across all of them." },
+        { src: "materials/wood/sculpted-walnut.png", name: "Sculpted walnut", note: "Pull carved into the front. No hardware at all." },
+        { src: "materials/wood/walnut-brass.png", name: "Walnut + aged brass", note: "Flat slab, long applied brass bar, brass toe rail below." },
+        { src: "materials/wood/burl.png", name: "Burl", note: "Swirled and restless. Only survives inside an ebonised frame." },
+        { src: "materials/wood/smoked-oak.png", name: "Smoked oak", note: "Near-black, open pore. Pairs with copper; brass disappears on it." },
+        { src: "materials/wood/oxblood-lacquer.png", name: "Oxblood lacquer", note: "Flat sheen fronts in a walnut frame. Colour does the work." },
+        { src: "materials/wood/olive-tambour.png", name: "Olive + tambour", note: "Muted green body with reeded wood inserts. Most restrained colour." },
+        { src: "materials/wood/saffron-lacquer.png", name: "Saffron lacquer", note: "Carcass in colour, drawer faces in walnut. High risk, high reward." },
+        { src: "materials/wood/dark-walnut-slab.png", name: "Dark walnut — open shelf", note: "Deep chocolate slab front, open below for baskets rather than a drawer." }
+      ].map(cover(126)),
+      metal: [
+        { src: "materials/metal/copper-cross.png", name: "Copper — cross handle", note: "On the locked design. Warm, pink-bronze, satin." },
+        { src: "materials/metal/aged-brass-tap.png", name: "Aged brass", note: "Warm and slightly darkened. The default against teak." },
+        { src: "materials/metal/rose-gold-3piece.png", name: "Brushed rose gold", note: "Pink cast, soft. Pairs with the 3-piece cross set." },
+        { src: "materials/metal/dark-bronze.png", name: "Dark bronze", note: "Near-black. Graphic on pale stone, invisible on smoked oak." },
+        { src: "materials/metal/champagne-pulls.png", name: "Champagne brass", note: "Palest brass. Almost recedes — good against figured rosewood." },
+        { src: "materials/metal/copper-sconce.png", name: "Copper sconce", note: "Vertical cylinder, opal diffuser. The pair flanking the mirror." },
+        { src: "materials/metal/brass-glass-shade-sconce.png", name: "Brass + ribbed glass shade", note: "Warm brass arm, ribbed glass bell shade. Reads more traditional than the plain cylinder." },
+        { src: "materials/metal/brass-tap-arc.png", name: "Brass — high arc spout", note: "Tall gooseneck spout over a vessel basin, paired with a single wall lever." },
+        { src: "materials/metal/brass-rainhead-mixer.png", name: "Brass rainhead + mixer", note: "Ceiling-fed rainhead with thermostatic mixer below, matched finish." },
+        { src: "materials/metal/nickel-wall-tap.png", name: "Brushed nickel — wall tap", note: "Cool nickel wall-mount, minimal escutcheon. The one option that reads cold." },
+        { src: "materials/metal/champagne-bronze-showerhead.png", name: "Champagne bronze — shower", note: "Warm low-contrast bronze, softer than aged brass." },
+        { src: "materials/metal/matte-black-hook.png", name: "Matte black hook", note: "Single robe hook, no rosette. The only non-warm metal accent worth mixing in." }
+      ].map(cover(140)),
+      // each cutout keeps its own art-box height — one shared height turns the
+      // 1:5.6 portrait tower into an illegible sliver
+      furniture: [
+        { src: "materials/furniture/locked-vanity.png", name: "Locked vanity elevation", note: "36″ cabinet, offset 23.6″ basin, 1.5″ channel, 10.9″ landing.", h: 200 },
+        { src: "materials/furniture/wall-basin.png", name: "Basin + landing plan", note: "The dimension board for the offset basin and stone landing.", h: 200 },
+        { src: "materials/furniture/rosewood-vanity.png", name: "Rosewood vanity", note: "Same carcass in figured rosewood with rose gold.", h: 200 },
+        { src: "materials/furniture/tub.png", name: "Tub", note: "Skirted alcove bath, square rim, tiled end cap.", h: 200 },
+        { src: "materials/furniture/zellige-double-vanity.png", name: "Zellige double vanity", note: "Wall-hung double drawer bank below a white quartz top, twin vessel basins.", h: 200 },
+        { src: "materials/furniture/travertine-tub-vanity.png", name: "Travertine tub-run vanity", note: "Wood floor-standing vanity in the same room as a full walk-in shower and soaking tub.", h: 200 },
+        { src: "materials/furniture/hammered-ceramic-vessel.png", name: "Hammered ceramic vessel", note: "Textured hand-thrown vessel basin on a travertine counter.", h: 200 },
+        { src: "materials/furniture/stone-vessel-basin.png", name: "Stone vessel basin", note: "Honed stone bowl basin sitting proud on a white counter.", h: 200 },
+        { src: "materials/furniture/travertine-freestanding-tub.png", name: "Travertine freestanding tub", note: "Solid-carved travertine soaking tub, floor-mounted brass filler.", h: 200 },
+        { src: "materials/furniture/storage-tower.png", name: "Storage tower", note: "Full-height built-in — doors, drawers and two lit open bays.", h: 620 }
+      ].map(function (o) { return contain(o.h)(o); }),
+      textile: [
+        { src: "materials/textile/folded-towels.png", name: "Folded towel stack", note: "Waffle-face cotton, warm white, in the lit tower bay." },
+        { src: "materials/textile/woven-jute-basket.png", name: "Woven jute basket", note: "Open-weave jute storage basket, sitting in an open vanity shelf." },
+        { src: "materials/textile/rolled-bath-towels.png", name: "Rolled bath towels", note: "Rolled rather than folded — heavier terry, visible loop pile." }
+      ].map(cover(140))
+    };
+  }
+}
+</script>
+</body>
+</html>

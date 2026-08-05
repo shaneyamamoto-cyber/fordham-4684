@@ -1,0 +1,668 @@
+{
+  "$comment": "Measured design spec exported from the Bathroom Elevation Planner. All units are INCHES. This is the geometry any render MUST obey. x runs left-to-right along the 169\" run of walls; y is height above finished floor (AFF); dep is depth into the room. See CONSTRAINTS.json for the hard rules and tolerances, and AI-SYSTEM-PROMPT.md for the text to hand a generation system.",
+  "version": "2.0.0",
+  "exported": "2026-08-04",
+  "units": "inches",
+  "shell": {
+    "wallHeight": 96,
+    "kneeWallHeight": 0,
+    "slopeRun": 32,
+    "note": "L-shaped room. A 14.5\" recessed bay holds the tub, then the wall steps forward to the 50\" vanity wall and the door zone.",
+    "polygon": [
+      {
+        "x": 0,
+        "d": 14.5
+      },
+      {
+        "x": 60.5,
+        "d": 14.5
+      },
+      {
+        "x": 60.5,
+        "d": 0
+      },
+      {
+        "x": 169,
+        "d": 0
+      },
+      {
+        "x": 169,
+        "d": -56.5
+      },
+      {
+        "x": 0,
+        "d": -56.5
+      }
+    ],
+    "walls": [
+      {
+        "id": "bay_back",
+        "desc": "Shower/tub back wall, set 14.5\" back"
+      },
+      {
+        "id": "step_return",
+        "desc": "Return face where the bay steps forward to the vanity wall"
+      },
+      {
+        "id": "vanity",
+        "desc": "50\" vanity wall — 7\" + 36\" vanity + 7\""
+      },
+      {
+        "id": "end_left",
+        "desc": "Left end wall (tub end / tap wall)"
+      },
+      {
+        "id": "end_right",
+        "desc": "Right end wall (toilet)"
+      },
+      {
+        "id": "slope",
+        "desc": "Dormer slope"
+      },
+      {
+        "id": "ceiling",
+        "desc": "Flat ceiling at 96\" AFF"
+      }
+    ]
+  },
+  "keyRelationships": [
+    "Cabinet is EXACTLY 36\" wide, 12\" deep, 20\" tall, underside 9\" AFF.",
+    "Counter divides 23.6\" basin + 1.5\" open channel + 10.9\" stone landing = 36.0\" exactly.",
+    "Basin is OFFSET LEFT, flush with the cabinet's left end. It is not centred.",
+    "Basin and landing both project 13.8\" — proud of the 12\" cabinet by 1.8\".",
+    "Basin rim 36\" AFF. Cabinet top 29\" AFF.",
+    "Splash panel is 60\" wide, centred on the cabinet, rising from the cabinet top.",
+    "Mirror is a STADIUM/pill, centred on the 60\" SPLASH — not on the offset basin.",
+    "Two identical vertical sconces flank the mirror. There is no bar light above it.",
+    "Taps are WALL-MOUNTED, 3-piece: spout centred, two cross handles flanking.",
+    "One metal throughout: copper. Taps, pulls, mirror frame, sconce bodies, splash trim.",
+    "Baseboard runs continuously and CONTINUES UNDER the wall-hung vanity.",
+    "Shower back wall is 14.5\" behind the vanity wall.",
+    "Door starts exactly at the right edge of the vanity wall, x = 110.5\".",
+    "Tub rim 20\" AFF.",
+    "Left sconce lives on the SHOWER SHELF WALL (face 14.5), not the splash panel — right sconce stays on the splash, flanking the mirror asymmetrically by design.",
+    "Door casing is a real frame (two jambs + head) with the opening cut through; baseboard dies into the casing rather than crossing the doorway."
+  ],
+  "fittings": [
+    {
+      "id": "splash",
+      "name": "Tiled backsplash panel",
+      "x": 61.25,
+      "w": 46,
+      "y": 19.25,
+      "h": 66,
+      "dep": 0.5,
+      "face": 0,
+      "radius": 10,
+      "trim": true,
+      "note": "Large-format stone tile panel behind the vanity, 10\" rounded top corners, thin metal trim on the exposed edge"
+    },
+    {
+      "id": "vshelf",
+      "name": "Vanity wall shelf",
+      "x": 91.5,
+      "w": 10,
+      "y": 41.13,
+      "h": 1.75,
+      "dep": 6,
+      "face": 0,
+      "note": "Small walnut floating shelf on the tiled panel, right of the mirror"
+    },
+    {
+      "id": "base",
+      "name": "Baseboard",
+      "x": 44,
+      "w": 126,
+      "y": 0,
+      "h": 4,
+      "dep": 0.75,
+      "face": 0,
+      "wall": "back",
+      "d": 14,
+      "note": "4\" painted baseboard, runs the full wall and CONTINUES UNDER the wall-hung vanity; dies into the door casing rather than crossing the doorway"
+    },
+    {
+      "id": "tub",
+      "name": "Tub",
+      "x": 0,
+      "w": 33,
+      "y": 0,
+      "h": 20,
+      "dep": 60,
+      "face": 14.5,
+      "note": "Kohler 60\" x 32\" skirted bath in the back-left corner, rim 20\" AFF, tiled end cap; tap wall on the tower-back plane"
+    },
+    {
+      "id": "tower",
+      "name": "Storage tower",
+      "x": 44.5,
+      "w": 16,
+      "y": 4,
+      "h": 89.25,
+      "dep": 15,
+      "face": 14.5,
+      "bays": [
+        {
+          "t": "door",
+          "h": 20
+        },
+        {
+          "t": "drawer",
+          "h": 10
+        },
+        {
+          "t": "drawer",
+          "h": 10
+        },
+        {
+          "t": "drawer",
+          "h": 10
+        },
+        {
+          "t": "void",
+          "h": 13
+        },
+        {
+          "t": "door",
+          "h": 22
+        }
+      ],
+      "note": "Full-height walnut, flat slab doors + drawers, brass bar pulls, two warmly lit open niches. Face coplanar with the vanity wall, back on the tub tap wall"
+    },
+    {
+      "id": "van",
+      "name": "Vanity",
+      "x": 66.25,
+      "w": 36,
+      "y": 15,
+      "h": 19,
+      "dep": 12,
+      "face": 0,
+      "note": "Wall-hung walnut, flat slab: 24\" run of TWO full-width drawers + 1\" gap + 11\" bank of THREE small drawers under a stepped-up stone top"
+    },
+    {
+      "id": "vessel",
+      "name": "Vessel sink",
+      "x": 67.75,
+      "w": 22,
+      "y": 34.5,
+      "h": 4,
+      "dep": 12,
+      "face": 0,
+      "note": "Sits ON the counter — vessel basin, rim 38\" AFF"
+    },
+    {
+      "id": "stone",
+      "name": "Solid surface slab",
+      "x": 91.5,
+      "w": 10,
+      "y": 34.25,
+      "h": 1.5,
+      "dep": 10.5,
+      "face": 0,
+      "note": "Solid surface, stepped up on the counter to the RIGHT of the vessel sink"
+    },
+    {
+      "id": "taphl",
+      "name": "Tap handle — left",
+      "x": 72.5,
+      "w": 2.5,
+      "y": 42.88,
+      "h": 2.5,
+      "dep": 3,
+      "face": 0,
+      "shape": "round",
+      "note": "Round copper escutcheon + lever, level with the spout"
+    },
+    {
+      "id": "tap",
+      "name": "Tap spout",
+      "x": 77.13,
+      "w": 3.25,
+      "y": 41.88,
+      "h": 3.5,
+      "dep": 7,
+      "face": 0,
+      "shape": "soft",
+      "spoutStyle": "gooseneck",
+      "note": "Upright copper gooseneck spout, taller than the two round handle escutcheons beside it"
+    },
+    {
+      "id": "taphr",
+      "name": "Tap handle — right",
+      "x": 82.75,
+      "w": 2.5,
+      "y": 42.63,
+      "h": 2.5,
+      "dep": 3,
+      "face": 0,
+      "shape": "round",
+      "note": "Round copper escutcheon + lever, level with the spout"
+    },
+    {
+      "id": "mir",
+      "name": "Mirror",
+      "x": 68.25,
+      "w": 33,
+      "y": 49.5,
+      "h": 22.5,
+      "dep": 2,
+      "face": 0,
+      "shape": "soft",
+      "frame": 1.75,
+      "radius": 13,
+      "note": "Copper-framed rounded rectangle, stadium ends. Centred on the 46\" splash panel, not on the offset basin"
+    },
+    {
+      "id": "dcase",
+      "name": "Door casing",
+      "x": 108,
+      "w": 35,
+      "y": 0,
+      "h": 82.5,
+      "dep": 0.75,
+      "face": 0,
+      "note": "2.5\" flat casing — real jambs + head with the door opening cut through, running down to the floor"
+    },
+    {
+      "id": "door",
+      "name": "Door — 30\" RO",
+      "x": 110.5,
+      "w": 30,
+      "y": 0,
+      "h": 80,
+      "dep": 1,
+      "face": 0,
+      "note": "30\" RO starting near the right edge of the vanity wall; 1\" of flat casing proud of the wall"
+    },
+    {
+      "id": "glass",
+      "name": "Glass panel",
+      "x": 32,
+      "w": 30,
+      "y": 20,
+      "h": 72,
+      "dep": 0.75,
+      "face": 0,
+      "wall": "end",
+      "d": 0,
+      "note": "Frameless panel on the open long side of the tub, sitting on the 20\" rim"
+    },
+    {
+      "id": "shelf",
+      "name": "Floating shelves — shower wall",
+      "x": 33.25,
+      "w": 11.25,
+      "y": 26,
+      "h": 38,
+      "dep": 14,
+      "face": 14.5,
+      "shelfN": 4,
+      "shelfGap": 10,
+      "shelfThick": 2,
+      "led": true,
+      "wall": "back",
+      "d": 14,
+      "note": "Floating boards, no brackets, LED strip under each board"
+    },
+    {
+      "id": "nichesh",
+      "name": "Lit tile niche",
+      "x": 0.25,
+      "w": 30,
+      "y": 39.5,
+      "h": 14,
+      "dep": 4,
+      "face": 14.5,
+      "recess": true,
+      "wall": "end",
+      "d": 14.75,
+      "note": "RECESSED 4\" into the tub tap wall — tile-lined back and reveals, LED strip washing each shelf"
+    },
+    {
+      "id": "rain",
+      "name": "Rainhead",
+      "x": 11,
+      "w": 10,
+      "y": 75.75,
+      "h": 8.25,
+      "dep": 12,
+      "face": 14.5,
+      "note": "Brushed-copper rainhead on a ceiling-side arm, ~76\" AFF on the tap wall"
+    },
+    {
+      "id": "mixer",
+      "name": "Mixer / diverter",
+      "x": 13,
+      "w": 6,
+      "y": 41.38,
+      "h": 6,
+      "dep": 3,
+      "face": 14.5,
+      "note": "Thermostatic valve + diverter, clear of the niche on the open side of the tap wall"
+    },
+    {
+      "id": "spout",
+      "name": "Tub spout",
+      "x": 13,
+      "w": 6,
+      "y": 24.5,
+      "h": 3,
+      "dep": 6,
+      "face": 14.5,
+      "spoutStyle": "gooseneck",
+      "note": "Wall gooseneck spout above the 20\" tub rim"
+    },
+    {
+      "id": "ring",
+      "name": "Hand towel ring",
+      "x": 62.75,
+      "w": 7,
+      "y": 42.13,
+      "h": 7.25,
+      "dep": 4,
+      "face": 0,
+      "shape": "round",
+      "metalOverride": "#b87a55",
+      "note": "Copper ring on the vanity return, beside the basin"
+    },
+    {
+      "id": "wc",
+      "name": "Toilet",
+      "x": 167.75,
+      "w": 16,
+      "y": 0,
+      "h": 29,
+      "dep": 22,
+      "face": 0,
+      "wall": "end",
+      "d": 32,
+      "flip": true,
+      "note": "Against the right end wall, shifted toward the door end — seated you look straight down the room at the shower"
+    },
+    {
+      "id": "wet",
+      "name": "Shower zone",
+      "x": 0,
+      "w": 32,
+      "y": 0,
+      "h": 92,
+      "dep": 60,
+      "face": 14.5,
+      "zoneOnly": true,
+      "note": "Wet area over the bath — glass panel, rainhead and mixer all live inside this envelope"
+    },
+    {
+      "id": "light2",
+      "name": "Sconce — right",
+      "x": 154.75,
+      "w": 5.5,
+      "y": 67.13,
+      "h": 12.75,
+      "dep": 3.5,
+      "face": 0,
+      "shape": "soft",
+      "note": "VERTICAL copper cylinder sconce flush on the splash panel, right of the mirror"
+    },
+    {
+      "id": "bar2",
+      "name": "Towel bar — tub upper",
+      "x": 36,
+      "w": 24,
+      "y": 23,
+      "h": 2,
+      "dep": 4,
+      "face": 14.5,
+      "wall": "slope",
+      "d": 14,
+      "rot": 90,
+      "note": "Brass bar on the sloped wall, tub side"
+    },
+    {
+      "id": "bar3",
+      "name": "Towel bar — tub lower",
+      "x": 37.75,
+      "w": 19.5,
+      "y": 28,
+      "h": 2,
+      "dep": 4,
+      "face": 14.5,
+      "wall": "slope",
+      "d": 14,
+      "note": "Second brass bar, tub-side bay wall"
+    },
+    {
+      "id": "light",
+      "name": "Sconce — left",
+      "x": 21.75,
+      "w": 5.5,
+      "y": 68,
+      "h": 12.5,
+      "dep": 3.5,
+      "face": 14.5,
+      "shape": "soft",
+      "note": "VERTICAL copper cylinder sconce on the SHOWER SHELF WALL, left of the floating shelves — moved off the splash panel"
+    },
+    {
+      "id": "hoodlight",
+      "name": "Hooded light — over mirror",
+      "x": 74.25,
+      "w": 20,
+      "y": 76.13,
+      "h": 5,
+      "dep": 5,
+      "face": 0,
+      "note": "Copper hooded picture light, shade angled down over the mirror, centred above it"
+    }
+  ],
+  "surfaces": {
+    "bay": {
+      "fin": "tile",
+      "color": "#9aa79b",
+      "tileL": 12,
+      "tileW": 6,
+      "shape": "rect",
+      "pattern": "offset2",
+      "applies": "shower back wall, step return, tub end"
+    },
+    "splash": {
+      "fin": "tile",
+      "color": "#dfe3dc",
+      "tileL": 6,
+      "tileW": 6,
+      "shape": "hex",
+      "pattern": "stack",
+      "applies": "vanity splash panel — small hex, warm ivory"
+    },
+    "wall": {
+      "fin": "paint",
+      "color": "#e8e3d8",
+      "tileL": 24,
+      "tileW": 12,
+      "shape": "rect",
+      "pattern": "stack",
+      "applies": "vanity wall + both end walls"
+    },
+    "floor": {
+      "fin": "stone",
+      "color": "#bdb5a6",
+      "tileL": 24,
+      "tileW": 24,
+      "shape": "rect",
+      "pattern": "offset2",
+      "applies": "floor"
+    },
+    "slope": {
+      "fin": "paint",
+      "color": "#e8e3d8",
+      "tileL": 24,
+      "tileW": 12,
+      "shape": "rect",
+      "pattern": "stack",
+      "applies": "dormer slope"
+    },
+    "skirt": {
+      "fin": "tile",
+      "color": "#9aa79b",
+      "tileL": 8,
+      "tileW": 24,
+      "shape": "rect",
+      "pattern": "offset2",
+      "applies": "tub skirt"
+    },
+    "vanity": {
+      "fin": "paint",
+      "color": "#e8e3d8",
+      "tileL": 24,
+      "tileW": 12,
+      "shape": "rect",
+      "pattern": "stack",
+      "applies": "vanity wall zone"
+    },
+    "end_left": {
+      "fin": "paint",
+      "color": "#e8e3d8",
+      "tileL": 24,
+      "tileW": 12,
+      "shape": "rect",
+      "pattern": "stack",
+      "applies": "left end wall zone"
+    },
+    "bay_back": {
+      "fin": "tile",
+      "color": "#dfe3dc",
+      "tileL": 6,
+      "tileW": 6,
+      "shape": "hex",
+      "pattern": "stack",
+      "applies": "bay back wall — behind tub/shower"
+    },
+    "shelf_wall": {
+      "fin": "paint",
+      "color": "#e6e3d9",
+      "tileL": 6,
+      "tileW": 6,
+      "shape": "hex",
+      "pattern": "stack",
+      "spanW": 27,
+      "startOff": 1,
+      "applies": "shower shelf wall — independent zone, own start/span"
+    }
+  },
+  "materialLibrary": [
+    {
+      "name": "Large stone 48×24",
+      "fin": "tile",
+      "color": "#9aa79b",
+      "tileL": 48,
+      "tileW": 24,
+      "shape": "rect",
+      "pattern": "offset2"
+    },
+    {
+      "name": "Subway 12×6",
+      "fin": "tile",
+      "color": "#e6e3d9",
+      "tileL": 12,
+      "tileW": 6,
+      "shape": "rect",
+      "pattern": "offset2"
+    },
+    {
+      "name": "Stack bond 12×12",
+      "fin": "tile",
+      "color": "#cfd6cd",
+      "tileL": 12,
+      "tileW": 12,
+      "shape": "rect",
+      "pattern": "stack"
+    },
+    {
+      "name": "Herringbone 12×3",
+      "fin": "tile",
+      "color": "#d9d3c6",
+      "tileL": 12,
+      "tileW": 3,
+      "shape": "rect",
+      "pattern": "herring"
+    },
+    {
+      "name": "Chevron 12×4",
+      "fin": "tile",
+      "color": "#c8cec4",
+      "tileL": 12,
+      "tileW": 4,
+      "shape": "rect",
+      "pattern": "chevron"
+    },
+    {
+      "name": "Hexagon 6\"",
+      "fin": "tile",
+      "color": "#dfe3dc",
+      "tileL": 6,
+      "tileW": 6,
+      "shape": "hex",
+      "pattern": "stack"
+    },
+    {
+      "name": "Penny round 2\"",
+      "fin": "tile",
+      "color": "#eceae3",
+      "tileL": 2,
+      "tileW": 2,
+      "shape": "round",
+      "pattern": "stack"
+    },
+    {
+      "name": "Stone slab",
+      "fin": "stone",
+      "color": "#bdb5a6",
+      "tileL": 24,
+      "tileW": 24,
+      "shape": "rect",
+      "pattern": "stack"
+    },
+    {
+      "name": "Oak boards",
+      "fin": "wood",
+      "color": "#a8763f",
+      "tileL": 48,
+      "tileW": 6,
+      "shape": "rect",
+      "pattern": "offset3"
+    },
+    {
+      "name": "Painted plaster",
+      "fin": "paint",
+      "color": "#e8e3d8",
+      "tileL": 24,
+      "tileW": 12,
+      "shape": "rect",
+      "pattern": "stack"
+    }
+  ],
+  "palette": {
+    "walnut": "#7a4a2b",
+    "walnutLight": "#a8763f",
+    "brass": "#c9a35c",
+    "brassFrame": "#b98b53",
+    "sanitary": "#f7f6f2",
+    "trim": "#f4f2ed",
+    "greenStone": "#9aa79b",
+    "floorStone": "#bdb5a6",
+    "copper": "#b87a55",
+    "mineralGreen": "#4a5442",
+    "landingStone": "#d8cdb6"
+  },
+  "fieldGuide": {
+    "x": "Distance in inches from the left end wall, along the 169\" run.",
+    "w": "Width in inches along that same run.",
+    "y": "Height above finished floor of the item's bottom edge.",
+    "h": "Height of the item.",
+    "dep": "Depth the item projects into the room.",
+    "face": "Which wall plane the item is mounted on: 0 = vanity wall plane, 14.5 = recessed bay plane.",
+    "wall": "\"end\" pins the item to an end wall, \"slope\" to the dormer slope; d is then its distance into the room.",
+    "zoneOnly": "Envelope for planning only — never drawn as an object.",
+    "recess": "Item is cut INTO the wall, not proud of it."
+  }
+}

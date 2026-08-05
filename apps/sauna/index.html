@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>YamaZina Sauna — Mark 5 — Closed Box Bench</title>
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:#0d0a08; height:100%; touch-action:none; }
+  #app { position:relative; width:100vw; height:100vh; touch-action:none; }
+  canvas { display:block; touch-action:none; }
+
+  /* ---------- Menu toggle — the ONLY thing that floats when the sidebar is closed ---------- */
+  #menuToggle {
+    position:absolute; top:14px; left:14px; z-index:40;
+    width:44px; height:44px; border-radius:50%; border:none; cursor:pointer; padding:0;
+    background:rgba(24,17,12,0.88); backdrop-filter: blur(6px); box-shadow:0 6px 20px rgba(0,0,0,0.45);
+    display:flex; align-items:center; justify-content:center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #menuToggle .bars { width:18px; height:13px; position:relative; }
+  #menuToggle .bars span {
+    position:absolute; left:0; width:18px; height:2px; background:#f5c98a; border-radius:1px;
+    transition:transform 0.2s ease, opacity 0.15s ease;
+  }
+  #menuToggle .bars span:nth-child(1){ top:0; }
+  #menuToggle .bars span:nth-child(2){ top:5.5px; }
+  #menuToggle .bars span:nth-child(3){ top:11px; }
+  #menuToggle.open .bars span:nth-child(1){ transform:translateY(5.5px) rotate(45deg); }
+  #menuToggle.open .bars span:nth-child(2){ opacity:0; }
+  #menuToggle.open .bars span:nth-child(3){ transform:translateY(-5.5px) rotate(-45deg); }
+
+  /* ---------- Markup icon — its own button, separate from the sidebar hamburger ---------- */
+  #markupToggle {
+    position:absolute; top:14px; left:66px; z-index:40;
+    width:44px; height:44px; border-radius:50%; border:none; cursor:pointer; padding:0;
+    background:rgba(24,17,12,0.88); backdrop-filter: blur(6px); box-shadow:0 6px 20px rgba(0,0,0,0.45);
+    display:flex; align-items:center; justify-content:center; font-size:18px; color:#f5c98a;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #markupToggle.open { background:#f5c98a; color:#241a10; }
+  #markupBar {
+    position:absolute; top:64px; left:14px; z-index:38; width:236px;
+    background:rgba(19,14,10,0.97); backdrop-filter: blur(10px); color:#f0e4d3;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    box-shadow:0 10px 34px rgba(0,0,0,0.5); border:1px solid rgba(245,201,138,0.22);
+    border-radius:14px; padding:12px; display:none;
+  }
+  #markupBar.open { display:block; }
+
+  /* ---------- Global element toolbar — the one place move/rotate/resize/copy/delete live ----------
+     Appears whenever any element is selected (numbered list OR clicking it directly in 3D), whether
+     or not the sidebar is open, so it works while actually looking at the room. Freeform fixtures
+     (bucket/thermo/accent/downlights/footstool) get full move+rotate+resize+copy+delete here;
+     structural spec-governed elements (bench/door/heater/window/landing/stairs) show a short note
+     instead and keep their real-but-bounded controls in the per-element panel below, in the sidebar
+     — moving those here too would let the design drift into something that isn't actually buildable. */
+  #elementToolbar {
+    position:absolute; left:50%; bottom:16px; z-index:36; width:min(420px, 94vw);
+    background:rgba(19,14,10,0.97); backdrop-filter: blur(10px); color:#f0e4d3;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    box-shadow:0 10px 34px rgba(0,0,0,0.5); border:1px solid rgba(245,201,138,0.28);
+    border-radius:14px; padding:12px 14px; display:none;
+    transform:translateX(-50%) translateY(10px); opacity:0; transition:opacity 0.15s ease, transform 0.15s ease;
+    max-height:60vh; overflow-y:auto;
+  }
+  #elementToolbar.open { display:block; opacity:1; transform:translateX(-50%) translateY(0); }
+  /* Sits in the same spot the toolbar itself appears in, so it's obvious where the toolbar will
+     show up once something's selected — disappears the moment anything is, and comes back once
+     you close the toolbar/deselect. */
+  #selectHint {
+    position:absolute; left:50%; bottom:16px; z-index:34; transform:translateX(-50%);
+    background:rgba(19,14,10,0.85); backdrop-filter: blur(6px); color:#c7b6a2;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:12px;
+    border:1px solid rgba(245,201,138,0.2); border-radius:12px; padding:8px 14px;
+    pointer-events:none; white-space:nowrap;
+  }
+  .tbHead { display:flex; justify-content:space-between; align-items:center; }
+  .tbLabel { color:#f5c98a; font-weight:600; font-size:13px; }
+  .tbClose { cursor:pointer; color:#c7b6a2; font-size:17px; padding:0 4px; }
+  .tbNote { font-size:11.5px; color:#c7b6a2; margin-top:8px; line-height:1.4; }
+  .tbGrid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px; }
+  .tbRow { margin-top:10px; }
+  .tbRowLabel { font-size:10.5px; color:#c7b6a2; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:5px; display:flex; justify-content:space-between; }
+  .tbRowLabel .tbVal { color:#f5c98a; text-transform:none; letter-spacing:0; font-variant-numeric:tabular-nums; }
+  .tbRow input[type="range"] { width:100%; accent-color:#f5c98a; cursor:pointer; }
+  .tbBtnRow { display:flex; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap; }
+  .tbBtn {
+    border-radius:7px; border:1px solid rgba(245,201,138,0.35); background:rgba(245,201,138,0.12);
+    color:#f5c98a; font-family:inherit; font-size:11px; font-weight:600; cursor:pointer;
+    padding:5px 10px; -webkit-tap-highlight-color:transparent;
+  }
+  .tbBtn:hover { background:rgba(245,201,138,0.22); }
+  .tbSnap { display:flex; align-items:center; gap:5px; font-size:11px; color:#e6d8c4; cursor:pointer; margin-left:auto; }
+  .tbActionRow { display:flex; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid rgba(240,228,211,0.12); }
+  .tbActionRow .tbBtn { flex:1; text-align:center; padding:8px 10px; }
+  .tbDeleteBtn {
+    flex:1; text-align:center; border-radius:7px; border:1px solid rgba(224,110,90,0.5); background:rgba(224,110,90,0.12);
+    color:#e88; font-family:inherit; font-size:11px; font-weight:600; cursor:pointer; padding:8px 10px;
+  }
+  .tbDeleteBtn:hover { background:rgba(224,110,90,0.22); }
+
+  /* ---------- Sidebar — everything else lives here, nothing else floats over the scene ---------- */
+  #sidebar {
+    position:absolute; top:0; left:0; bottom:0; z-index:30;
+    width:min(360px, 90vw); max-width:100vw;
+    background:rgba(19,14,10,0.97); backdrop-filter: blur(10px);
+    color:#f0e4d3; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    box-shadow:0 0 50px rgba(0,0,0,0.55);
+    display:flex; flex-direction:column;
+    transform:translateX(-100%); transition:transform 0.22s ease;
+  }
+  #sidebar.open { transform:translateX(0); }
+  #sidebarHeader {
+    padding:16px 16px 12px 66px; font-size:15px; font-weight:600; color:#f5c98a;
+    border-bottom:1px solid rgba(240,228,211,0.12); flex-shrink:0;
+  }
+  #sidebarHeader .sub { display:block; font-size:11px; font-weight:400; color:#c7b6a2; margin-top:2px; }
+  #sidebarTabs {
+    display:flex; flex-wrap:wrap; gap:5px; padding:10px 12px; flex-shrink:0;
+    border-bottom:1px solid rgba(240,228,211,0.12);
+  }
+  .sbTab {
+    background:transparent; color:#c7b6a2; border:1px solid rgba(245,201,138,0.28); border-radius:13px;
+    padding:6px 11px; font-size:11.5px; cursor:pointer; font-family:inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sbTab.active { background:#f5c98a; color:#241a10; border-color:#f5c98a; font-weight:600; }
+  #sidebarBody { flex:1; overflow-y:auto; padding:16px 18px 28px 18px; font-size:12.5px; line-height:1.55; }
+  .tabPane { display:none; }
+  .tabPane.active { display:block; }
+  .tabPane h5 { margin:18px 0 8px 0; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:#c7b6a2; }
+  .tabPane h5:first-child { margin-top:0; }
+
+  .dim { font-size:11.5px; color:#c7b6a2; margin-bottom:10px; }
+  .spec { margin-top:4px; border-top:1px solid rgba(240,228,211,0.12); padding:0; }
+  .spec summary {
+    font-size:12.5px; font-weight:600; padding:10px 0; cursor:pointer; color:#f5c98a;
+    list-style:none; display:flex; align-items:center; justify-content:space-between;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .spec summary::-webkit-details-marker{ display:none; }
+  .spec summary::after {
+    content:""; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent;
+    border-top:6px solid #c7b6a2; margin-left:10px; transition: transform 0.2s; flex-shrink:0;
+  }
+  .spec[open] > summary::after { transform:rotate(180deg); }
+  .spec .body { font-size:12px; color:#e6d8c4; padding-bottom:10px; margin-top:2px; }
+
+  select {
+    display:block; margin-top:8px; width:100%;
+    background:rgba(245,201,138,0.14); color:#f5c98a; border:1px solid rgba(245,201,138,0.4);
+    border-radius:8px; padding:6px 8px; font-size:12px; font-family:inherit; cursor:pointer;
+  }
+  select:focus { outline:none; border-color:#f5c98a; }
+  .colorRow { display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; }
+  .colorRow label { display:flex; align-items:center; gap:6px; font-size:11.5px; color:#e6d8c4; cursor:pointer; }
+  .colorRow input[type="color"] {
+    -webkit-appearance:none; appearance:none; width:26px; height:26px; border:none;
+    border-radius:50%; overflow:hidden; padding:0; cursor:pointer; background:none;
+    border:2px solid rgba(245,201,138,0.4);
+  }
+  .colorRow input[type="color"]::-webkit-color-swatch-wrapper { padding:0; }
+  .colorRow input[type="color"]::-webkit-color-swatch { border:none; border-radius:50%; }
+  .toggleRow { display:flex; flex-direction:column; gap:7px; margin-top:12px; border-top:1px solid rgba(240,228,211,0.12); padding-top:10px; }
+  .toggleRow label { display:flex; align-items:center; gap:8px; font-size:12px; color:#e6d8c4; cursor:pointer; }
+  .toggleRow input[type="checkbox"] { width:15px; height:15px; accent-color:#f5c98a; cursor:pointer; }
+  .lvlSlider { width:100%; margin:-2px 0 4px 0; accent-color:#f5c98a; cursor:pointer; }
+  b { color:#f5c98a; }
+
+  .schemeBar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .swatch {
+    width:24px; height:24px; border-radius:50%; border:2px solid rgba(255,255,255,0.25);
+    cursor:pointer; padding:0; -webkit-tap-highlight-color: transparent;
+  }
+  .swatch.active { border-color:#fff; transform:scale(1.15); }
+  #schemeName { color:#f0e4d3; font-size:11.5px; margin-left:2px; }
+
+  .bigBtn, .toggleBtn {
+    background:rgba(245,201,138,0.14); color:#f5c98a; border:1px solid rgba(245,201,138,0.4); border-radius:10px;
+    padding:9px 12px; font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer;
+    -webkit-tap-highlight-color: transparent; width:100%; margin-bottom:8px; text-align:left;
+  }
+  .toggleBtn.active { background:#f5c98a; color:#241a10; }
+  .btnRow { display:flex; gap:8px; }
+  .btnRow .bigBtn, .btnRow .toggleBtn { width:auto; flex:1; text-align:center; }
+
+  .posGrid { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+  .posBtn {
+    background:transparent; color:#e6d8c4; border:1px solid rgba(245,201,138,0.3); border-radius:10px;
+    padding:8px 11px; font-family:inherit; font-size:12px; cursor:pointer; text-align:left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .posBtn.active { background:#f5c98a; color:#241a10; border-color:#f5c98a; font-weight:600; }
+
+  /* ---------- Numbered elements list ---------- */
+  .elItem {
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    background:rgba(245,201,138,0.06); border:1px solid rgba(245,201,138,0.18); border-radius:9px;
+    padding:8px 10px; margin-bottom:6px; color:#e6d8c4; font-family:inherit; font-size:12px; cursor:pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .elItem:hover { background:rgba(245,201,138,0.14); }
+  .elItem.active { background:rgba(245,201,138,0.22); border-color:#f5c98a; }
+  .elNum {
+    flex-shrink:0; width:20px; height:20px; border-radius:50%; background:rgba(245,201,138,0.25);
+    color:#f5c98a; font-size:10.5px; font-weight:700; display:flex; align-items:center; justify-content:center;
+  }
+  /* Collapsible element groups (Bench / Lighting / Door & Heater / Fixtures / Structure & Envelope)
+     — reuses the same accordion look as the Overview tab's spec details, collapsed by default so
+     the Elements tab doesn't dump every single piece as one long list. */
+  .elGroup { margin-top:2px; }
+  .elGroup .elGroupBody { padding-top:2px; }
+  .elGroupCount {
+    display:inline-block; margin-left:6px; background:rgba(245,201,138,0.18); color:#c7b6a2;
+    border-radius:9px; padding:1px 7px; font-size:10px; font-weight:600;
+  }
+
+  /* ---------- Focused edit body (shared by click-to-edit and the numbered list) ---------- */
+  .epRow { margin-top:12px; }
+  .epLabel { font-size:11px; color:#c7b6a2; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.03em; }
+  .swatchRow { display:flex; gap:8px; flex-wrap:wrap; }
+  .toneSwatch {
+    width:26px; height:26px; border-radius:50%; border:2px solid rgba(255,255,255,0.25);
+    cursor:pointer; padding:0;
+  }
+  .epRow select { margin-top:0; }
+  .epRow input[type="range"] { width:100%; accent-color:#f5c98a; cursor:pointer; }
+  /* Type-in feet/inches box, dropped in next to any slider marked data-ftin="1" — see the
+     decorateFtIn() enhancer script. Sits on real-world position/length/height/width/depth sliders
+     so an exact measurement can be typed ("4'6"", "54in", or a plain decimal) instead of only dragged. */
+  .ftInBox {
+    display:block; margin-top:6px; width:92px; background:rgba(245,201,138,0.08); color:#f0e4d3;
+    border:1px solid rgba(245,201,138,0.3); border-radius:7px; padding:5px 8px; font-size:11.5px;
+    font-family:inherit; text-align:center; box-sizing:border-box;
+  }
+  .ftInBox:focus { outline:none; border-color:#f5c98a; background:rgba(245,201,138,0.14); }
+  .epRow input[type="color"] {
+    -webkit-appearance:none; appearance:none; width:28px; height:28px; border:none;
+    border-radius:50%; overflow:hidden; padding:0; cursor:pointer; background:none;
+    border:2px solid rgba(245,201,138,0.4);
+  }
+  .epNotes {
+    width:100%; box-sizing:border-box; resize:vertical; margin-top:2px;
+    background:rgba(245,201,138,0.08); color:#f0e4d3; border:1px solid rgba(245,201,138,0.3);
+    border-radius:8px; padding:8px; font-size:12px; font-family:inherit; line-height:1.4;
+  }
+  .epNotes:focus { outline:none; border-color:#f5c98a; }
+  .epNotesRow { margin-top:16px; padding-top:12px; border-top:1px solid rgba(240,228,211,0.12); }
+  .epNotesBtnRow { display:flex; align-items:center; gap:10px; margin-top:8px; }
+  .epSaveBtn {
+    border-radius:8px; border:1px solid rgba(245,201,138,0.4); background:rgba(245,201,138,0.14);
+    color:#f5c98a; font-family:inherit; font-size:11.5px; font-weight:600; cursor:pointer;
+    padding:6px 14px; -webkit-tap-highlight-color:transparent;
+  }
+  .epSaveBtn:hover { background:rgba(245,201,138,0.24); }
+  .epSaveBtn.active { background:#f5c98a; color:#241a10; }
+  .epSavedFlash { font-size:11px; color:#8fd6a0; opacity:0; transition:opacity 0.2s ease; }
+  .epSavedFlash.show { opacity:1; }
+  #notesSummary { margin-top:4px; }
+  .noteItem {
+    display:flex; justify-content:space-between; align-items:flex-start; gap:8px;
+    background:rgba(245,201,138,0.08); border:1px solid rgba(245,201,138,0.2); border-radius:8px;
+    padding:8px 10px; margin-top:6px; cursor:pointer; font-size:11.5px;
+  }
+  .noteItem:hover { background:rgba(245,201,138,0.16); }
+  .noteItem .noteLabel { color:#f5c98a; font-weight:600; }
+  .noteItem .noteText { color:#e6d8c4; margin-top:3px; white-space:pre-wrap; word-break:break-word; }
+  .noteItem.noteDone { background:rgba(143,214,160,0.08); border-color:rgba(143,214,160,0.25); }
+  .noteItem.noteDone .noteLabel, .noteItem.noteDone .noteText { color:#9db3a4; text-decoration:line-through; }
+  .addRow { margin-top:10px; }
+  .addModeBanner {
+    margin-top:10px; padding:9px 10px; border-radius:8px; font-size:11.5px; line-height:1.4;
+    background:rgba(143,214,160,0.14); border:1px solid rgba(143,214,160,0.4); color:#c9ecd2;
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+  }
+  .addModeBanner .cancelAdd {
+    cursor:pointer; color:#f5c98a; font-weight:600; font-size:11px; flex-shrink:0;
+    background:none; border:none; font-family:inherit;
+  }
+  .epDeleteRow { margin-top:14px; }
+  .epDeleteBtn {
+    border-radius:8px; border:1px solid rgba(224,110,90,0.5); background:rgba(224,110,90,0.12);
+    color:#e88; font-family:inherit; font-size:11.5px; font-weight:600; cursor:pointer;
+    padding:7px 14px; -webkit-tap-highlight-color:transparent;
+  }
+  .epDeleteBtn:hover { background:rgba(224,110,90,0.22); }
+
+  /* ---------- Markup (annotation) tools ---------- */
+  .annoBtnRow { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .annoBtn {
+    border-radius:8px; border:1px solid rgba(245,201,138,0.25);
+    background:rgba(245,201,138,0.08); color:#e6d8c4; font-family:inherit;
+    font-size:11.5px; font-weight:600; cursor:pointer; padding:8px 12px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .annoBtn.active { background:#f5c98a; color:#241a10; border-color:#f5c98a; }
+  #annoColor {
+    -webkit-appearance:none; appearance:none; width:38px; height:32px; border:none;
+    border-radius:8px; overflow:hidden; padding:0; cursor:pointer; background:none;
+    border:1px solid rgba(245,201,138,0.25);
+  }
+  #annoColor::-webkit-color-swatch-wrapper { padding:0; }
+  #annoColor::-webkit-color-swatch { border:none; }
+  #annoSvg { position:absolute; inset:0; z-index:5; width:100%; height:100%; pointer-events:none; touch-action:none; }
+  #annoSvg.active { pointer-events:auto; }
+  .annoEditPin { pointer-events:auto; cursor:pointer; }
+
+  /* ---------- Versions ---------- */
+  .versionRow {
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:rgba(245,201,138,0.06); border:1px solid rgba(245,201,138,0.18); border-radius:9px;
+    padding:8px 10px; margin-bottom:6px; font-size:12px;
+  }
+  .versionRow .vName { color:#e6d8c4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .versionRow .vBtns { display:flex; gap:6px; flex-shrink:0; }
+  .versionRow button {
+    background:rgba(245,201,138,0.14); color:#f5c98a; border:1px solid rgba(245,201,138,0.35); border-radius:7px;
+    padding:4px 8px; font-size:10.5px; font-family:inherit; cursor:pointer;
+  }
+  .versionRow button.danger { color:#ff9d8a; border-color:rgba(255,120,100,0.4); }
+  .fileImportLabel {
+    display:inline-block; background:rgba(245,201,138,0.14); color:#f5c98a; border:1px solid rgba(245,201,138,0.4);
+    border-radius:8px; padding:8px 12px; font-size:12px; cursor:pointer; margin-top:8px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <button id="menuToggle" class="open" onclick="uiToggleSidebar()" aria-label="Menu"><span class="bars"><span></span><span></span><span></span></span></button>
+  <button id="markupToggle" onclick="uiToggleMarkupBar()" aria-label="Markup tools" title="Markup tools — draw a note or mark, then tap the pin it leaves to open the real control for it">&#9998;</button>
+
+  <div id="markupBar">
+    <div class="dim" style="margin-top:0;">Draw or drop a note, then tap the pin it leaves behind — it opens the real, working control for whatever it's nearest to.</div>
+    <div class="annoBtnRow">
+      <button class="annoBtn active" id="tool-orbit" onclick="uiSetTool('orbit')">Orbit</button>
+      <button class="annoBtn" id="tool-pencil" onclick="uiSetTool('pencil')" title="Freehand pencil">Pencil</button>
+      <button class="annoBtn" id="tool-lasso" onclick="uiSetTool('lasso')" title="Magic lasso — freeform select">Lasso</button>
+      <button class="annoBtn" id="tool-note" onclick="uiSetTool('note')" title="Click to drop a text note">Note</button>
+    </div>
+    <div class="annoBtnRow" style="align-items:center;">
+      <input type="color" id="annoColor" value="#ff5252" title="Markup color">
+      <button class="annoBtn" onclick="uiAnnoUndo()">Undo</button>
+      <button class="annoBtn" onclick="uiAnnoClear()">Clear</button>
+    </div>
+  </div>
+
+  <div id="elementToolbar"></div>
+  <div id="selectHint">Click any object in the 3D view (or a piece in the Elements list) to open its move / rotate / resize / copy / delete toolbar</div>
+
+  <div id="sidebar" class="open">
+    <div id="sidebarHeader">YamaZina Sauna — Mark 5 — Closed Box Bench<span class="sub">The Elements list is right here &mdash; click any numbered piece below, or any object in the 3D view, to open its move/rotate/resize/copy/delete toolbar.</span></div>
+    <div id="sidebarTabs">
+      <button class="sbTab" data-tab="info" onclick="uiSwitchTab('info')">Overview</button>
+      <button class="sbTab" data-tab="view" onclick="uiSwitchTab('view')">View</button>
+      <button class="sbTab" data-tab="lighting" onclick="uiSwitchTab('lighting')">Lighting</button>
+      <button class="sbTab active" data-tab="elements" onclick="uiSwitchTab('elements')">Elements</button>
+      <button class="sbTab" data-tab="budget" onclick="uiSwitchTab('budget')">Budget</button>
+      <button class="sbTab" data-tab="versions" onclick="uiSwitchTab('versions')">Versions</button>
+    </div>
+    <div id="sidebarBody">
+
+      <div class="tabPane" id="tab-info">
+        <div class="dim">Shed frame as built: 10'4" x 6'4", 9'6" front (LW1, door wall) / 7'10" back (LW2, tank-window wall).<br>
+        Finished interior (after 3" floor build-up + insulated cedar T&amp;G walls/ceiling): <b>10'1" x 6'1"</b> (~61.3 sq ft), <b>9'2" front / 7'5" back</b>, <b>~509 cu ft</b> &mdash; use this volume for heater sizing.</div>
+        <div class="dim" style="margin-top:6px;">Wall naming (Rev. B): <b>LW1</b> (Long Wall 1) = the door's wall, now the designated <b>front</b>. <b>LW2</b> (Long Wall 2) = the opposite wall with the tank-window clerestory, now the designated <b>back</b>. <b>SW1</b> (Short Wall 1) = the bench-return wall, now the <b>left</b> wall (was called "right" before this revision). <b>SW2</b> (Short Wall 2) = the wall next to the door, now the <b>right</b> wall (was called "left" before this revision). The default 3D view now looks in from LW1/the door side, matching this.</div>
+        <details class="spec"><summary>Heater</summary><div class="body">YamaZina Mark 2 spec, Rev. B floor plan &mdash; on LW1 (the front wall, the same wall as the door), clear of both the door/landing platform and SW1's bench footprint, 6"-12" standoff off the wall. HUUM Hive Mini (9kW) or HUUM Hive (11kW) &mdash; same ~18.1" drum, 30" top-of-rock reference height. Wood guard rebuilt tighter to the barrel (2" clearance, was 4") and taller (22", was 16"), now with horizontal slats instead of vertical. Pick the exact model in the Elements tab.</div></details>
+        <details class="spec"><summary>Door &amp; entry</summary><div class="body">YamaZina Mark 2 spec, Rev. B floor plan &mdash; LW1 (front wall), 6" off SW2 (the right wall): fixed 24" wide x 72" tall cedar door, lightly frosted glass window (top half by default, at least 5" of wood on every side of the glass). Now floats 10" above the sauna floor instead of sitting at deck height &mdash; a cedar landing platform on the floor underneath bridges the gap.</div></details>
+        <details class="spec"><summary>Bench</summary><div class="body">YamaZina Mark 2 spec, Rev. B floor plan &mdash; the L-shaped bench moved off LW1 onto LW2 (the back, 10'4" tank-window wall) and SW1 (the left, 6'4" wall), running the full length of both with no door-clearance cutout needed on either run anymore: "foot bench" (lower tier, 32" seat) plus "top bench" (upper tier, 50" seat &mdash; 18" above the foot bench, fixed 24" deep). The foot bench reaches 44" off the wall (20" exposed past the top bench's edge, tucking 6" under it). Framed like a floor (12" max joist spacing) with 4"-wide 3/4"-thick deck boards on top and 6"-wide 1/2"-thick front fascia cladding, for 8" total thickness from the front view. The SW2 (right-wall) entrance bench is deleted. Closed box plinth with horizontal slat-clad fronts (small gaps between courses), an open riser gap between the low and high tiers so the high tier doesn't overhang the low seat.</div></details>
+        <details class="spec"><summary>Landing platform</summary><div class="body">New in Rev. B &mdash; front-right corner (LW1/SW2), on the floor under the floating door: 3' wide (along LW1) x 4' deep (along SW2) x 4-1/4" tall, cedar 2x4-on-edge frame with 3/4" cedar deck boards. Width/depth are adjustable within a small range from its own Elements panel; height is fixed to the spec.</div></details>
+        <details class="spec"><summary>Ceiling</summary><div class="body">New in Rev. B &mdash; flattened to 7'8" across the whole build, with a short ~10" transition at LW2 (the back, 10'4" wall) where the natural roof slope takes back over.</div></details>
+        <details class="spec"><summary>Window</summary><div class="body">SW1 (left wall), above the bench &mdash; wide, single unbroken pane (no center mullion). Click it in the 3D view, or pick it from the Elements tab, for Clear / Frosted / Ocean Tint / Glass Block options. The SW2 "tank window" glass-block clerestory has been removed (it looked through to a bathroom that's no longer part of the plan).</div></details>
+        <details class="spec"><summary>Materials</summary><div class="body">Click any wood surface (walls, ceiling, floor, bench), or pick it from Elements, to swap its finish tone live. If you have specific product swatches or photos from your materials library, send them over and we'll match the exact tones/textures.</div></details>
+      </div>
+
+      <div class="tabPane" id="tab-view">
+        <h5>Camera</h5>
+        <div class="dim" style="margin-bottom:12px;">Drag / pinch on the 3D view to orbit &amp; zoom at any time.</div>
+        <button class="toggleBtn" id="viewBtn" onclick="uiToggleView()">Step Inside</button>
+        <button class="toggleBtn" id="topViewBtn" onclick="uiToggleTopView()">Top View (plan)</button>
+        <button class="toggleBtn" id="measureBtn" onclick="uiToggleMeasurements()">Measurements Overlay</button>
+        <button class="toggleBtn" id="wallLabelBtn" onclick="uiToggleWallLabels()" title="LW1/LW2/SW1/SW2 wall labels, so a rotated view doesn't turn you around">Wall Labels (LW/SW)</button>
+
+        <h5>Inside — Seat / Stand</h5>
+        <div class="dim" style="margin-bottom:6px;">Only applies once you've stepped inside. Look around any time by dragging.</div>
+        <div id="posBar" class="posGrid" style="display:none;">
+          <button class="posBtn active" data-pos="entry" onclick="window.setViewPosition('entry')">Just Inside Door</button>
+          <button class="posBtn" data-pos="walk" onclick="window.setViewPosition('walk')">Standing, Center</button>
+          <button class="posBtn" data-pos="seatedLow" onclick="window.setViewPosition('seatedLow')">Seated, Low Bench</button>
+          <button class="posBtn" data-pos="seatedHigh" onclick="window.setViewPosition('seatedHigh')">Seated, High Bench</button>
+          <button class="posBtn" data-pos="seatedLowReturn" onclick="window.setViewPosition('seatedLowReturn')">Seated, Low Bench (Return)</button>
+          <button class="posBtn" data-pos="seatedHighReturn" onclick="window.setViewPosition('seatedHighReturn')">Seated, High Bench (Return)</button>
+        </div>
+
+        <h5>Design scheme</h5>
+        <div class="schemeBar">
+          <button class="swatch active" style="background:#e8a24a" onclick="uiSetScheme(0,this)"></button>
+          <button class="swatch" style="background:#7ec7e8" onclick="uiSetScheme(1,this)"></button>
+          <button class="swatch" style="background:#b083e8" onclick="uiSetScheme(2,this)"></button>
+          <button class="swatch" style="background:#f2f2f2" onclick="uiSetScheme(3,this)"></button>
+          <span id="schemeName">Warm Amber</span>
+        </div>
+      </div>
+
+      <div class="tabPane" id="tab-lighting">
+        <div class="dim">A real per-fixture lighting engine &mdash; each category has its own on/off, color, and intensity, layered over low base ambient/sun so changes actually read.</div>
+        <select id="schemeSelect" onchange="uiSetSchemeFromSelect(this.value)">
+          <option value="0">Warm Amber</option>
+          <option value="1">Cool Spa</option>
+          <option value="2">Chromo</option>
+          <option value="3">Showroom</option>
+        </select>
+        <div class="colorRow">
+          <label>Strip color <input type="color" id="ledColorPicker" value="#ffb066" oninput="uiSetLedColor(this.value)"></label>
+          <label>Valance wrap color <input type="color" id="valanceColorPicker" value="#ffcf9e" oninput="uiSetValanceColor(this.value)"></label>
+          <label>Ambient color <input type="color" id="ambColorPicker" value="#ffe6c2" oninput="uiSetAmbientColor(this.value)"></label>
+          <label>Star color <input type="color" id="starsColorPicker" value="#fff3e0" oninput="uiSetStarsColor(this.value)"></label>
+          <label>Downlight color <input type="color" id="downColorPicker" value="#ffd9a8" oninput="uiSetDownColor(this.value)"></label>
+        </div>
+        <div class="toggleRow">
+          <label><input type="checkbox" id="starsToggle" checked onchange="uiToggleStars(this.checked)"> Ceiling stars</label>
+          <input type="range" class="lvlSlider" min="0" max="2" step="0.05" value="1" oninput="uiSetStarsLevel(this.value)">
+          <label><input type="checkbox" id="downToggle" checked onchange="uiToggleDownlights(this.checked)"> Downlights</label>
+          <input type="range" class="lvlSlider" min="0" max="2" step="0.05" value="1" oninput="uiSetDownLevel(this.value)">
+          <label><input type="checkbox" id="ledToggle" checked onchange="uiToggleLedStrips(this.checked)"> LED strips</label>
+          <input type="range" class="lvlSlider" min="0" max="2" step="0.05" value="1" oninput="uiSetLedLevel(this.value)">
+          <label><input type="checkbox" id="valanceToggle" checked onchange="uiToggleValanceLed(this.checked)"> Wall valance wrap</label>
+          <input type="range" class="lvlSlider" min="0" max="2" step="0.05" value="1" oninput="uiSetValanceLevel(this.value)">
+          <label>Heater glow</label>
+          <input type="range" class="lvlSlider" min="0" max="2" step="0.05" value="1" oninput="uiSetHeaterLevel(this.value)">
+          <label>Ambient / natural light</label>
+          <input type="range" class="lvlSlider" min="0" max="2" step="0.05" value="1" oninput="uiSetAmbientLevel(this.value)">
+        </div>
+      </div>
+
+      <div class="tabPane active" id="tab-elements">
+        <div class="dim">Pick any numbered piece below for a focused edit — the camera settles on it and the same real controls open, whether you get here by number or by clicking the piece directly in the 3D view.</div>
+        <div class="epRow" style="font-size:11px;color:#c7b6a2;">The "quick swap" layout-preset and L-Shape Left/Right buttons that used to live here were removed (2026-07-29) — they were the single biggest source of the cascade bugs reported earlier. Every control they used to bundle is still here individually: click the Return Bench below (or in the 3D view) for its own Wall dropdown, or use the door/heater position sliders and stair side control on their own pieces.</div>
+        <div class="addRow">
+          <button class="epSaveBtn" id="addDownlightBtn" onclick="uiStartAddDownlight()">+ Add downlight</button>
+        </div>
+        <div id="addModeBanner"></div>
+        <div id="elementsList"></div>
+        <div id="notesSummary"></div>
+        <div id="elementEditArea"></div>
+      </div>
+
+      <div class="tabPane" id="tab-budget">
+        <div class="dim">Live materials/cost estimate, recomputed from the current design every time you open this tab. <b>Unit prices marked ⚠ PLACEHOLDER are rough guesses, not real supplier quotes</b> — send your actual pricing (lumber yard, electrical, fixtures) and this becomes a real running budget instead of a ballpark.</div>
+        <div id="budgetTotal" style="font-size:22px;font-weight:700;color:#f5c98a;margin:10px 0;">—</div>
+        <div id="budgetBreakdown"></div>
+        <div class="btnRow" style="margin-top:10px;">
+          <button class="bigBtn" style="margin-bottom:0;" onclick="window.uiDownloadBudgetCSV()">Download cost breakdown (.csv)</button>
+        </div>
+      </div>
+
+      <div class="tabPane" id="tab-versions">
+        <div class="dim">Saves live in this browser only (this is a standalone file, no server) &mdash; export to a JSON file to keep a copy or hand it to someone else, and import it back in on any device to pick up exactly where you left off.</div>
+        <button class="bigBtn" onclick="window.uiSaveVersion()">Save current design as a version</button>
+        <div id="versionsList"></div>
+        <div class="btnRow" style="margin-top:10px;">
+          <button class="bigBtn" style="margin-bottom:0;" onclick="window.uiExportVersions()">Export all (.json)</button>
+          <label class="fileImportLabel" style="flex:1;text-align:center;">Import .json<input type="file" accept="application/json" style="display:none;" onchange="window.uiImportVersionsFile(this)"></label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <svg id="annoSvg"></svg>
+</div>
+<script src="../../platform/vendor/three.min.js"></script>
+<script src="../../platform/vendor/three-postfx.js"></script>
+<script src="assets/textures.js"></script>
+<script src="../../platform/core/design-core.js"></script>
+<script src="../../platform/vendor/objloader.js"></script>
+<script src="../../platform/vendor/mtlloader.js"></script>
+<script src="assets/models.js"></script>
+<script src="../../platform/core/store.js"></script>
+<script src="spec.js"></script>
+<script src="app.js"></script>
+<script src="ui.js"></script>
+<script src="sync.js"></script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+{
+  "$comment": "Hard geometry contract for AI image generation. Read design-spec.json for the full measured model; this file is the subset that MUST NOT be violated, with tolerances and a checkable validation list. Units: inches.",
+  "version": "1.0.0",
+  "units": "inches",
+  "contract": "The generator owns light and material. It does NOT own geometry. Any output that violates a rule below is rejected regardless of how good it looks.",
+  "globalTolerance": {
+    "dimension": "±0.25 in",
+    "position": "±0.5 in",
+    "angle": "±1 deg"
+  },
+  "hardRules": [
+    {
+      "id": "CAB-W",
+      "rule": "Vanity cabinet width is exactly 36.0 in",
+      "tolerance": 0.25,
+      "failure": "Cabinet stretched to fill the wall"
+    },
+    {
+      "id": "CAB-D",
+      "rule": "Vanity cabinet depth is exactly 12.0 in",
+      "tolerance": 0.25,
+      "failure": "Cabinet drawn as deep as the basin"
+    },
+    {
+      "id": "CAB-H",
+      "rule": "Vanity cabinet height is 20.0 in, underside at 9.0 in AFF",
+      "tolerance": 0.25,
+      "failure": "Cabinet sat on the floor"
+    },
+    {
+      "id": "CTR-SPLIT",
+      "rule": "Counter reads 23.6 basin + 1.5 channel + 10.9 landing = 36.0",
+      "tolerance": 0.25,
+      "failure": "Basin centred, or channel closed up"
+    },
+    {
+      "id": "BASIN-OFF",
+      "rule": "Basin is flush with the cabinet's LEFT end, not centred",
+      "tolerance": 0.5,
+      "failure": "Basin centred on the cabinet"
+    },
+    {
+      "id": "BASIN-PRJ",
+      "rule": "Basin and landing project 13.8 in, 1.8 in proud of the cabinet",
+      "tolerance": 0.25,
+      "failure": "Basin flush with the cabinet face"
+    },
+    {
+      "id": "BASIN-RIM",
+      "rule": "Basin rim at 36.0 in AFF, cabinet top at 29.0 in AFF",
+      "tolerance": 0.25,
+      "failure": "Basin sunk into the counter"
+    },
+    {
+      "id": "SPLASH-W",
+      "rule": "Splash panel is 60.0 in wide, centred on the cabinet",
+      "tolerance": 0.5,
+      "failure": "Splash cropped to the cabinet width"
+    },
+    {
+      "id": "MIR-SHAPE",
+      "rule": "Mirror is a stadium/pill — both short ends fully semicircular",
+      "tolerance": null,
+      "failure": "Rounded rectangle instead of a pill"
+    },
+    {
+      "id": "MIR-CTR",
+      "rule": "Mirror is centred on the 60 in SPLASH, not on the offset basin",
+      "tolerance": 0.5,
+      "failure": "Mirror centred over the basin"
+    },
+    {
+      "id": "SCONCE",
+      "rule": "Two identical VERTICAL sconces flank the mirror; no bar light above it",
+      "tolerance": null,
+      "failure": "Horizontal bar light above the mirror"
+    },
+    {
+      "id": "TAP-WALL",
+      "rule": "Taps are WALL-mounted, 3-piece: spout centred between two cross handles",
+      "tolerance": null,
+      "failure": "Deck-mounted tap on the counter"
+    },
+    {
+      "id": "METAL-ONE",
+      "rule": "Exactly one metal appears: copper. No mixed finishes",
+      "tolerance": null,
+      "failure": "Brass taps with copper frame"
+    },
+    {
+      "id": "BASE-UNDER",
+      "rule": "Baseboard runs CONTINUOUSLY and passes UNDER the wall-hung vanity",
+      "tolerance": null,
+      "failure": "Baseboard stops at the cabinet"
+    },
+    {
+      "id": "STEP-14.5",
+      "rule": "Shower back wall sits 14.5 in behind the vanity wall; the step is visible",
+      "tolerance": 0.5,
+      "failure": "Flat single-plane wall"
+    },
+    {
+      "id": "DOOR-X",
+      "rule": "Door opening starts at x = 110.5 in, the right edge of the vanity wall",
+      "tolerance": 0.5,
+      "failure": "Door floated away from the wall edge"
+    },
+    {
+      "id": "TUB-RIM",
+      "rule": "Tub rim at 20.0 in AFF; tub is 60 x 32 in",
+      "tolerance": 0.25,
+      "failure": "Tub scaled to fill the bay"
+    },
+    {
+      "id": "NICHE-IN",
+      "rule": "Wall niche is RECESSED 4 in INTO the wall; it never projects",
+      "tolerance": null,
+      "failure": "Niche drawn as a shelf"
+    }
+  ],
+  "forbidden": [
+    "Adding, removing, resizing or moving any fitting listed in design-spec.json",
+    "Wide-angle or fisheye distortion — 35 mm equivalent only",
+    "Invented fixtures, extra shelves, extra niches, second mirrors",
+    "Styling props: plants, towels, bottles, trays, people",
+    "Text, watermarks, dimension annotations baked into the image",
+    "Glossy CGI plastic surfacing, HDR halos, blown highlights"
+  ],
+  "generatorOwns": [
+    "Light: direction, softness, colour temperature, contact shadows",
+    "Material response: reflectance, roughness, veining detail, grout depth",
+    "Atmosphere: grain, depth of field, overall grade"
+  ],
+  "validation": {
+    "method": "Score each hardRule against the output. Any FAIL means regenerate — do not accept and do not average across attempts.",
+    "checklist": "Read left to right along the vanity wall: 36 cabinet? basin flush left? 1.5 channel visible? landing stepped up right? splash wider than the cabinet? pill mirror centred on the splash? two vertical sconces? wall taps, 3-piece? baseboard passing under? step visible at the shower?"
+  },
+  "workflow": {
+    "1": "Lock a version in the planner. The 3D reads the locked version, not working edits.",
+    "2": "Open Bathroom 3D.html, orbit to the view, screenshot. That plate IS the geometry.",
+    "3": "Send plate + design-spec.json + this file + AI-SYSTEM-PROMPT.md to the generator.",
+    "4": "Score the output against validation.checklist.",
+    "5": "Log failures in the planner's defect log, press PATCH PROMPT WITH LOG, regenerate."
+  }
+}

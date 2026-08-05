@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bathroom — Project Hub</title>
+<style>
+  :root { --paper:#faf9f5; --panel:#efece5; --ink:#23231f; --ink60:rgba(35,35,31,0.6);
+          --ink16:rgba(35,35,31,0.16); --accent:#8a5a2b; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace; }
+  .wrap { max-width:880px; margin:0 auto; padding:56px 28px 80px; }
+  .kicker { font:600 10px/1 inherit; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase; }
+  h1 { font:600 30px/1.15 Archivo,Helvetica,Arial,sans-serif; letter-spacing:-0.01em; margin:12px 0 8px; }
+  .sub { font-size:11px; line-height:1.7; color:var(--ink60); max-width:560px; }
+  a.back { display:inline-block; margin:18px 0 34px; color:var(--accent); font-size:10px;
+    letter-spacing:0.12em; text-transform:uppercase; text-decoration:none; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px; }
+  .card { display:block; border:1px solid var(--ink16); background:#fbfaf7; padding:20px 18px 18px;
+    text-decoration:none; color:var(--ink); border-radius:2px; transition:border-color .15s; }
+  .card:hover { border-color:var(--accent); }
+  .card .n { font:600 9px/1 inherit; letter-spacing:0.16em; color:var(--ink60); }
+  .card h2 { font:600 16px/1.25 Archivo,Helvetica,Arial,sans-serif; margin:10px 0 8px; }
+  .card p { font-size:10px; line-height:1.65; color:var(--ink60); margin:0; }
+  .note { margin-top:34px; padding:14px 16px; border:1px solid var(--ink16); background:var(--panel);
+    font-size:10px; line-height:1.7; color:var(--ink60); border-radius:2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">YamaZina Platform — Project</div>
+  <h1>Bathroom</h1>
+  <div class="sub">Measured bathroom design suite: a 2D multi-view elevation planner that locks
+    geometry, a 3D model of the locked layout with OBJ/GLB export, a material look book, and a
+    fixture combo picker. Built to keep AI image generators on the real floor plan.</div>
+  <a class="back" href="../../index.html">← All projects</a>
+
+  <div class="grid">
+    <a class="card" href="./planner.html">
+      <div class="n">01</div><h2>Elevation Planner</h2>
+      <p>Edit shell, fittings and materials in measured 2D elevation + plan views. Drag with live
+      inch readouts, group, lock, undo/redo, and lock named versions.</p>
+    </a>
+    <a class="card" href="./3d.html">
+      <div class="n">02</div><h2>Bathroom 3D</h2>
+      <p>Renders the locked version as a real three.js model. Frame the plate shot, export
+      OBJ+MTL or GLB for image-gen handoff.</p>
+    </a>
+    <a class="card" href="./lookbook.html">
+      <div class="n">03</div><h2>Look Book</h2>
+      <p>59 real material cutouts (tile, wood, metal, mirror, textile) and the shaped hardware
+      icon library, browsable independent of the plan.</p>
+    </a>
+    <a class="card" href="./fixtures.html">
+      <div class="n">04</div><h2>Fixture Options</h2>
+      <p>Combo-pick a fixture and finish package: toilet, mirror, tap, showerhead, lighting —
+      41 options across 5 categories.</p>
+    </a>
+  </div>
+
+  <div class="note">
+    <b>Note on dependencies:</b> the planner and look book run on the dc-runtime
+    (<code>support.js</code>) which loads React from unpkg, and the 3D viewer loads three.js
+    from unpkg via an import map — so these pages need internet access. The sauna project is
+    fully self-contained; vendoring these deps into <code>platform/vendor/</code> is on the
+    roadmap (see <code>docs/ARCHITECTURE.md</code>). Geometry source of truth and AI-render
+    constraints live in <code>reference/</code>.
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YamaZina Sauna — 2D Plan</title>
+<style>
+  /* Drafting aesthetic carried over from the bathroom Elevation Planner:
+     warm off-white sheet, ink lines, mono labels, no color beyond materials. */
+  :root {
+    --paper: #faf9f5; --panel: #efece5; --ink: #23231f;
+    --ink60: rgba(35,35,31,0.6); --ink30: rgba(35,35,31,0.3); --ink16: rgba(35,35,31,0.16);
+    --accent: #8a5a2b; --brass: #c9a35c; --wood: #a8763f; --glass: #cfe0e3;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink);
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+  body { display: flex; min-height: 100vh; }
+
+  #side {
+    width: 340px; flex: 0 0 340px; background: var(--panel);
+    border-right: 1px solid var(--ink16); padding: 24px 20px 40px; overflow-y: auto;
+  }
+  .kicker { font: 600 10px/1 inherit; letter-spacing: 0.18em; color: var(--accent); text-transform: uppercase; }
+  h1 { font: 600 20px/1.2 Archivo, Helvetica, Arial, sans-serif; letter-spacing: -0.01em; margin: 10px 0 4px; }
+  .sub { font-size: 10px; line-height: 1.6; color: var(--ink60); margin-bottom: 14px; }
+  .navrow { display: flex; gap: 8px; margin: 14px 0 20px; }
+  .navrow a, button.ghost {
+    flex: 1; display: block; text-align: center; padding: 10px 8px; cursor: pointer;
+    border: 1px solid var(--ink); background: var(--ink); color: #fbfaf7; text-decoration: none;
+    font: 600 9px/1 inherit; letter-spacing: 0.12em; text-transform: uppercase; border-radius: 2px;
+  }
+  button.ghost { background: transparent; color: var(--ink); }
+  .sect { border-top: 1px solid var(--ink16); padding: 14px 0 4px; }
+  .sect > .label { font: 600 9px/1 inherit; letter-spacing: 0.16em; color: var(--ink60); text-transform: uppercase; margin-bottom: 10px; }
+  .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .row label { flex: 1 1 auto; font-size: 10px; color: var(--ink); }
+  .row .val { font-size: 10px; color: var(--accent); min-width: 66px; text-align: right; }
+  .row input[type=range] { flex: 1 1 100%; accent-color: var(--accent); height: 18px; }
+  .row select {
+    font: 500 10px/1.2 inherit; padding: 5px 6px; border: 1px solid var(--ink30);
+    background: var(--paper); color: var(--ink); border-radius: 2px;
+  }
+  .stack { margin-bottom: 12px; }
+  .hint { font-size: 9px; line-height: 1.6; color: var(--ink60); margin-top: 12px; }
+  #syncBadge { display: inline-block; margin-top: 6px; padding: 4px 7px; border: 1px solid var(--ink16);
+    border-radius: 2px; font-size: 9px; letter-spacing: 0.08em; color: var(--ink60); background: var(--paper); }
+  #syncBadge.live { color: var(--accent); border-color: var(--accent); }
+
+  #sheet { flex: 1 1 auto; overflow: auto; padding: 22px 26px; }
+  svg { display: block; background: var(--paper); }
+  svg text { font-family: inherit; }
+  .viewTitle { font: 600 11px/1 inherit; letter-spacing: 0.2em; fill: var(--ink); text-transform: uppercase; }
+  .viewSub { font: 400 9px/1 inherit; letter-spacing: 0.06em; fill: var(--ink60); }
+  .dim { font: 500 9px/1 inherit; fill: var(--ink60); }
+  .dim.hot { fill: var(--accent); font-weight: 600; }
+  .tag { font: 600 8px/1 inherit; letter-spacing: 0.1em; fill: var(--ink60); text-transform: uppercase; }
+  .draggable { cursor: grab; }
+  .draggable.active { cursor: grabbing; }
+  .handle { cursor: nwse-resize; }
+</style>
+</head>
+<body>
+
+<div id="side">
+  <div class="kicker">Measured Layout Tool</div>
+  <h1>Sauna — 2D Plan</h1>
+  <div class="sub">Quick, accurate 2D editing of the same design the 3D build renders.
+    Every edit here is written to the shared platform work state; the 3D build applies it
+    on load (and live, if open in another tab) through its own real-world clamps.</div>
+  <div class="navrow">
+    <a href="./index.html">Open 3D build →</a>
+    <button class="ghost" id="pullBtn" type="button" title="Discard 2D-side edits and re-read the shared state">Re-pull state</button>
+  </div>
+  <div id="syncBadge">sync: local defaults</div>
+
+  <div class="sect">
+    <div class="label">Window — SW1 wall</div>
+    <div class="stack">
+      <div class="row"><label>Position along wall</label><span class="val" id="v_win_z"></span></div>
+      <div class="row"><input type="range" id="s_win_z" step="0.05"></div>
+      <div class="row"><label>Sill height off floor</label><span class="val" id="v_win_y"></span></div>
+      <div class="row"><input type="range" id="s_win_y" step="0.05"></div>
+      <div class="row"><label>Width</label><span class="val" id="v_win_w"></span></div>
+      <div class="row"><input type="range" id="s_win_w" step="0.05"></div>
+      <div class="row"><label>Height</label><span class="val" id="v_win_h"></span></div>
+      <div class="row"><input type="range" id="s_win_h" step="0.05"></div>
+    </div>
+  </div>
+
+  <div class="sect">
+    <div class="label">Door — LW1 wall</div>
+    <div class="stack">
+      <div class="row"><label>Position (center)</label><span class="val" id="v_door_x"></span></div>
+      <div class="row"><input type="range" id="s_door_x" step="0.05"></div>
+      <div class="row"><label>Width</label><span class="val" id="v_door_w"></span></div>
+      <div class="row"><input type="range" id="s_door_w" step="0.05"></div>
+      <div class="row"><label>Panel height</label><span class="val" id="v_door_h"></span></div>
+      <div class="row"><input type="range" id="s_door_h" step="0.05"></div>
+    </div>
+  </div>
+
+  <div class="sect">
+    <div class="label">Heater</div>
+    <div class="stack">
+      <div class="row"><label>Position X</label><span class="val" id="v_heat_x"></span></div>
+      <div class="row"><input type="range" id="s_heat_x" step="0.05"></div>
+      <div class="row"><label>Standoff from LW1</label><span class="val" id="v_heat_z"></span></div>
+      <div class="row"><input type="range" id="s_heat_z" step="0.05"></div>
+    </div>
+  </div>
+
+  <div class="sect">
+    <div class="label">Benches</div>
+    <div class="stack">
+      <div class="row"><label>Run A (LW2) — length</label><span class="val" id="v_ba_len"></span></div>
+      <div class="row"><input type="range" id="s_ba_len" step="0.05"></div>
+      <div class="row"><label>Run A — offset</label><span class="val" id="v_ba_off"></span></div>
+      <div class="row"><input type="range" id="s_ba_off" step="0.05"></div>
+      <div class="row"><label>Return run wall</label>
+        <select id="sel_bb_wall"><option value="SW2">SW2 (left)</option><option value="SW1">SW1 (right)</option></select>
+      </div>
+      <div class="row"><label>Return run — length</label><span class="val" id="v_bb_len"></span></div>
+      <div class="row"><input type="range" id="s_bb_len" step="0.05"></div>
+      <div class="row"><label>Return run — offset</label><span class="val" id="v_bb_off"></span></div>
+      <div class="row"><input type="range" id="s_bb_off" step="0.05"></div>
+    </div>
+  </div>
+
+  <div class="hint">
+    Seat heights are fixed by the YamaZina bench rules: foot bench 32&Prime; AFF,
+    top bench 50&Prime; AFF, top depth 24&Prime;, foot reach 44&Prime;.
+    Drag the window in the elevation, the heater and door in the plan.
+    The 3D build re-clamps everything against the full rule set on apply.
+  </div>
+</div>
+
+<div id="sheet"></div>
+
+<script src="../../platform/core/store.js"></script>
+<script src="spec.js"></script>
+<script>
+(function(){
+  'use strict';
+  var SPEC = window.SAUNA_SPEC;
+  var store = window.PlatformStore('sauna');
+
+  // ---- fixed bench/heater facts mirrored from the 3D app's parametric rules ----
+  var HIGH_DEPTH = SPEC.ftIn(2,0);                    // top bench depth (rule 6)
+  var FOOT_Z0 = HIGH_DEPTH - SPEC.ftIn(0,6);          // foot bench box starts 18" off the wall
+  var LOW_DEPTH = SPEC.ftIn(3,8);                     // 44" — foot bench total reach
+  var RUN_MIN_LEN = SPEC.ftIn(2,0);
+  var HEATER_R = SPEC.ftIn(1,6.1)/2;                  // HUUM footprint radius
+  var GUARD_R = HEATER_R + SPEC.ftIn(0,2);
+  var DOOR_W_MIN = SPEC.ftIn(1,8), DOOR_W_MAX = SPEC.ftIn(3,0);
+  var DOOR_H_MIN = SPEC.ftIn(5,6), DOOR_H_MAX = SPEC.ftIn(7,0);
+  var DOOR_FLOAT_H = SPEC.ftIn(0,4.25);
+  var LANDING_DEF = { w: SPEC.ftIn(2,0), d: SPEC.ftIn(4,0) };
+  var W = SPEC.WIDTH, D = SPEC.DEPTH;
+
+  // ---- view-model: the subset of the shared design state this sheet edits ----
+  // `full` is the COMPLETE state object from the store (or null) — we only
+  // ever mutate our subset into it, so 3D-only fields (lighting, tones,
+  // fixtures, notes...) pass through untouched.
+  var full = null;
+  var vm = null;
+
+  function defaults(){
+    return {
+      win: Object.assign({}, SPEC.defaults.window),
+      door: { posX: W/2, widthFt: SPEC.ftIn(2,0), panelHeightFt: SPEC.ftIn(6,0), heightIn: DOOR_FLOAT_H*12 + 0 },
+      heater: { posX: W - GUARD_R - SPEC.ftIn(0,6), posZ: SPEC.ftIn(0,9) },
+      benchA: { offset: 0, length: W },
+      benchB: { wall: 'SW2', offset: 0, length: D },
+      landing: Object.assign({}, LANDING_DEF),
+    };
+  }
+
+  function readStore(){
+    var env = store.loadWork();
+    full = (env && env.state) ? env.state : null;
+    var d = defaults();
+    if(full){
+      if(full.window){ ['w','h','z','y'].forEach(function(k){ if(full.window[k]!=null) d.win[k]=full.window[k]; }); }
+      if(full.door){
+        if(full.door.posX!=null) d.door.posX = full.door.posX;
+        if(full.door.widthFt!=null) d.door.widthFt = full.door.widthFt;
+        if(full.door.panelHeightFt!=null) d.door.panelHeightFt = full.door.panelHeightFt;
+        if(full.door.heightIn!=null) d.door.heightIn = full.door.heightIn;
+      }
+      if(full.heater){
+        if(full.heater.posX!=null) d.heater.posX = full.heater.posX;
+        if(full.heater.posZ!=null) d.heater.posZ = full.heater.posZ;
+      }
+      if(full.bench){
+        if(full.bench.runA){ if(full.bench.runA.offset!=null) d.benchA.offset=full.bench.runA.offset; if(full.bench.runA.length!=null) d.benchA.length=full.bench.runA.length; }
+        if(full.bench.runB){ if(full.bench.runB.wall) d.benchB.wall=full.bench.runB.wall; if(full.bench.runB.offset!=null) d.benchB.offset=full.bench.runB.offset; if(full.bench.runB.length!=null) d.benchB.length=full.bench.runB.length; }
+      }
+      if(full.landing){ if(full.landing.w!=null) d.landing.w=full.landing.w; if(full.landing.d!=null) d.landing.d=full.landing.d; }
+      setBadge('sync: shared state ('+(env.by||'?')+', '+new Date(env.savedAt).toLocaleTimeString()+')', true);
+    } else {
+      setBadge('sync: local defaults', false);
+    }
+    vm = d;
+  }
+
+  var saveTimer = null;
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, 160);
+  }
+  function save(){
+    if(!full) full = {};
+    full.window = Object.assign(full.window||{}, { w: vm.win.w, h: vm.win.h, z: vm.win.z, y: vm.win.y });
+    full.door = Object.assign(full.door||{}, { posX: vm.door.posX, widthFt: vm.door.widthFt, panelHeightFt: vm.door.panelHeightFt });
+    full.heater = Object.assign(full.heater||{}, { posX: vm.heater.posX, posZ: vm.heater.posZ });
+    full.bench = full.bench || {};
+    full.bench.runA = Object.assign(full.bench.runA||{}, { offset: vm.benchA.offset, length: vm.benchA.length });
+    full.bench.runB = Object.assign(full.bench.runB||{}, { wall: vm.benchB.wall, offset: vm.benchB.offset, length: vm.benchB.length });
+    store.saveWork(full, '2d');
+    setBadge('sync: saved '+new Date().toLocaleTimeString()+' (2d)', true);
+  }
+
+  function setBadge(text, live){
+    var b = document.getElementById('syncBadge');
+    b.textContent = text;
+    b.classList.toggle('live', !!live);
+  }
+
+  // ---- clamps (2D-side; the 3D setters re-clamp with the full rule set) ----
+  function clamp(v,a,b){ return Math.min(b, Math.max(a, v)); }
+  function clampWin(){
+    var w = vm.win;
+    w.w = clamp(w.w, SPEC.WIN_W_MIN, SPEC.WIN_W_MAX);
+    w.h = clamp(w.h, SPEC.WIN_H_MIN, SPEC.WIN_H_MAX);
+    w.z = clamp(w.z, 0.15, D - w.w - 0.15);
+    var roof = Math.min(SPEC.heightAt(w.z), SPEC.heightAt(w.z + w.w)) - 0.2;
+    w.y = clamp(w.y, 0.5, Math.max(0.5, roof - w.h));
+  }
+  function clampDoor(){
+    var d = vm.door;
+    d.widthFt = clamp(d.widthFt, DOOR_W_MIN, DOOR_W_MAX);
+    d.panelHeightFt = clamp(d.panelHeightFt, DOOR_H_MIN, DOOR_H_MAX);
+    d.posX = clamp(d.posX, d.widthFt/2 + 0.2, W - d.widthFt/2 - 0.2);
+  }
+  function clampHeater(){
+    var h = vm.heater;
+    h.posX = clamp(h.posX, GUARD_R + 0.1, W - GUARD_R - 0.1);
+    h.posZ = clamp(h.posZ, SPEC.ftIn(0,6), SPEC.ftIn(1,0)); // mandated 6-12" standoff band off LW1
+  }
+  function clampBenches(){
+    var a = vm.benchA, b = vm.benchB;
+    a.length = clamp(a.length, RUN_MIN_LEN, W);
+    a.offset = clamp(a.offset, 0, W - a.length);
+    b.length = clamp(b.length, RUN_MIN_LEN, D);
+    b.offset = clamp(b.offset, 0, D - b.length);
+  }
+  function clampAll(){ clampWin(); clampDoor(); clampHeater(); clampBenches(); }
+
+  // ---- formatting ----
+  function fmt(ft){
+    var inches = ft * 12;
+    var whole = Math.floor(inches / 12);
+    var rem = inches - whole * 12;
+    var r = Math.round(rem * 4) / 4;
+    if(r >= 12){ whole += 1; r = 0; }
+    var s = (r % 1 === 0) ? String(r) : r.toFixed(2).replace(/0+$/,'').replace(/\.$/,'');
+    return whole + "'-" + s + '"';
+  }
+  function fmtIn(ft){ return (Math.round(ft*12*4)/4) + '″'; }
+
+  // ---- SVG sheet ----
+  var SC = 64;               // px per foot
+  var M = 70;                // margin around each view
+  var planW = W*SC, planH = D*SC;
+  var elevW = D*SC, elevH = SPEC.CEIL_FLAT*SC;
+  var sheetW = M + Math.max(planW, elevW) + M + 120;
+  var PX0 = M, PY0 = M + 30;                       // plan origin (top-left of room rect)
+  var EX0 = M, EY0 = PY0 + planH + 150;            // elevation stacked below the plan
+  var sheetH = EY0 + elevH + M + 40;
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg = document.createElementNS(NS,'svg');
+  svg.setAttribute('width', sheetW); svg.setAttribute('height', sheetH);
+  svg.setAttribute('viewBox', '0 0 '+sheetW+' '+sheetH);
+  document.getElementById('sheet').appendChild(svg);
+
+  // plan mapping: room x -> right, room z (0 at LW1/door wall) -> DOWN edge of view.
+  function px(x){ return PX0 + x*SC; }
+  function pz(z){ return PY0 + (D - z)*SC; }   // z=0 (LW1) at bottom
+  // elevation (SW1 seen from inside): z -> right, y -> up
+  function ez(z){ return EX0 + z*SC; }
+  function ey(y){ return EY0 + (SPEC.CEIL_FLAT - y)*SC; }
+
+  function el(name, attrs, parent){
+    var e = document.createElementNS(NS, name);
+    for(var k in attrs) e.setAttribute(k, attrs[k]);
+    (parent||svg).appendChild(e);
+    return e;
+  }
+  function txt(x, y, str, cls, anchor, parent){
+    var t = el('text', {x:x, y:y, 'class':cls||'dim', 'text-anchor':anchor||'start'}, parent);
+    t.textContent = str;
+    return t;
+  }
+  // dimension line with end ticks
+  function dimH(x0, x1, y, label, cls, parent){
+    var g = el('g', {}, parent);
+    el('line', {x1:x0,y1:y,x2:x1,y2:y,stroke:'currentColor','stroke-width':0.75}, g);
+    [x0,x1].forEach(function(x){ el('line',{x1:x-3,y1:y+3,x2:x+3,y2:y-3,stroke:'currentColor','stroke-width':0.75},g); });
+    txt((x0+x1)/2, y-4, label, cls||'dim', 'middle', g);
+    g.setAttribute('color', 'rgba(35,35,31,0.45)');
+    return g;
+  }
+  function dimV(y0, y1, x, label, cls, parent){
+    var g = el('g', {}, parent);
+    el('line', {x1:x,y1:y0,x2:x,y2:y1,stroke:'currentColor','stroke-width':0.75}, g);
+    [y0,y1].forEach(function(y){ el('line',{x1:x-3,y1:y+3,x2:x+3,y2:y-3,stroke:'currentColor','stroke-width':0.75},g); });
+    var t = txt(x-5, (y0+y1)/2, label, cls||'dim', 'middle', g);
+    t.setAttribute('transform', 'rotate(-90 '+(x-5)+' '+((y0+y1)/2)+')');
+    g.setAttribute('color', 'rgba(35,35,31,0.45)');
+    return g;
+  }
+
+  // ---------------------------------------------------------------- render --
+  function render(){
+    clampAll();
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+    renderPlan();
+    renderElevation();
+    syncSidebar();
+  }
+
+  function renderPlan(){
+    var g = el('g', {});
+    txt(PX0, PY0-38, 'PLAN — FINISHED INTERIOR', 'viewTitle', 'start', g);
+    txt(PX0, PY0-24, 'LW1 (door wall) at bottom · SW2 left · SW1 right · scale '+SC+'px/ft', 'viewSub', 'start', g);
+
+    // wall band: finished interior rect inside the raw stud envelope
+    var lin = SPEC.WALL_LINING*SC;
+    el('rect', {x:PX0-lin, y:PY0-lin, width:planW+2*lin, height:planH+2*lin, fill:'none', stroke:'#23231f','stroke-width':1.5}, g);
+    el('rect', {x:PX0, y:PY0, width:planW, height:planH, fill:'#fbfaf7', stroke:'#23231f','stroke-width':1}, g);
+
+    // ---- benches ----
+    var a = vm.benchA;
+    // Run A hugs LW2 (top edge of view). Foot bench box FOOT_Z0..LOW_DEPTH off the wall,
+    // i.e. from z = D-LOW_DEPTH to z = D-FOOT_Z0.
+    el('rect', {x:px(a.offset), y:pz(D-FOOT_Z0), width:a.length*SC, height:(LOW_DEPTH-FOOT_Z0)*SC, fill:'#e9dfcd', stroke:'#8a5a2b','stroke-width':1}, g);
+    // top bench (50" AFF): wall to HIGH_DEPTH
+    el('rect', {x:px(a.offset), y:pz(D), width:a.length*SC, height:HIGH_DEPTH*SC, fill:'#e0d2b8', stroke:'#8a5a2b','stroke-width':1.25}, g);
+    txt(px(a.offset+a.length/2), pz(D)+13, 'TOP BENCH · 50″ AFF', 'tag', 'middle', g);
+    txt(px(a.offset+a.length/2), pz(D-FOOT_Z0)+13, 'FOOT BENCH · 32″ AFF', 'tag', 'middle', g);
+
+    // Run B on its wall
+    var b = vm.benchB, bIsSW1 = (b.wall === 'SW1');
+    var bx0 = bIsSW1 ? px(W-HIGH_DEPTH) : px(0);
+    el('rect', {x:bx0, y:pz(b.offset+b.length), width:HIGH_DEPTH*SC, height:b.length*SC, fill:'#e0d2b8', stroke:'#8a5a2b','stroke-width':1.25}, g);
+    var fx0 = bIsSW1 ? px(W-LOW_DEPTH) : px(FOOT_Z0);
+    el('rect', {x:fx0, y:pz(b.offset+b.length), width:(LOW_DEPTH-FOOT_Z0)*SC, height:b.length*SC, fill:'#e9dfcd', stroke:'#8a5a2b','stroke-width':1}, g);
+    var btag = txt(bIsSW1 ? px(W-HIGH_DEPTH/2) : px(HIGH_DEPTH/2), pz(b.offset+b.length/2), 'RETURN · '+b.wall, 'tag', 'middle', g);
+    btag.setAttribute('transform','rotate(-90 '+btag.getAttribute('x')+' '+btag.getAttribute('y')+')');
+
+    // ---- landing (inside, tracks door X) ----
+    el('rect', {x:px(vm.door.posX - vm.landing.w/2), y:pz(vm.landing.d), width:vm.landing.w*SC, height:vm.landing.d*SC,
+      fill:'none', stroke:'rgba(35,35,31,0.5)','stroke-dasharray':'4 3','stroke-width':1}, g);
+    txt(px(vm.door.posX), pz(vm.landing.d)-4, 'LANDING', 'tag', 'middle', g);
+
+    // ---- window on SW1 (right wall): break in the wall band ----
+    var wz = vm.win;
+    el('line', {x1:px(W)+1, y1:pz(wz.z), x2:px(W)+1, y2:pz(wz.z+wz.w), stroke:'#fbfaf7','stroke-width':4}, g);
+    el('line', {x1:px(W)+lin, y1:pz(wz.z), x2:px(W)+lin, y2:pz(wz.z+wz.w), stroke:'#fbfaf7','stroke-width':4}, g);
+    el('line', {x1:px(W)+lin/2, y1:pz(wz.z), x2:px(W)+lin/2, y2:pz(wz.z+wz.w), stroke:'#3d5457','stroke-width':2}, g);
+    txt(px(W)+lin+6, (pz(wz.z)+pz(wz.z+wz.w))/2+3, 'WINDOW', 'tag', 'start', g);
+
+    // ---- door on LW1 (bottom edge) with swing arc ----
+    var dr = vm.door, dx0 = px(dr.posX - dr.widthFt/2), dx1 = px(dr.posX + dr.widthFt/2);
+    el('line', {x1:dx0, y1:pz(0)+1, x2:dx1, y2:pz(0)+1, stroke:'#fbfaf7','stroke-width':4}, g);
+    el('line', {x1:dx0, y1:pz(0)+lin, x2:dx1, y2:pz(0)+lin, stroke:'#fbfaf7','stroke-width':4}, g);
+    var doorG = el('g', {'class':'draggable', 'data-drag':'door'}, g);
+    el('line', {x1:dx0, y1:pz(0), x2:dx0, y2:pz(0)-dr.widthFt*SC, stroke:'#23231f','stroke-width':1.5}, doorG);
+    el('path', {d:'M '+dx0+' '+(pz(0)-dr.widthFt*SC)+' A '+(dr.widthFt*SC)+' '+(dr.widthFt*SC)+' 0 0 1 '+dx1+' '+pz(0),
+      fill:'none', stroke:'rgba(35,35,31,0.5)','stroke-width':0.75,'stroke-dasharray':'3 3'}, doorG);
+    el('rect', {x:dx0-6, y:pz(0)-10, width:(dr.widthFt*SC)+12, height:16, fill:'transparent'}, doorG);
+    txt(px(dr.posX), pz(0)+16, 'DOOR '+fmtIn(dr.widthFt), 'tag', 'middle', g);
+    dimH(px(0), dx0, pz(0)+30, fmt(dr.posX - dr.widthFt/2), 'dim hot', g);
+
+    // ---- heater ----
+    var h = vm.heater;
+    var hg = el('g', {'class':'draggable', 'data-drag':'heater'}, g);
+    el('circle', {cx:px(h.posX), cy:pz(h.posZ), r:GUARD_R*SC, fill:'none', stroke:'#8a5a2b','stroke-width':1,'stroke-dasharray':'2 2'}, hg);
+    el('circle', {cx:px(h.posX), cy:pz(h.posZ), r:HEATER_R*SC, fill:'#d8cdb6', stroke:'#23231f','stroke-width':1.25}, hg);
+    txt(px(h.posX), pz(h.posZ)+3, 'HUUM', 'tag', 'middle', hg);
+    dimV(pz(h.posZ), pz(0), px(h.posX)+GUARD_R*SC+10, fmtIn(h.posZ)+' C/L', 'dim', g);
+
+    // ---- overall dims ----
+    dimH(px(0), px(W), PY0-8, fmt(W)+' FINISHED', 'dim', g);
+    dimV(pz(D), pz(0), px(0)-14, fmt(D)+' FINISHED', 'dim', g);
+    dimH(px(vm.benchA.offset), px(vm.benchA.offset+vm.benchA.length), pz(D-LOW_DEPTH)-6, fmt(vm.benchA.length)+' RUN A', 'dim', g);
+  }
+
+  function renderElevation(){
+    var g = el('g', {});
+    txt(EX0, EY0-38, 'ELEVATION — SW1 (WINDOW WALL)', 'viewTitle', 'start', g);
+    txt(EX0, EY0-24, 'seen from inside · LW1 (door wall) at left · drag the window · corner handle resizes', 'viewSub', 'start', g);
+
+    // wall profile under the roofline: flat CEIL_FLAT back to KINK_Z, ramps to FRONT_H at LW2 (z=D)
+    var pts = [ ez(0)+','+ey(0), ez(D)+','+ey(0), ez(D)+','+ey(SPEC.FRONT_H), ez(SPEC.KINK_Z)+','+ey(SPEC.CEIL_FLAT), ez(0)+','+ey(SPEC.CEIL_FLAT) ];
+    el('polygon', {points: pts.join(' '), fill:'#fbfaf7', stroke:'#23231f','stroke-width':1.5}, g);
+
+    // seat datum lines
+    [[SPEC.SEAT_LOW,'FOOT 32″'],[SPEC.SEAT_HIGH,'TOP 50″']].forEach(function(s){
+      el('line', {x1:ez(0), y1:ey(s[0]), x2:ez(D), y2:ey(s[0]), stroke:'rgba(138,90,43,0.5)','stroke-width':0.75,'stroke-dasharray':'5 4'}, g);
+      txt(ez(D)+6, ey(s[0])+3, s[1], 'tag', 'start', g);
+    });
+
+    // bench profile (run A end-on: foot box + top tier at the LW2 end = right side)
+    el('rect', {x:ez(D-LOW_DEPTH), y:ey(SPEC.SEAT_LOW), width:(LOW_DEPTH-FOOT_Z0)*SC, height:SPEC.ftIn(0,8)*SC, fill:'#e9dfcd', stroke:'#8a5a2b','stroke-width':1}, g);
+    el('rect', {x:ez(D-HIGH_DEPTH), y:ey(SPEC.SEAT_HIGH), width:HIGH_DEPTH*SC, height:SPEC.ftIn(0,8)*SC, fill:'#e0d2b8', stroke:'#8a5a2b','stroke-width':1}, g);
+
+    // window (draggable) + resize handle
+    var w = vm.win;
+    var wg = el('g', {'class':'draggable', 'data-drag':'window'}, g);
+    el('rect', {x:ez(w.z), y:ey(w.y+w.h), width:w.w*SC, height:w.h*SC, fill:'#cfe0e3', 'fill-opacity':0.55, stroke:'#3d5457','stroke-width':1.5}, wg);
+    el('line', {x1:ez(w.z), y1:ey(w.y+w.h), x2:ez(w.z+w.w), y2:ey(w.y), stroke:'#3d5457','stroke-width':0.5}, wg);
+    el('line', {x1:ez(w.z+w.w), y1:ey(w.y+w.h), x2:ez(w.z), y2:ey(w.y), stroke:'#3d5457','stroke-width':0.5}, wg);
+    el('rect', {x:ez(w.z+w.w)-5, y:ey(w.y)-5, width:10, height:10, fill:'#8a5a2b', 'class':'handle', 'data-drag':'window-size'}, g);
+
+    // window dims (hot — these are the live readouts while dragging)
+    dimH(ez(0), ez(w.z), ey(0)+26, fmt(w.z), 'dim hot', g);
+    dimH(ez(w.z), ez(w.z+w.w), ey(w.y+w.h)-8, fmt(w.w), 'dim hot', g);
+    dimV(ey(w.y+w.h), ey(w.y), ez(w.z)-10, fmt(w.h), 'dim hot', g);
+    dimV(ey(w.y), ey(0), ez(w.z+w.w)+14, fmt(w.y)+' SILL', 'dim hot', g);
+
+    // overall dims
+    dimH(ez(0), ez(D), ey(0)+44, fmt(D), 'dim', g);
+    dimV(ey(SPEC.CEIL_FLAT), ey(0), ez(0)-26, fmt(SPEC.CEIL_FLAT)+' CLG', 'dim', g);
+    txt(ez(0)+4, ey(0)+12, 'FIN. FLOOR', 'tag', 'start', g);
+  }
+
+  // -------------------------------------------------------------- sidebar --
+  function bindSlider(id, get, set, min, max){
+    var s = document.getElementById(id);
+    s.min = min; s.max = max;
+    s.addEventListener('input', function(){ set(parseFloat(s.value)); clampAll(); render(); scheduleSave(); });
+    return s;
+  }
+  var sliders = [];
+  function setupSidebar(){
+    sliders = [
+      bindSlider('s_win_z', function(){return vm.win.z;}, function(v){vm.win.z=v;}, 0.15, D-SPEC.WIN_W_MIN-0.15),
+      bindSlider('s_win_y', function(){return vm.win.y;}, function(v){vm.win.y=v;}, 0.5, SPEC.CEIL_FLAT-SPEC.WIN_H_MIN),
+      bindSlider('s_win_w', function(){return vm.win.w;}, function(v){vm.win.w=v;}, SPEC.WIN_W_MIN, SPEC.WIN_W_MAX),
+      bindSlider('s_win_h', function(){return vm.win.h;}, function(v){vm.win.h=v;}, SPEC.WIN_H_MIN, SPEC.WIN_H_MAX),
+      bindSlider('s_door_x', function(){return vm.door.posX;}, function(v){vm.door.posX=v;}, 0, W),
+      bindSlider('s_door_w', function(){return vm.door.widthFt;}, function(v){vm.door.widthFt=v;}, DOOR_W_MIN, DOOR_W_MAX),
+      bindSlider('s_door_h', function(){return vm.door.panelHeightFt;}, function(v){vm.door.panelHeightFt=v;}, DOOR_H_MIN, DOOR_H_MAX),
+      bindSlider('s_heat_x', function(){return vm.heater.posX;}, function(v){vm.heater.posX=v;}, GUARD_R, W-GUARD_R),
+      bindSlider('s_heat_z', function(){return vm.heater.posZ;}, function(v){vm.heater.posZ=v;}, SPEC.ftIn(0,6), SPEC.ftIn(1,0)),
+      bindSlider('s_ba_len', function(){return vm.benchA.length;}, function(v){vm.benchA.length=v;}, RUN_MIN_LEN, W),
+      bindSlider('s_ba_off', function(){return vm.benchA.offset;}, function(v){vm.benchA.offset=v;}, 0, W-RUN_MIN_LEN),
+      bindSlider('s_bb_len', function(){return vm.benchB.length;}, function(v){vm.benchB.length=v;}, RUN_MIN_LEN, D),
+      bindSlider('s_bb_off', function(){return vm.benchB.offset;}, function(v){vm.benchB.offset=v;}, 0, D-RUN_MIN_LEN),
+    ];
+    document.getElementById('sel_bb_wall').addEventListener('change', function(ev){
+      vm.benchB.wall = ev.target.value === 'SW1' ? 'SW1' : 'SW2';
+      clampAll(); render(); scheduleSave();
+    });
+    document.getElementById('pullBtn').addEventListener('click', function(){ readStore(); render(); });
+  }
+  function syncSidebar(){
+    function setPair(sid, vid, val){
+      var s = document.getElementById(sid); if(document.activeElement !== s) s.value = val;
+      document.getElementById(vid).textContent = fmt(val);
+    }
+    setPair('s_win_z','v_win_z', vm.win.z); setPair('s_win_y','v_win_y', vm.win.y);
+    setPair('s_win_w','v_win_w', vm.win.w); setPair('s_win_h','v_win_h', vm.win.h);
+    setPair('s_door_x','v_door_x', vm.door.posX); setPair('s_door_w','v_door_w', vm.door.widthFt);
+    setPair('s_door_h','v_door_h', vm.door.panelHeightFt);
+    setPair('s_heat_x','v_heat_x', vm.heater.posX); setPair('s_heat_z','v_heat_z', vm.heater.posZ);
+    setPair('s_ba_len','v_ba_len', vm.benchA.length); setPair('s_ba_off','v_ba_off', vm.benchA.offset);
+    setPair('s_bb_len','v_bb_len', vm.benchB.length); setPair('s_bb_off','v_bb_off', vm.benchB.offset);
+    document.getElementById('sel_bb_wall').value = vm.benchB.wall;
+  }
+
+  // ----------------------------------------------------------------- drag --
+  var drag = null;
+  svg.addEventListener('pointerdown', function(ev){
+    var t = ev.target.closest ? ev.target.closest('[data-drag]') : null;
+    if(!t) return;
+    var kind = t.getAttribute('data-drag');
+    var p = svgPoint(ev);
+    drag = { kind: kind, startP: p,
+      start: JSON.parse(JSON.stringify({win: vm.win, door: vm.door, heater: vm.heater})) };
+    svg.setPointerCapture(ev.pointerId);
+    t.classList.add('active');
+    ev.preventDefault();
+  });
+  svg.addEventListener('pointermove', function(ev){
+    if(!drag) return;
+    var p = svgPoint(ev);
+    var dxFt = (p.x - drag.startP.x)/SC, dyFt = (p.y - drag.startP.y)/SC;
+    if(drag.kind === 'window'){
+      vm.win.z = drag.start.win.z + dxFt;       // elevation: +x = +z
+      vm.win.y = drag.start.win.y - dyFt;       // svg y down = height down
+    } else if(drag.kind === 'window-size'){
+      // Handle sits at the sill-right corner: drag right widens, drag down
+      // drops the sill (head height stays put — y shrinks as h grows).
+      vm.win.w = drag.start.win.w + dxFt;
+      vm.win.y = drag.start.win.y - dyFt;
+      vm.win.h = drag.start.win.h + dyFt;
+    } else if(drag.kind === 'heater'){
+      vm.heater.posX = drag.start.heater.posX + dxFt;
+      vm.heater.posZ = drag.start.heater.posZ - dyFt;  // plan: svg y down = -z
+    } else if(drag.kind === 'door'){
+      vm.door.posX = drag.start.door.posX + dxFt;
+    }
+    clampAll(); render(); scheduleSave();
+  });
+  function endDrag(ev){ if(drag){ drag = null; render(); save(); } }
+  svg.addEventListener('pointerup', endDrag);
+  svg.addEventListener('pointercancel', endDrag);
+  function svgPoint(ev){
+    var r = svg.getBoundingClientRect();
+    return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+  }
+
+  // ---- live sync from the 3D tab ----
+  store.onWorkChange(function(env){
+    if(!env || env.by === '2d') return;
+    readStore(); render();
+  });
+
+  readStore();
+  setupSidebar();
+  render();
+})();
+</script>
+</body>
+</html>
