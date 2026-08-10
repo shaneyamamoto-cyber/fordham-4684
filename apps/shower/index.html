@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Shower Enclosure — 51½" × 48" — 3D Construct Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,500;1,300&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B1014; --panel:rgba(15,21,26,0.92); --rule:#222E36; --rule-soft:#1A242B;
+    --stone:#D8D3CA; --text:#C9D2D7; --dim:#7C8A92; --brass:#C39A61; --water:#79AFC4;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --sans:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+    --serif:'Spectral',Georgia,serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0;background:var(--ink);overflow:hidden}
+  body{font-family:var(--sans);color:var(--text)}
+  canvas{display:block;position:fixed;inset:0}
+
+  .rail{position:fixed;top:0;left:0;bottom:0;width:318px;background:var(--panel);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-right:1px solid var(--rule);
+    display:flex;flex-direction:column;z-index:10}
+  .rail-head{padding:20px 20px 0;border-bottom:1px solid var(--rule)}
+  .eyebrow{font-family:var(--mono);font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--brass);margin:0 0 9px}
+  h1{font-family:var(--serif);font-weight:300;font-size:24px;line-height:1.12;margin:0;color:#EDF1F3}
+  h1 em{font-style:italic;color:var(--stone)}
+  .sub{font-family:var(--mono);font-size:10px;color:var(--dim);margin:8px 0 14px;letter-spacing:.04em}
+  .tabs{display:flex;gap:0;margin:0 -20px}
+  .tabs button{flex:1;background:none;border:0;border-top:1px solid var(--rule);border-right:1px solid var(--rule);
+    padding:11px 0;cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--dim);transition:color .18s,background .18s}
+  .tabs button:last-child{border-right:0}
+  .tabs button:hover{color:var(--text)}
+  .tabs button.on{color:var(--brass);background:rgba(195,154,97,.10)}
+
+  .rail-body{flex:1;overflow-y:auto;padding:2px 0 30px;scrollbar-width:thin}
+  .rail-body::-webkit-scrollbar{width:5px}
+  .rail-body::-webkit-scrollbar-thumb{background:var(--rule);border-radius:3px}
+  .pane{display:none}.pane.on{display:block}
+
+  .grp{padding:15px 20px 8px;border-bottom:1px solid var(--rule-soft)}
+  .grp-t{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--dim);margin:0 0 11px;display:flex;align-items:center;gap:9px}
+  .grp-t:after{content:"";flex:1;height:1px;background:var(--rule)}
+  .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:4px 0}
+  .row .k{font-size:12.5px;color:var(--text);font-weight:300}
+  .row .v{font-family:var(--mono);font-size:11px;color:var(--stone);white-space:nowrap}
+  .row .v.brass{color:var(--brass)}
+  .note{font-size:11px;line-height:1.55;color:var(--dim);padding:11px 0 2px;border-top:1px dashed var(--rule);margin-top:9px}
+  .note b{color:var(--text);font-weight:500}
+
+  .fixrow{cursor:pointer;padding:5px 6px;margin:0 -6px;border-radius:2px;transition:background .15s}
+  .fixrow:hover{background:rgba(255,255,255,.04)}
+  .fixrow.sel{background:rgba(195,154,97,.13)}
+  .fixrow.sel .k{color:var(--brass)}
+
+  .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .chip{background:none;border:1px solid var(--rule);border-radius:2px;color:var(--dim);cursor:pointer;
+    font-family:var(--mono);font-size:10px;padding:6px 8px;transition:all .16s;letter-spacing:.03em}
+  .chip:hover{color:var(--text);border-color:#33414B}
+  .chip.on{color:var(--ink);background:var(--brass);border-color:var(--brass);font-weight:500}
+  .chip.wide{flex:1 1 46%}
+
+  .swatches{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .sw-btn{border:1px solid var(--rule);border-radius:2px;background:none;cursor:pointer;padding:0;overflow:hidden;
+    display:flex;flex-direction:column;transition:border-color .16s,transform .16s}
+  .sw-btn:hover{border-color:#3D4C57;transform:translateY(-1px)}
+  .sw-btn.on{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass) inset}
+  .sw-chip{height:34px;width:100%}
+  .sw-name{font-family:var(--mono);font-size:8.5px;letter-spacing:.02em;color:var(--dim);padding:4px 3px;line-height:1.25;text-align:center}
+  .sw-btn.on .sw-name{color:var(--brass)}
+  .grouts{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+  .gr-btn{height:22px;border:1px solid var(--rule);border-radius:2px;cursor:pointer;padding:0}
+  .gr-btn.on{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass) inset}
+
+  .stack{position:fixed;top:16px;right:16px;z-index:10;display:flex;flex-direction:column;gap:8px;
+    align-items:flex-end;max-height:calc(100vh - 92px);overflow-y:auto;scrollbar-width:none}
+  .stack::-webkit-scrollbar{display:none}
+  .card{background:var(--panel);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    border:1px solid var(--rule);border-radius:2px;padding:11px 12px;min-width:196px;max-width:214px}
+  .card-t{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:0 0 9px}
+  .card-t .hi{color:var(--brass)}
+  .card-sub{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#57636B;margin:11px 0 6px}
+  .tog{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;
+    padding:6px 0;cursor:pointer;font-family:var(--sans);font-size:12.5px;color:var(--dim);font-weight:300}
+  .tog:hover{color:var(--text)}
+  .tog[aria-pressed="true"]{color:var(--stone)}
+  .sw{width:26px;height:14px;border:1px solid var(--rule);border-radius:8px;position:relative;flex:0 0 auto;transition:all .2s}
+  .sw:after{content:"";position:absolute;top:2px;left:2px;width:8px;height:8px;border-radius:50%;background:var(--dim);transition:all .22s}
+  .tog[aria-pressed="true"] .sw{border-color:var(--brass);background:rgba(195,154,97,.14)}
+  .tog[aria-pressed="true"] .sw:after{transform:translateX(12px);background:var(--brass)}
+
+  .seg{display:flex;border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+  .seg button{flex:1;background:none;border:0;border-right:1px solid var(--rule);padding:7px 2px;cursor:pointer;
+    font-family:var(--mono);font-size:10px;color:var(--dim);transition:all .18s;white-space:nowrap}
+  .seg button:last-child{border-right:0}
+  .seg button:hover{color:var(--text);background:rgba(255,255,255,.03)}
+  .seg button.on{color:var(--ink);background:var(--brass);font-weight:500}
+
+  .field{margin:9px 0 0}
+  .field label{display:block;font-size:11px;color:var(--dim);font-weight:300;margin-bottom:4px}
+  .spin{display:flex;border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+  .spin button{width:26px;background:none;border:0;color:var(--dim);cursor:pointer;font-size:13px;padding:5px 0;transition:all .15s}
+  .spin button:hover{background:rgba(195,154,97,.16);color:var(--brass)}
+  .spin input{flex:1;background:none;border:0;border-left:1px solid var(--rule);border-right:1px solid var(--rule);
+    color:var(--stone);font-family:var(--mono);font-size:11.5px;text-align:center;padding:5px 0;min-width:0}
+  .spin input:focus{outline:0;color:var(--brass)}
+  .spin input::-webkit-outer-spin-button,.spin input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .spin input[type=number]{-moz-appearance:textfield}
+  .minirow{display:flex;gap:6px;margin-top:11px}
+  .mini{flex:1;background:none;border:1px solid var(--rule);border-radius:2px;color:var(--dim);cursor:pointer;
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:7px 0;transition:all .16s}
+  .mini:hover{color:var(--brass);border-color:var(--brass)}
+  .mini.alt:hover{color:var(--stone);border-color:#3D4C57}
+  #place-host{margin-bottom:2px}
+  .lockrow{border-top:1px dashed var(--rule);margin-top:9px;padding-top:9px}
+  .lockbar{font-family:var(--mono);font-size:9px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--ink);background:var(--brass);margin:0 0 10px;padding:6px 9px;border-radius:2px;text-align:center}
+  body.dlock #pane-tile,body.dlock #build-tree,body.dlock #place-fields,body.dlock #place-host,
+  body.dlock #seg-hist,body.dlock #btn-import,body.dlock #btn-factory,body.dlock #btn-restore,
+  body.dlock #place-lock,body.dlock #place-centre,body.dlock #place-reset{
+    pointer-events:none;opacity:.4;filter:saturate(.4)}
+  body.dlock .fixrow{pointer-events:auto;opacity:1}
+  #spec-io.tall{height:220px}
+  #spec-io{width:100%;height:78px;margin-top:9px;background:#0A0F13;border:1px solid var(--rule);
+    border-radius:2px;color:var(--stone);font-family:var(--mono);font-size:9px;line-height:1.4;
+    padding:6px;resize:vertical}
+  #spec-io:focus{outline:0;border-color:var(--brass)}
+  .hist-hint{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;color:#4E5A62;margin:7px 0 0;text-align:center}
+  .seg button:disabled{opacity:.32;cursor:default}
+  .seg button:disabled:hover{background:none;color:var(--dim)}
+  .lb-meta{margin-top:10px;border-top:1px dashed var(--rule);padding-top:9px}
+  .lb-meta .row{padding:3px 0}
+  .lb-meta .row .k{font-size:11.5px}
+  .lb-meta .row .v{font-size:10px}
+
+  /* nested build tree: category > element > controls */
+  .cat{border-bottom:1px solid var(--rule-soft)}
+  .cat-h{width:100%;display:flex;align-items:center;gap:9px;background:none;border:0;cursor:pointer;
+    padding:13px 20px;font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--dim);transition:color .16s}
+  .cat-h:hover{color:var(--text)}
+  .caret{display:inline-block;font-size:8px;color:var(--brass);transition:transform .22s cubic-bezier(.4,0,.2,1)}
+  .cat.open .cat-h .caret{transform:rotate(90deg)}
+  .cat-h .count{margin-left:auto;font-size:9px;color:#4A555C;letter-spacing:.1em}
+  .cat-body{display:none;padding:0 20px 14px}
+  .cat.open .cat-body{display:block}
+  .el{border-left:1px solid var(--rule);margin:0 0 3px 3px;padding-left:12px;transition:border-color .18s}
+  .el.sel{border-left-color:var(--brass)}
+  .el-h{width:100%;display:flex;align-items:baseline;gap:8px;background:none;border:0;
+    cursor:pointer;padding:7px 0;text-align:left}
+  .el-h .nm{font-size:12.5px;font-weight:300;color:var(--text);transition:color .16s}
+  .el-h:hover .nm{color:var(--stone)}
+  .el.open .el-h .nm,.el.sel .el-h .nm{color:var(--brass)}
+  .el-h .sm{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--dim);white-space:nowrap}
+  .el-body{display:none;padding:1px 0 11px}
+  .el.open .el-body{display:block}
+  .el-note{font-size:10.5px;line-height:1.5;color:var(--dim);margin:9px 0 0}
+  .el-body .field{margin:8px 0 0}
+  .el-body .chips{margin-top:2px}
+  .locate{margin-top:9px;width:100%}
+
+  .views{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:10;display:flex;
+    background:var(--panel);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+  .views button{background:none;border:0;border-right:1px solid var(--rule);cursor:pointer;padding:10px 14px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);
+    transition:all .18s;white-space:nowrap}
+  .views button:last-child{border-right:0}
+  .views button:hover{color:var(--stone);background:rgba(255,255,255,.04)}
+  .views button.on{color:var(--brass);background:rgba(195,154,97,.10)}
+  .hint{position:fixed;bottom:20px;right:18px;z-index:10;font-family:var(--mono);font-size:9px;
+    letter-spacing:.1em;color:#465158;text-transform:uppercase;text-align:right;line-height:1.7}
+  button:focus-visible{outline:1px solid var(--brass);outline-offset:2px}
+  .railtoggle{display:none;position:fixed;top:14px;left:14px;z-index:12;background:var(--panel);
+    border:1px solid var(--rule);border-radius:2px;color:var(--brass);font-family:var(--mono);
+    font-size:10px;letter-spacing:.15em;padding:9px 12px;cursor:pointer;text-transform:uppercase}
+  @media (max-width:980px){
+    .rail{transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);width:290px;padding-top:50px}
+    .rail.open{transform:none}
+    .railtoggle{display:block}
+    .stack{top:14px;right:12px;max-width:170px}
+    .card{min-width:150px;max-width:170px;padding:9px 10px}
+    .views{bottom:12px;max-width:94vw;overflow-x:auto}
+    .views button{padding:9px 11px;font-size:9px}
+    .hint{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<button class="railtoggle" id="railtoggle">Spec</button>
+
+<aside class="rail" id="rail">
+  <div class="rail-head">
+    <p class="eyebrow" id="revline">Construct model · Rev P</p>
+    <p class="lockbar" id="lockbar" hidden>Design locked — read only</p>
+    <h1>Shower Enclosure<br><em>51½″ × 48″</em></h1>
+    <p class="sub" id="subline">Corner bench · glass front</p>
+    <div class="tabs" id="tabs">
+      <button data-p="spec" class="on">Spec</button>
+      <button data-p="tile">Tile</button>
+      <button data-p="build">Build</button>
+    </div>
+  </div>
+
+  <div class="rail-body">
+
+    <!-- ============ SPEC ============ -->
+    <div class="pane on" id="pane-spec">
+      <section class="grp">
+        <p class="grp-t">Envelope</p>
+        <div class="row"><span class="k">Width (front, glass)</span><span class="v">51 1/2″</span></div>
+        <div class="row"><span class="k">Depth (front to back)</span><span class="v">48″</span></div>
+        <div class="row"><span class="k">Ceiling height</span><span class="v">96″</span></div>
+        <div class="row"><span class="k">Model scale</span><span class="v brass">1 : 1 true</span></div>
+      </section>
+      <section class="grp">
+        <p class="grp-t">Glass front</p>
+        <div class="row"><span class="k">Fixed panel (left)</span><span class="v">22″</span></div>
+        <div class="row"><span class="k">Hinged door (right)</span><span class="v">27 1/2″</span></div>
+        <div class="row"><span class="k">Glass height</span><span class="v">78″</span></div>
+        <div class="row"><span class="k">Curb</span><span class="v">4″ H × 4 1/2″ W</span></div>
+      </section>
+      <section class="grp">
+        <p class="grp-t">Fixtures — live schedule</p>
+        <div id="fixlist"></div>
+        <p class="note"><b>Drag any fixture</b> in the view to move it on its host surface, or select it and type exact numbers. Snap 1/4″. L = from left wall, B = from back wall, AFF = above finished floor.</p>
+      </section>
+      <section class="grp">
+        <p class="grp-t">Tile schedule</p>
+        <div id="tilesched"></div>
+      </section>
+    </div>
+
+    <!-- ============ TILE ============ -->
+    <div class="pane" id="pane-tile">
+      <section class="grp">
+        <p class="grp-t">Surface</p>
+        <div class="chips" id="surf-chips"></div>
+        <p class="note" id="surf-note">Every surface holds its own tile, size, pattern and grout — mix and match freely.</p>
+      </section>
+      <section class="grp">
+        <p class="grp-t">Collection</p>
+        <div class="chips" id="coll-chips"></div>
+        <p class="note" id="coll-note"></p>
+      </section>
+      <section class="grp">
+        <p class="grp-t">Colour</p>
+        <div class="swatches" id="colour-sw"></div>
+        <div id="lb-meta"></div>
+      </section>
+      <section class="grp" id="sec-size">
+        <p class="grp-t">Size</p>
+        <div class="chips" id="size-chips"></div>
+      </section>
+      <section class="grp" id="sec-pat">
+        <p class="grp-t">Pattern</p>
+        <div class="chips" id="pat-chips"></div>
+        <p class="note" id="pat-note"></p>
+      </section>
+      <section class="grp" id="sec-grout">
+        <p class="grp-t">Grout</p>
+        <div class="grouts" id="grout-sw"></div>
+        <div class="minirow">
+          <button class="mini" id="apply-walls">Apply to all walls</button>
+          <button class="mini alt" id="apply-every">Apply to all</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ BUILD ============ -->
+    <div class="pane" id="pane-build">
+      <div id="build-tree"></div>
+    </div>
+
+  </div>
+</aside>
+
+<div class="stack">
+  <div class="card" id="histcard">
+    <p class="card-t">History</p>
+    <div class="seg" id="seg-hist">
+      <button id="btn-undo">↶ Undo</button><button id="btn-redo">Redo ↷</button>
+    </div>
+    <p class="hist-hint" id="hist-hint">⌘Z / ⌘⇧Z</p>
+  </div>
+  <div class="card" id="designcard">
+    <p class="card-t">Design · <span class="hi" id="save-state">saved</span></p>
+    <div class="minirow" style="margin-top:0">
+      <button class="mini" id="btn-export">Copy spec</button>
+      <button class="mini" id="btn-import">Paste spec</button>
+    </div>
+    <div class="minirow">
+      <button class="mini" id="btn-spec">Spec sheet</button>
+      <button class="mini alt" id="btn-restore">Restore last</button>
+    </div>
+    <div class="minirow">
+      <button class="mini alt" id="btn-factory">Defaults</button>
+    </div>
+    <button class="tog lockrow" id="t-designlock" aria-pressed="false">Lock design<span class="sw"></span></button>
+    <textarea id="spec-io" spellcheck="false" hidden></textarea>
+    <p class="hist-hint" id="io-hint" hidden></p>
+  </div>
+  <div class="card" id="place" hidden>
+    <p class="card-t">Placement · <span id="place-name" class="hi"></span></p>
+    <div class="seg" id="place-host"></div>
+    <div id="place-fields"></div>
+    <button class="tog" id="place-lock" aria-pressed="false">Lock in place<span class="sw"></span></button>
+    <div class="minirow">
+      <button class="mini" id="place-centre">Centre</button>
+      <button class="mini alt" id="place-close">Done</button>
+    </div>
+    <div class="minirow">
+      <button class="mini alt" id="place-reset">Reset all positions</button>
+    </div>
+  </div>
+  <div class="card">
+    <p class="card-t">Display</p>
+    <button class="tog" id="t-glass" aria-pressed="true">Glass<span class="sw"></span></button>
+    <button class="tog" id="t-dims" aria-pressed="true">Dimensions<span class="sw"></span></button>
+    <button class="tog" id="t-labels" aria-pressed="true">Fixture tags<span class="sw"></span></button>
+    <button class="tog" id="t-figure" aria-pressed="true">Scale figure 6′0″<span class="sw"></span></button>
+    <button class="tog" id="t-lockall" aria-pressed="false">Lock all fixtures<span class="sw"></span></button>
+  </div>
+</div>
+
+<div class="views" id="views">
+  <button data-v="iso" class="on">Iso</button><button data-v="front">Front</button>
+  <button data-v="bench">Bench wall</button><button data-v="plumb">Plumbing wall</button>
+  <button data-v="back">Back</button><button data-v="plan">Plan</button>
+</div>
+
+<p class="hint">Drag — orbit<br>Two&nbsp;fingers / right&#8209;drag — pan<br>Scroll — zoom</p>
+
+<script src="../../platform/vendor/three.min.js"></script>
+<script src="assets/materials-pack.js"></script>
+<script src="../../platform/core/store.js"></script>
+<script>window.PlatformStore("shower"); // reserve the project's platform storage namespace</script>
+<script src="app.js"></script>
+</body>
+</html>
