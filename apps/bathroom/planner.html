@@ -4739,5 +4739,28 @@ class Component extends DCLogic {
 }
 
 </script>
+<script>
+// Platform: plan hand-off for isolated-storage contexts (single-file
+// previews can't share localStorage with the 3D page). Downloads the locked
+// versions exactly as stored; the 3D page's LOAD PLAN JSON button reads it.
+(function () {
+  var b = document.createElement('button');
+  b.textContent = 'EXPORT PLAN JSON';
+  b.type = 'button';
+  b.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:2147483000;padding:11px 16px;' +
+    'border:1px solid #23231f;background:#23231f;color:#fbfaf7;cursor:pointer;border-radius:2px;' +
+    "font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em";
+  b.addEventListener('click', function () {
+    var raw = localStorage.getItem('yamazina.bathroom.versions.v1');
+    if (!raw) { alert('No locked versions yet — lock a version first.'); return; }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([raw], { type: 'application/json' }));
+    a.download = 'bathroom-plan.json';
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+  });
+  document.body.appendChild(b);
+})();
+</script>
 </body>
 </html>

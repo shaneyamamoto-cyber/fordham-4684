@@ -61,6 +61,8 @@
       entries.forEach(function (e, i) {
         e.mat.map = saved[group][i].map;
         e.mat.bumpMap = saved[group][i].bumpMap;
+        e.mat.normalMap = null;      // cedar defaults carry bump, not PBR maps
+        e.mat.roughnessMap = null;
         e.mat.color.setHex(saved[group][i].color);
         e.mat.needsUpdate = true;
       });
@@ -69,21 +71,43 @@
     }
     var lib = LIB.byId(id);
     if (!lib) return false;
-    loader.load(resolveFile(lib.file), function (tex) {
-      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-      tex.encoding = THREE.sRGBEncoding;
-      tex.anisotropy = maxAniso;
-      entries.forEach(function (e) {
-        var t = tex.clone();
-        t.needsUpdate = true;
-        t.repeat.set(e.span[0] / lib.spanW, e.span[1] / lib.spanH);
-        e.mat.map = t;
-        e.mat.bumpMap = null;         // the photo carries its own relief
-        e.mat.color.setHex(0xffffff); // don't tint the photograph; the tone
-                                      // sliders still multiply on top if used
-        e.mat.needsUpdate = true;
+    // Full PBR set where the library carries it: diffuse + normal/rough/bump
+    // maps, all repeated at the surface's true physical scale.
+    function loadOne(path, srgb) {
+      return new Promise(function (res) {
+        if (!path) return res(null);
+        loader.load(resolveFile(path), function (t) {
+          t.wrapS = t.wrapT = THREE.RepeatWrapping;
+          if (srgb) t.encoding = THREE.sRGBEncoding;
+          t.anisotropy = maxAniso;
+          res(t);
+        }, undefined, function () { res(null); });
       });
-    });
+    }
+    Promise.all([loadOne(lib.file, true), loadOne(lib.normal), loadOne(lib.rough), loadOne(lib.bump)])
+      .then(function (r) {
+        var map = r[0], nrm = r[1], rgh = r[2], bmp = r[3];
+        if (!map) return;
+        entries.forEach(function (e) {
+          function mk(t) {
+            if (!t) return null;
+            var c = t.clone();
+            c.repeat.set(e.span[0] / lib.spanW, e.span[1] / lib.spanH);
+            c.needsUpdate = true;
+            return c;
+          }
+          e.mat.map = mk(map);
+          e.mat.normalMap = mk(nrm);
+          if (nrm) e.mat.normalScale = new THREE.Vector2(0.55, 0.55);
+          e.mat.roughnessMap = mk(rgh);
+          if (rgh) e.mat.roughness = 1.0;
+          e.mat.bumpMap = mk(bmp);
+          // Species tint if the entry has one; otherwise leave the photo
+          // untinted. The tone sliders still multiply on top if used.
+          e.mat.color.set(lib.tint || '#ffffff');
+          e.mat.needsUpdate = true;
+        });
+      });
     current[group] = id;
     return true;
   };

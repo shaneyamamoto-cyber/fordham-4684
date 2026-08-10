@@ -299,14 +299,36 @@
         const w = this.clientWidth || 1;
         const h = this.clientHeight || 1;
         renderer.setSize(w, h);
+        if (this._composer) this._composer.setSize(w, h);
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
       };
       fit();
       this._ro = new ResizeObserver(fit);
+      // Subtle bloom on the practicals/emissives only (sauna recipe: high
+      // threshold so the sunlit room itself never blooms). Loaded lazily and
+      // optional — if the postprocessing modules aren't reachable the stage
+      // falls back to the plain render path.
+      this._composer = null;
+      Promise.all([
+        import('three/addons/postprocessing/EffectComposer.js'),
+        import('three/addons/postprocessing/RenderPass.js'),
+        import('three/addons/postprocessing/UnrealBloomPass.js'),
+        import('three/addons/postprocessing/OutputPass.js'),
+      ]).then(([ec, rp, ub, op]) => {
+        const composer = new ec.EffectComposer(renderer);
+        composer.addPass(new rp.RenderPass(scene, camera));
+        const bloom = new ub.UnrealBloomPass(
+          new THREE.Vector2(this.clientWidth || 1, this.clientHeight || 1), 0.3, 0.4, 1.6); // high threshold: only true emitters bloom, never the sunlit room
+        composer.addPass(bloom);
+        composer.addPass(new op.OutputPass());
+        composer.setSize(this.clientWidth || 1, this.clientHeight || 1);
+        this._composer = composer;
+      }).catch(() => { /* no postprocessing available — plain render */ });
       this._loop = () => {
         controls.update();
-        renderer.render(scene, camera);
+        if (this._composer) this._composer.render();
+        else renderer.render(scene, camera);
       };
       // Detached while three.js was fetching? Stay idle — the
       // connectedCallback resume starts the loop and observer on

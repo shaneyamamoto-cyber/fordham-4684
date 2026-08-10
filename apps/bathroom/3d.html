@@ -9,7 +9,11 @@
     "three": "../../platform/vendor/three-0.184/three.module.js",
     "three/addons/controls/OrbitControls.js": "../../platform/vendor/three-0.184/addons/OrbitControls.js",
     "three/addons/exporters/OBJExporter.js": "../../platform/vendor/three-0.184/addons/OBJExporter.js",
-    "three/addons/exporters/GLTFExporter.js": "../../platform/vendor/three-0.184/addons/GLTFExporter.js"
+    "three/addons/exporters/GLTFExporter.js": "../../platform/vendor/three-0.184/addons/GLTFExporter.js",
+    "three/addons/postprocessing/EffectComposer.js": "../../platform/vendor/three-0.184/addons/postprocessing/EffectComposer.js",
+    "three/addons/postprocessing/RenderPass.js": "../../platform/vendor/three-0.184/addons/postprocessing/RenderPass.js",
+    "three/addons/postprocessing/UnrealBloomPass.js": "../../platform/vendor/three-0.184/addons/postprocessing/UnrealBloomPass.js",
+    "three/addons/postprocessing/OutputPass.js": "../../platform/vendor/three-0.184/addons/postprocessing/OutputPass.js"
   }
 }
 </script>
@@ -40,6 +44,8 @@
   <div class="src" id="srcName">reading locked layout…</div>
   <div class="sub" id="srcSub"></div>
   <div class="sub">re-lock a version in the planner, then reload this page</div>
+  <button id="loadPlanBtn" type="button" style="margin-top:10px;width:100%;pointer-events:auto;cursor:pointer;padding:8px 10px;border:1px solid rgba(35,35,31,0.4);background:#fbfaf7;color:#23231f;font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;border-radius:2px">LOAD PLAN JSON</button>
+  <input id="planFile" type="file" accept="application/json" style="display:none">
   <button id="exportViewBtn" type="button" style="margin-top:10px;width:100%;pointer-events:auto;cursor:pointer;padding:8px 10px;border:1px solid #23231f;background:#23231f;color:#fbfaf7;font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;border-radius:2px">EXPORT VIEW + SPEC</button>
 </div>
 <template id="__bundler_thumbnail">
@@ -113,6 +119,17 @@ function loadLayout() {
   }
 }
 
+document.getElementById('loadPlanBtn').addEventListener('click', () => document.getElementById('planFile').click());
+document.getElementById('planFile').addEventListener('change', (ev) => {
+  const f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  f.text().then((txt) => {
+    JSON.parse(txt); // validate before storing
+    localStorage.setItem('yamazina.bathroom.versions.v1', txt);
+    location.reload();
+  }).catch(() => alert('Not a valid plan JSON export.'));
+});
+
 const L = loadLayout();
 const S = L.data;
 document.getElementById('srcName').textContent = L.name;
@@ -148,10 +165,11 @@ const MAT = {
 };
 
 // ---- Photographic surfaces from the shared Look Book library ----
-// Each tiled/stone zone's surf entry (finish, tile size, color) is matched to
-// the nearest seamless field in platform/materials; repeats are set from the
-// field's physical span so the photo reads at true scale. Painted zones stay
-// painted. Zones with no saved surf fall back to the planner's defaults.
+// Every tiled/stone/wood mesh gets its OWN material clone with texture
+// repeats computed from that mesh's real dimensions, so a 15" pier and a
+// 60" shower wall both show tile at true physical scale (this is what fixes
+// the zoomed/stretched look a shared repeat gives). PBR maps ride along:
+// generated normals for tile grout/relief, real rough/normal sets for wood.
 const DEFAULT_SURF = {
   bay:    { fin: 'tile',  color: '#9aa79b', tileL: 48, tileW: 24, shape: 'rect', pattern: 'offset2' },
   splash: { fin: 'stone', color: '#4a5442', tileL: 60, tileW: 45, shape: 'rect', pattern: 'stack' },
@@ -162,43 +180,53 @@ function surfFor(k) {
   return SF[k] || SF[RUN_BASE[k]] || DEFAULT_SURF[k] || DEFAULT_SURF[RUN_BASE[k]] || DEFAULT_SURF.bay;
 }
 const texLoader = new THREE.TextureLoader();
-function applyLibrary(mat, surfKey, spanWin, spanHin) {
+const texCache = {};
+function loadTex(path, srgb) {
+  if (!path) return Promise.resolve(null);
+  if (!texCache[path]) {
+    const src = (window.__MATLIB_DATA && window.__MATLIB_DATA[path]) ? window.__MATLIB_DATA[path] : '../../' + path;
+    texCache[path] = new Promise((res) => texLoader.load(src, (t) => {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 8;
+      res(t);
+    }, undefined, () => res(null)));
+  }
+  return texCache[path];
+}
+async function dressMesh(mesh, lib) {
+  const size = new THREE.Box3().setFromObject(mesh).getSize(new THREE.Vector3());
+  const flat = size.y / IN < 6; // floors/counters map their two horizontal extents
+  const faceW = flat ? size.x / IN : Math.max(size.x, size.z) / IN;
+  const faceH = flat ? size.z / IN : size.y / IN;
+  const [map, nrm, rgh, bmp] = await Promise.all([
+    loadTex(lib.file, true), loadTex(lib.normal), loadTex(lib.rough), loadTex(lib.bump),
+  ]);
+  if (!map) return;
+  const rx = Math.max(faceW / lib.spanW, 0.05), ry = Math.max(faceH / lib.spanH, 0.05);
+  const mk = (t) => { if (!t) return null; const c = t.clone(); c.repeat.set(rx, ry); c.needsUpdate = true; return c; };
+  const mat = mesh.material.clone();
+  mat.map = mk(map);
+  if (nrm) { mat.normalMap = mk(nrm); mat.normalScale = new THREE.Vector2(0.55, 0.55); }
+  if (rgh) { mat.roughnessMap = mk(rgh); mat.roughness = 1.0; }
+  if (bmp) { mat.bumpMap = mk(bmp); mat.bumpScale = 0.02; }
+  mat.color.set(lib.tint || 0xffffff);
+  mesh.material = mat;
+}
+function textureRoom() {
   const L = window.MATERIAL_LIBRARY;
-  const lib = L && L.matchSurf(surfFor(surfKey));
-  if (!lib) return;
-  const src = (window.__MATLIB_DATA && window.__MATLIB_DATA[lib.file]) ? window.__MATLIB_DATA[lib.file] : '../../' + lib.file;
-  texLoader.load(src, (tex) => {
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
-    tex.repeat.set(spanWin / lib.spanW, spanHin / lib.spanH);
-    mat.map = tex;
-    mat.color.set(0xffffff); // the photograph carries the color
-    mat.needsUpdate = true;
+  if (!L) return;
+  const zoneOf = { stonetile: 'bay', baybacktile: 'bay_back', steppiertile: 'step_return',
+                   floortile: 'floor', splashtile: 'splash', tubskirttile: 'skirt' };
+  const woodOf = { walnut: 'wood-walnut', teak: 'wood-teak' };
+  room.traverse((mesh) => {
+    if (!mesh.isMesh || !mesh.material || !mesh.material.name) return;
+    const zone = zoneOf[mesh.material.name];
+    if (zone) { const lib = L.matchSurf(surfFor(zone)); if (lib) dressMesh(mesh, lib); return; }
+    const woodId = woodOf[mesh.material.name];
+    if (woodId) { const lib = L.byId(woodId); if (lib) dressMesh(mesh, lib); }
   });
 }
-function applyWood(mat, id, rx, ry) {
-  const lib = window.MATERIAL_LIBRARY && window.MATERIAL_LIBRARY.byId(id);
-  if (!lib) return;
-  const src = (window.__MATLIB_DATA && window.__MATLIB_DATA[lib.file]) ? window.__MATLIB_DATA[lib.file] : '../../' + lib.file;
-  texLoader.load(src, (tex) => {
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
-    tex.repeat.set(rx, ry);
-    mat.map = tex;
-    mat.color.set(0xe6dccd); // keep the wood a touch warm-muted under ACES
-    mat.needsUpdate = true;
-  });
-}
-applyWood(MAT.walnut, 'waterfall-walnut', 1.15, 1.15);
-applyWood(MAT.teak, 'teak', 1.2, 1.2);
-applyLibrary(MAT.stone,    'bay',         60, 96);
-applyLibrary(MAT.bayback,  'bay_back',    61, 96);
-applyLibrary(MAT.steppier, 'step_return', 15, 96);
-applyLibrary(MAT.floor,    'floor',      169, 71);
-applyLibrary(MAT.splashm,  'splash',      60, 45);
-applyLibrary(MAT.skirt,    'skirt',       60, 20);
 
 const MAT_FOR = {
   tower: MAT.walnut, van: MAT.walnut, shelf: MAT.walnut, vshelf: MAT.walnut,
@@ -679,10 +707,11 @@ const { THREE: T3 } = await stage.ready;
     if (host.material && host.material.clone) {
       host.material = host.material.clone();
       host.material.emissive = new THREE.Color(p.color);
-      host.material.emissiveIntensity = 0.65;
+      host.material.emissiveIntensity = 2.4; // hot enough to cross the bloom threshold
     }
   });
 }
+textureRoom();
 stage.setObject(room);
 
 // The step-return pier is a solid box, so unlike the single-sided walls it never culls
