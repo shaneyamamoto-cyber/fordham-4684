@@ -98,8 +98,8 @@ const FALLBACK = {
     {id:'rain',name:'Rainhead',x:11,w:10,y:80,h:4,dep:12,face:14.5},
     {id:'mixer',name:'Mixer / diverter',x:13,w:6,y:41.38,h:6,dep:3,face:14.5},
     {id:'spout',name:'Tub spout',x:13,w:6,y:26,h:3,dep:6,face:14.5},
-    {id:'bar2',name:'Towel bar — tub upper',x:7,w:18,y:33,h:2,dep:4,face:14.5,wall:'slope',d:14},
-    {id:'bar3',name:'Towel bar — tub lower',x:7,w:18,y:29,h:2,dep:4,face:14.5,wall:'slope',d:14},
+    {id:'bar2',name:'Towel bar — tub upper',x:37.25,w:18,y:29,h:2,dep:4,face:14.5,wall:'slope',d:14},
+    {id:'bar3',name:'Towel bar — tub lower',x:35.5,w:18,y:32,h:2,dep:4,face:14.5,wall:'slope',d:14},
     {id:'ring',name:'Hand towel ring',x:62.5,w:7,y:40.63,h:7.25,dep:4,face:0}
   ]
 };
@@ -363,8 +363,14 @@ function diverterPlate(it, mat, nm) {
   lever.rotation.z = Math.PI / 3.2;
 }
 function towelBar(it, mat, nm) {
-  const base = it.face > 0 ? BAY : 0, proj = it.dep, cy = it.y + it.h / 2, dir = it.face > 0 ? 1 : -1;
-  const dz = base - proj / 2;
+  // wall:'slope' mounts the bar on the angled dormer wall: the wall plane
+  // at this height comes from rake(), and the bar projects INTO the room
+  // (+d) instead of off a face wall (-d).
+  const slope = it.wall === 'slope';
+  const cy = it.y + it.h / 2, proj = it.dep;
+  const base = slope ? (D0 + rake(cy)) : (it.face > 0 ? BAY : 0);
+  const dir = slope ? 1 : (it.face > 0 ? 1 : -1);
+  const dz = slope ? base + proj / 2 : base - proj / 2;
   const rodR = it.h * 0.22 * IN, postR = it.h * 0.34 * IN, postLen = proj * 0.7 * IN;
   hwMesh(new THREE.CylinderGeometry(rodR, rodR, it.w * 0.94 * IN, 16), mat, nm + '_rod', it.x + it.w / 2, cy, dz + dir * proj * 0.15, 0, Math.PI / 2);
   [it.x + it.w * 0.03, it.x + it.w * 0.97].forEach((px, i) => {
@@ -482,6 +488,22 @@ S.items.forEach(it => {
   const nm = meshName(it);
   const proj = it.recess ? -it.dep : it.dep;   // recessed items cut INTO the wall
   if (it.zoneOnly || it.id === 'wet') return;   // the wet-area envelope is a drawing aid, not a solid
+  if (it.id === 'base') {
+    // Kick board hugs REAL walls only — it must never float across the bay
+    // opening or cut through the tub. Three runs: the bay back wall under
+    // the floating shelves (between the tub's tiled end cap and the storage
+    // tower), and the face-0 wall on both sides of the door casing.
+    const segs = [
+      { base: BAY, x0: 32,   x1: 44.5 },
+      { base: 0,   x0: 60.5, x1: 108 },
+      { base: 0,   x0: 143,  x1: 169 },
+    ];
+    segs.forEach((sg, i) => {
+      box(nm + '_run' + i, mat, sg.x1 - sg.x0, it.h, Math.abs(proj),
+          (sg.x0 + sg.x1) / 2, it.y + it.h / 2, sg.base - proj / 2);
+    });
+    return;
+  }
   if (HW3D[it.id]) { HW3D[it.id](it, mat, nm); return; }
   if (it.id === 'tub') {
     // skirted bath: tiled end cap, stone rim, acrylic basin. An END-WALL tub has its
