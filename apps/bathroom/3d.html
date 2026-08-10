@@ -177,6 +177,22 @@ function applyLibrary(mat, surfKey, spanWin, spanHin) {
     mat.needsUpdate = true;
   });
 }
+function applyWood(mat, id, rx, ry) {
+  const lib = window.MATERIAL_LIBRARY && window.MATERIAL_LIBRARY.byId(id);
+  if (!lib) return;
+  const src = (window.__MATLIB_DATA && window.__MATLIB_DATA[lib.file]) ? window.__MATLIB_DATA[lib.file] : '../../' + lib.file;
+  texLoader.load(src, (tex) => {
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    tex.repeat.set(rx, ry);
+    mat.map = tex;
+    mat.color.set(0xe6dccd); // keep the wood a touch warm-muted under ACES
+    mat.needsUpdate = true;
+  });
+}
+applyWood(MAT.walnut, 'waterfall-walnut', 1.15, 1.15);
+applyWood(MAT.teak, 'teak', 1.2, 1.2);
 applyLibrary(MAT.stone,    'bay',         60, 96);
 applyLibrary(MAT.bayback,  'bay_back',    61, 96);
 applyLibrary(MAT.steppier, 'step_return', 15, 96);
@@ -640,6 +656,33 @@ S.items.forEach(it => {
 
 const stage = document.querySelector('three-d-stage');
 const { THREE: T3 } = await stage.ready;
+// Warm practicals: small point lights parked at the sconces, the hooded
+// picture light and the lit niche, so the room lights itself the way the
+// sauna does instead of relying on the studio rig alone. Cheap: 4 point
+// lights, no shadows.
+{
+  const practicals = [
+    { name: 'light',     color: 0xffd9a8, intensity: 6.5, dist: 1.6 },
+    { name: 'light2',    color: 0xffd9a8, intensity: 6.5, dist: 1.6 },
+    { name: 'hoodlight', color: 0xffe2b8, intensity: 5.0, dist: 1.4 },
+    { name: 'nichesh',   color: 0xffc890, intensity: 4.5, dist: 1.2 },
+  ];
+  practicals.forEach((p) => {
+    const host = room.getObjectByName(p.name);
+    if (!host) return;
+    const pl = new THREE.PointLight(p.color, p.intensity, p.dist, 2);
+    pl.position.copy(host.position);
+    pl.position.z += 0.06; // nudge off the wall plane into the room
+    room.add(pl);
+    // give the fixture itself a soft glow so the light reads as coming
+    // from somewhere (per-mesh material clone; shared MATs stay untouched)
+    if (host.material && host.material.clone) {
+      host.material = host.material.clone();
+      host.material.emissive = new THREE.Color(p.color);
+      host.material.emissiveIntensity = 0.65;
+    }
+  });
+}
 stage.setObject(room);
 
 // The step-return pier is a solid box, so unlike the single-sided walls it never culls

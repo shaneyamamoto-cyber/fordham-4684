@@ -222,11 +222,39 @@
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      // Filmic pipeline (same recipe as the sauna build): ACES tone mapping
+      // keeps warm interiors from clipping to chalk, and gives photographic
+      // textures the contrast curve they were shot with.
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.12;
       this._renderer = renderer;
       this.shadowRoot.insertBefore(renderer.domElement, this._err);
 
       const scene = new THREE.Scene();
       this._scene = scene;
+
+      // Image-based lighting, sauna-style: a tiny tinted "room" prefiltered
+      // with PMREM so stone, glass and metal pick up real reflected color
+      // instead of the flat single-tone look of pure analytic lights. Kept
+      // low-key — it seasons reflections, it doesn't light the scene.
+      {
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        const env = new THREE.Scene();
+        const panel = (w, h, d, color, x, y, z) => {
+          const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color }));
+          m.position.set(x, y, z);
+          env.add(m);
+        };
+        panel(30, 0.2, 30, 0xb8b0a0, 0, -9, 0);   // warm floor bounce
+        panel(30, 0.2, 30, 0xe8e6df, 0, 15, 0);   // pale ceiling
+        panel(0.2, 20, 30, 0xcfc9bc, -15, 0, 0);
+        panel(0.2, 20, 30, 0xcfc9bc, 15, 0, 0);
+        panel(30, 20, 0.2, 0xcfc9bc, 0, 0, -15);
+        panel(4, 3, 0.2, 0xfff0d8, 0, 8, 14.8);   // warm window/softbox
+        panel(2.5, 2, 0.2, 0xdfe9f5, -8, 4, 14.8); // cool secondary highlight
+        scene.environment = pmrem.fromScene(env, 0.04).texture;
+        pmrem.dispose();
+      }
 
       const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 500);
       camera.position.set(3, 2.2, 4);
@@ -239,8 +267,8 @@
 
       // Neutral studio: soft sky/ground wash, a shadow-casting key light,
       // and a dim fill from behind so silhouettes never go black.
-      scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d2c4, 1.0));
-      const key = new THREE.DirectionalLight(0xffffff, 2.2);
+      scene.add(new THREE.HemisphereLight(0xfff6e8, 0xcabfa8, 0.55));
+      const key = new THREE.DirectionalLight(0xfff1dd, 1.7);
       key.position.set(4, 7, 5);
       key.castShadow = true;
       key.shadow.mapSize.set(2048, 2048);
