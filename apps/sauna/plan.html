@@ -128,6 +128,15 @@
   </div>
 
   <div class="sect">
+    <div class="label">Materials — Look Book library</div>
+    <div class="stack">
+      <div class="row"><label>Walls</label><select id="sel_mat_walls" data-mat="walls"></select></div>
+      <div class="row"><label>Floor</label><select id="sel_mat_floor" data-mat="floor"></select></div>
+      <div class="row"><label>Benches</label><select id="sel_mat_bench" data-mat="bench"></select></div>
+    </div>
+  </div>
+
+  <div class="sect">
     <div class="label">Rails — light rail + backrests</div>
     <div class="stack" id="railBoxes">
       <div class="row"><label><input type="checkbox" data-rail="LW2"> LW2 — bench wall</label></div>
@@ -148,6 +157,7 @@
 <div id="sheet"></div>
 
 <script src="../../platform/core/store.js"></script>
+<script src="../../platform/materials/manifest.js"></script>
 <script src="spec.js"></script>
 <script>
 (function(){
@@ -183,6 +193,7 @@
       benchA: { offset: 0, length: W },
       benchB: { wall: 'SW2', offset: 0, length: D },
       railWalls: { LW1:false, LW2:true, SW1:false, SW2:true },
+      libraryMats: { walls:'', floor:'', bench:'' },
       landing: Object.assign({}, LANDING_DEF),
     };
   }
@@ -208,6 +219,7 @@
         if(full.bench.runB){ if(full.bench.runB.wall) d.benchB.wall=full.bench.runB.wall; if(full.bench.runB.offset!=null) d.benchB.offset=full.bench.runB.offset; if(full.bench.runB.length!=null) d.benchB.length=full.bench.runB.length; }
       }
       if(full.railWalls){ ['LW1','LW2','SW1','SW2'].forEach(function(k){ if(full.railWalls[k]!=null) d.railWalls[k]=!!full.railWalls[k]; }); }
+      if(full.libraryMats){ ['walls','floor','bench'].forEach(function(k){ if(full.libraryMats[k]!=null) d.libraryMats[k]=full.libraryMats[k]; }); }
       if(full.landing){ if(full.landing.w!=null) d.landing.w=full.landing.w; if(full.landing.d!=null) d.landing.d=full.landing.d; }
       setBadge('sync: shared state ('+(env.by||'?')+', '+new Date(env.savedAt).toLocaleTimeString()+')', true);
     } else {
@@ -231,6 +243,7 @@
     full.bench.runA = Object.assign(full.bench.runA||{}, { offset: vm.benchA.offset, length: vm.benchA.length });
     full.bench.runB = Object.assign(full.bench.runB||{}, { wall: vm.benchB.wall, offset: vm.benchB.offset, length: vm.benchB.length });
     full.railWalls = Object.assign(full.railWalls||{}, vm.railWalls);
+    full.libraryMats = Object.assign(full.libraryMats||{}, vm.libraryMats);
     store.saveWork(full, '2d');
     setBadge('sync: saved '+new Date().toLocaleTimeString()+' (2d)', true);
   }
@@ -490,6 +503,20 @@
       vm.benchB.wall = ev.target.value === 'SW1' ? 'SW1' : 'SW2';
       clampAll(); render(); scheduleSave();
     });
+    Array.prototype.forEach.call(document.querySelectorAll('select[data-mat]'), function(sel){
+      var none = document.createElement('option');
+      none.value = ''; none.textContent = 'Cedar (default)';
+      sel.appendChild(none);
+      (window.MATERIAL_LIBRARY || []).forEach(function(e){
+        var o = document.createElement('option');
+        o.value = e.id; o.textContent = e.name;
+        sel.appendChild(o);
+      });
+      sel.addEventListener('change', function(){
+        vm.libraryMats[sel.getAttribute('data-mat')] = sel.value;
+        render(); scheduleSave();
+      });
+    });
     Array.prototype.forEach.call(document.querySelectorAll('#railBoxes input[data-rail]'), function(cb){
       cb.addEventListener('change', function(){
         vm.railWalls[cb.getAttribute('data-rail')] = cb.checked;
@@ -513,6 +540,9 @@
     document.getElementById('sel_bb_wall').value = vm.benchB.wall;
     Array.prototype.forEach.call(document.querySelectorAll('#railBoxes input[data-rail]'), function(cb){
       cb.checked = !!vm.railWalls[cb.getAttribute('data-rail')];
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('select[data-mat]'), function(sel){
+      sel.value = vm.libraryMats[sel.getAttribute('data-mat')] || '';
     });
   }
 

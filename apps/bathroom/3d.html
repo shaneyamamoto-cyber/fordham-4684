@@ -48,6 +48,7 @@
 <a id="back" href="./planner.html">← BACK TO THE PLANNER</a>
 <three-d-stage name="bathroom" background="#efece5"></three-d-stage>
 <script src="../../platform/core/store.js"></script>
+<script src="../../platform/materials/manifest.js"></script>
 <script>window.PlatformStore("bathroom"); // migrate legacy bathPlanner.* keys before reading</script>
 <script src="./three-d-stage.js"></script>
 <script type="module">
@@ -145,6 +146,43 @@ const MAT = {
   skirt:    new THREE.MeshStandardMaterial({ name: 'tubskirttile', color: sc('skirt', 0x9aa79b), roughness: 0.55, metalness: 0.03 }),
   teak:     new THREE.MeshStandardMaterial({ name: 'teak', color: 0xb98b53, roughness: 0.5, metalness: 0.04 })
 };
+
+// ---- Photographic surfaces from the shared Look Book library ----
+// Each tiled/stone zone's surf entry (finish, tile size, color) is matched to
+// the nearest seamless field in platform/materials; repeats are set from the
+// field's physical span so the photo reads at true scale. Painted zones stay
+// painted. Zones with no saved surf fall back to the planner's defaults.
+const DEFAULT_SURF = {
+  bay:    { fin: 'tile',  color: '#9aa79b', tileL: 48, tileW: 24, shape: 'rect', pattern: 'offset2' },
+  splash: { fin: 'stone', color: '#4a5442', tileL: 60, tileW: 45, shape: 'rect', pattern: 'stack' },
+  floor:  { fin: 'stone', color: '#bdb5a6', tileL: 24, tileW: 24, shape: 'rect', pattern: 'offset2' },
+  skirt:  { fin: 'tile',  color: '#9aa79b', tileL: 48, tileW: 24, shape: 'rect', pattern: 'offset2' },
+};
+function surfFor(k) {
+  return SF[k] || SF[RUN_BASE[k]] || DEFAULT_SURF[k] || DEFAULT_SURF[RUN_BASE[k]] || DEFAULT_SURF.bay;
+}
+const texLoader = new THREE.TextureLoader();
+function applyLibrary(mat, surfKey, spanWin, spanHin) {
+  const L = window.MATERIAL_LIBRARY;
+  const lib = L && L.matchSurf(surfFor(surfKey));
+  if (!lib) return;
+  const src = (window.__MATLIB_DATA && window.__MATLIB_DATA[lib.file]) ? window.__MATLIB_DATA[lib.file] : '../../' + lib.file;
+  texLoader.load(src, (tex) => {
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    tex.repeat.set(spanWin / lib.spanW, spanHin / lib.spanH);
+    mat.map = tex;
+    mat.color.set(0xffffff); // the photograph carries the color
+    mat.needsUpdate = true;
+  });
+}
+applyLibrary(MAT.stone,    'bay',         60, 96);
+applyLibrary(MAT.bayback,  'bay_back',    61, 96);
+applyLibrary(MAT.steppier, 'step_return', 15, 96);
+applyLibrary(MAT.floor,    'floor',      169, 71);
+applyLibrary(MAT.splashm,  'splash',      60, 45);
+applyLibrary(MAT.skirt,    'skirt',       60, 20);
 
 const MAT_FOR = {
   tower: MAT.walnut, van: MAT.walnut, shelf: MAT.walnut, vshelf: MAT.walnut,
