@@ -161,7 +161,11 @@ const MAT = {
   endR:     new THREE.MeshStandardMaterial({ name: 'endwallR',  color: sc('end_right', 0xe8e3d8), roughness: 0.92, metalness: 0.0, side: THREE.FrontSide }),
   splashm:  new THREE.MeshStandardMaterial({ name: 'splashtile', color: sc('splash', 0xc8cec4), roughness: 0.55, metalness: 0.03 }),
   skirt:    new THREE.MeshStandardMaterial({ name: 'tubskirttile', color: sc('skirt', 0x9aa79b), roughness: 0.55, metalness: 0.03 }),
-  teak:     new THREE.MeshStandardMaterial({ name: 'teak', color: 0xb98b53, roughness: 0.5, metalness: 0.04 })
+  teak:     new THREE.MeshStandardMaterial({ name: 'teak', color: 0xb98b53, roughness: 0.5, metalness: 0.04 }),
+  // painted trim — the planner spec calls the door, casing and baseboard
+  // PAINTED white (#f1efe9-ish), not wood; without an explicit entry they
+  // were falling into the walnut fallback
+  paintTrim: new THREE.MeshStandardMaterial({ name: 'painttrim', color: 0xf1efe9, roughness: 0.6, metalness: 0.0 })
 };
 
 // ---- Photographic surfaces from the shared Look Book library ----
@@ -230,7 +234,8 @@ function textureRoom() {
 
 const MAT_FOR = {
   tower: MAT.walnut, van: MAT.walnut, shelf: MAT.walnut, vshelf: MAT.walnut,
-  tub: MAT.white, vessel: MAT.white, door: MAT.plaster, base: MAT.plaster, wc: MAT.white,
+  tub: MAT.white, vessel: MAT.white, wc: MAT.white,
+  door: MAT.paintTrim, dcase: MAT.paintTrim, base: MAT.paintTrim,
   splash: MAT.splashm, nichesh: MAT.stone,
   stone: MAT.solid,
   glass: MAT.glass,
