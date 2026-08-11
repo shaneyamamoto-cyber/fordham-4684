@@ -505,6 +505,10 @@ S.items.forEach(it => {
     }
     if (it.id !== 'glass') mat = MAT[key];
   }
+  // Hard rule (2026-08-11): nothing pokes through the ceiling — casework
+  // like the standing cabinet is clamped so its top never passes the
+  // ceiling plane, whatever the saved/working state says.
+  if (it.y + it.h > H) it = Object.assign({}, it, { h: Math.max(1, H - it.y) });
   const nm = meshName(it);
   const proj = it.recess ? -it.dep : it.dep;   // recessed items cut INTO the wall
   if (it.zoneOnly || it.id === 'wet') return;   // the wet-area envelope is a drawing aid, not a solid
