@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shower — Elevation Planner</title>
+<style>
+  :root { --paper:#faf9f5; --panel:#efece5; --ink:#23231f; --ink60:rgba(35,35,31,0.6);
+          --ink16:rgba(35,35,31,0.16); --accent:#8a5a2b; --water:#3d5457; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace; }
+  #bar { padding:18px 24px 6px; }
+  .kicker { font:600 10px/1 inherit; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase; }
+  h1 { font:600 20px/1.2 Archivo,Helvetica,Arial,sans-serif; margin:8px 0 2px; }
+  .sub { font-size:10px; color:var(--ink60); }
+  #sheet { padding:8px 24px 60px; display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
+    gap:22px 26px; align-items:start; position:relative; }
+  .card { border:1px solid var(--ink16); border-radius:2px; background:#fbfaf7; padding:12px 12px 6px; overflow:hidden; }
+  .card h2 { font:600 10px/1 inherit; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink);
+    margin:0 0 2px; }
+  .card .wsub { font:500 8.5px/1.4 inherit; letter-spacing:0.06em; color:var(--ink60); margin-bottom:8px; }
+  svg text { font-family:inherit; }
+  .tag { font:600 7.5px/1 inherit; letter-spacing:0.06em; fill:var(--ink60); text-transform:uppercase; }
+  .dim { font:500 8px/1 inherit; fill:var(--ink60); }
+  rect.fx, circle.fx { cursor:pointer; }
+  rect.fx:hover, circle.fx:hover { stroke-width:2.2; }
+  .lockmark { cursor:not-allowed; }
+
+  #pop { position:absolute; display:none; z-index:40; background:#fbfaf7; border:1px solid #23231f;
+    border-radius:2px; box-shadow:0 8px 26px rgba(0,0,0,0.2); padding:12px 13px 13px; width:224px; }
+  #pop .pt { font:600 10px/1 inherit; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:9px; }
+  #pop .fr { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+  #pop label { flex:0 0 104px; font-size:9px; color:var(--ink60); }
+  #pop input { flex:1; width:56px; font:inherit; font-size:10px; padding:4px 5px;
+    border:1px solid rgba(35,35,31,0.3); border-radius:2px; background:#fff; }
+  #pop .btns { display:flex; gap:6px; margin-top:9px; }
+  #pop button { flex:1; font:600 9px/1 inherit; letter-spacing:0.1em; padding:7px 0; cursor:pointer;
+    border:1px solid #23231f; border-radius:2px; background:#23231f; color:#fbfaf7; }
+  #pop button.ghost { background:transparent; color:#23231f; }
+  #flash { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:50; display:none;
+    background:#23231f; color:#fbfaf7; padding:11px 17px; border-radius:2px;
+    font:600 10px/1.4 inherit; letter-spacing:0.1em; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <div class="kicker">Elevation Planner · House Plan Set</div>
+  <h1>Shower Enclosure — Elevations</h1>
+  <div class="sub" id="src">baseline construct · open the 3D construct once to edit — click an unlocked fitting for its edit window</div>
+</div>
+<div id="sheet">
+  <div id="pop">
+    <div class="pt" id="popTitle"></div>
+    <div class="fr"><label id="popHLabel">Along wall ″</label><input id="popH" type="number" step="0.25"></div>
+    <div class="fr"><label>Height AFF ″</label><input id="popY" type="number" step="0.25"></div>
+    <div class="fr" id="popARow" style="display:none"><label id="popALabel">Size A ″</label><input id="popA" type="number" step="0.25"></div>
+    <div class="fr" id="popBRow" style="display:none"><label id="popBLabel">Size B ″</label><input id="popB" type="number" step="0.25"></div>
+    <div class="btns">
+      <button id="popSave" type="button">SAVE</button>
+      <button id="popCancel" type="button" class="ghost">CANCEL</button>
+    </div>
+  </div>
+</div>
+<div id="flash"></div>
+
+<script src="../../platform/core/store.js"></script>
+<script>
+(function () {
+  'use strict';
+  window.PlatformStore('shower');
+  var WORK_KEY = 'yamazina.shower.work.v1';
+
+  // Envelope — mirrors app.js (1 unit = 1 inch).
+  var W = 51.5, D = 48, H = 96, CURB_H = 4, CURB_D = 4.5;
+  var GLASS_TOP = 78, PANEL_W = 22, DOOR_GAP = 1.5, DOOR_W = 27.5;
+
+  // fixture id -> display; `a` = in-plane axes on its host wall (from HOSTS):
+  // right/left walls run along z (horizontal) × y (vertical); back/glass run
+  // along x × y. `size` names the editable size fields for that fitting.
+  var FX = {
+    rain:  { name:'Rain head', ceiling:true },
+    drain: { name:'Drain', floor:true },
+    head:  { name:'Shower head', r:5 },
+    valve: { name:'Valve', r:4 },
+    handle:{ name:'Door handle', sizeKeys:['len'], sizeLabels:['Bar length'] },
+    niche: { name:'Niche', box:true, sizeKeys:['nw','nh'], sizeLabels:['Opening width','Opening height'] },
+  };
+  function fxName(id) {
+    if (FX[id]) return FX[id].name;
+    if (id.indexOf('jet') === 0) return 'Body jet ' + id.slice(3);
+    return id;
+  }
+  function jetMeta(id) { return { name:fxName(id), r:3.4 }; }
+
+  var WALLS = [
+    { key:'back',  host:'back',  label:'Back wall',       run:W, sub:'looking in · left→right' },
+    { key:'left',  host:'left',  label:'Bench wall (left)', run:D, sub:'back→front (glass at right)' },
+    { key:'right', host:'right', label:'Plumbing wall (right)', run:D, sub:'back→front (glass at right)' },
+    { key:'glass', host:'glass', label:'Glass front',      run:W, sub:'fixed panel + hinged door' },
+  ];
+
+  // horizontal in-plane coord index into p[] for a wall: back/glass use x (0),
+  // left/right use z (2). vertical is always y (1).
+  function hIndex(host) { return (host === 'back' || host === 'glass') ? 0 : 2; }
+
+  var live = false;
+  function loadState() {
+    try {
+      var env = JSON.parse(localStorage.getItem(WORK_KEY) || 'null');
+      if (env && env.state && env.state.fx) {
+        live = true;
+        document.getElementById('src').textContent =
+          'working design — live with the 3D construct · click an unlocked fitting to edit';
+        return env.state;
+      }
+    } catch (e) { /* baseline */ }
+    live = false;
+    return baseline();
+  }
+  function baseline() {
+    return {
+      v: 2, lock: false,
+      bench: { t:'corner', w:'left', c:'bl', l:24, d:16, h:18.5, o:0 },
+      jets: 4,
+      fx: [
+        { i:'rain',  h:'ceiling', p:[W/2, H, D/2], dia:12 },
+        { i:'head',  h:'right',   p:[W/2, 80, D/2] },
+        { i:'valve', h:'right',   p:[W/2, 48, D/2] },
+        { i:'handle',h:'glass',   p:[PANEL_W+DOOR_GAP+DOOR_W/2+8, CURB_H+38, D-CURB_D/2], len:15, orient:'v' },
+        { i:'drain', h:'floor',   p:[33.75, 0, 24], dtype:'round4', tlen:W-8 },
+        { i:'niche', h:'back',    p:[32, 50, 0], nw:26, nh:15, nd:3.5 },
+        { i:'jet1', h:'right', p:[W/2, 42, D/2-7] }, { i:'jet2', h:'right', p:[W/2, 42, D/2+7] },
+        { i:'jet3', h:'right', p:[W/2, 54, D/2-7] }, { i:'jet4', h:'right', p:[W/2, 54, D/2+7] },
+      ],
+    };
+  }
+
+  var SC = 3.05, M = 40, TOPB = 20;
+  var NS = 'http://www.w3.org/2000/svg';
+  var sheet = document.getElementById('sheet');
+  var pop = document.getElementById('pop');
+  var editing = null;
+
+  function fmt(n) { return Math.round(n * 4) / 4 + ''; }
+
+  function render() {
+    var st = loadState();
+    Array.prototype.slice.call(sheet.querySelectorAll('.card')).forEach(function (c) { c.remove(); });
+
+    WALLS.forEach(function (wall) {
+      var card = document.createElement('div');
+      card.className = 'card';
+      var wpx = wall.run * SC, hpx = H * SC;
+      var Wsvg = M * 2 + wpx, Hsvg = TOPB + hpx + 58;
+      card.innerHTML = '<h2>' + wall.label + '</h2><div class="wsub">' + wall.sub + '</div>';
+      var svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('width', '100%');
+      svg.setAttribute('viewBox', '0 0 ' + Wsvg + ' ' + Hsvg);
+      card.appendChild(svg);
+      sheet.appendChild(card);
+
+      function el(n, a) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; }
+      function txt(x, y, t, cls, anch) { var e = el('text', { x:x, y:y, 'class':cls || 'dim', 'text-anchor':anch || 'start' }); e.textContent = t; return e; }
+      // wall coords -> svg. horizontal h in [0,run] (0 at left); vertical y AFF (0 at floor -> bottom)
+      var px = function (h) { return M + h * SC; };
+      var py = function (y) { return TOPB + (H - y) * SC; };
+
+      // wall panel
+      el('rect', { x:px(0), y:py(H), width:wpx, height:hpx, fill:'#ffffff', stroke:'#23231f', 'stroke-width':1.6 });
+      // AFF gridlines every 12"
+      for (var gy = 12; gy < H; gy += 12) {
+        el('line', { x1:px(0), y1:py(gy), x2:px(wall.run), y2:py(gy),
+          stroke:'rgba(35,35,31,0.08)', 'stroke-width':0.6 });
+        txt(px(0) - 5, py(gy) + 3, gy + '″', 'dim', 'end').setAttribute('font-size','7');
+      }
+
+      // wall-specific furniture
+      if (wall.key === 'glass') {
+        // curb band + panel/door split
+        el('rect', { x:px(0), y:py(CURB_H), width:wpx, height:CURB_H * SC, fill:'#efe9da', stroke:'#8a5a2b', 'stroke-width':1 });
+        txt(px(1), py(CURB_H) - 3, 'CURB 4″', 'tag');
+        el('rect', { x:px(0), y:py(GLASS_TOP), width:PANEL_W * SC, height:(GLASS_TOP - CURB_H) * SC,
+          fill:'rgba(61,84,87,0.10)', stroke:'#3d5457', 'stroke-width':1.4 });
+        txt(px(PANEL_W / 2), py(GLASS_TOP) - 4, 'FIXED 22″', 'tag', 'middle');
+        el('rect', { x:px(PANEL_W + DOOR_GAP), y:py(GLASS_TOP), width:DOOR_W * SC, height:(GLASS_TOP - CURB_H) * SC,
+          fill:'rgba(61,84,87,0.05)', stroke:'#3d5457', 'stroke-width':1, 'stroke-dasharray':'6 4' });
+        txt(px(PANEL_W + DOOR_GAP + DOOR_W / 2), py(GLASS_TOP / 2), 'HINGED DOOR 27½″', 'tag', 'middle');
+      }
+      // bench on its wall
+      var b = st.bench || {};
+      if (b.t && b.t !== 'none' && b.w === wall.key) {
+        var len = b.l || 24, dep = b.d || 16, seat = b.h || 18.5;
+        var start = (b.c && (b.c[0] === 'f')) ? (D - len) : 0; // front-corner benches start deeper
+        if (wall.key === 'back') { start = (b.c && b.c[1] === 'r') ? (W - len) : 0; }
+        el('rect', { x:px(start), y:py(seat), width:len * SC, height:seat * SC,
+          fill:'#e9e2d2', stroke:'#8a5a2b', 'stroke-width':1.2 });
+        txt(px(start) + 4, py(seat) - 4, 'BENCH · SEAT ' + seat + '″', 'tag');
+      }
+
+      // fixtures on this wall
+      (st.fx || []).forEach(function (f) {
+        if (f.h !== wall.host) return;
+        var hi = hIndex(f.h);
+        var hpos = f.p[hi], y = f.p[1];
+        var meta = f.i.indexOf('jet') === 0 ? jetMeta(f.i) : (FX[f.i] || { name:fxName(f.i), r:4 });
+        var cx = px(hpos), cy = py(y);
+        if (meta.box) {
+          var nw = (f.nw || 26) * SC, nh = (f.nh || 15) * SC;
+          el('rect', { x:cx - nw / 2, y:cy - nh / 2, width:nw, height:nh, fill:'#fff',
+            stroke:'#8a5a2b', 'stroke-width':1.3, 'class':'fx' + (f.locked ? ' lockmark' : ''), 'data-id':f.i });
+          txt(cx, cy - nh / 2 - 4, 'NICHE ' + Math.round(f.nw || 26) + '×' + Math.round(f.nh || 15) + '″', 'tag', 'middle');
+        } else if (meta.sizeKeys && meta.sizeKeys[0] === 'len') {
+          // door handle — a vertical/horizontal bar
+          var ln = (f.len || 15) * SC, vert = (f.orient !== 'h');
+          el('rect', { x:vert ? cx - 2 : cx - ln / 2, y:vert ? cy - ln / 2 : cy - 2,
+            width:vert ? 4 : ln, height:vert ? ln : 4, rx:2, fill:'#c9a35c', stroke:'#8a5a2b',
+            'stroke-width':1, 'class':'fx' + (f.locked ? ' lockmark' : ''), 'data-id':f.i });
+          txt(cx, (vert ? cy - ln/2 : cy) - 6, 'HANDLE', 'tag', 'middle');
+        } else {
+          var r = Math.max(4, (meta.r || 4) * SC * 0.5);
+          el('circle', { cx:cx, cy:cy, r:r, fill:'rgba(61,84,87,0.14)',
+            stroke:'#3d5457', 'stroke-width':1.5, 'class':'fx' + (f.locked ? ' lockmark' : ''), 'data-id':f.i });
+          // jets are an obvious cluster — label the group once (on jet1),
+          // below the marker; single fittings carry their name + AFF above
+          if (f.i.indexOf('jet') === 0) {
+            if (f.i === 'jet1') txt(cx, cy + r + 10, (st.jets || 4) + '× BODY JETS', 'tag', 'middle');
+          } else {
+            txt(cx, cy - r - 4, meta.name.split(' ')[0].toUpperCase() + ' ' + Math.round(y) + '″', 'tag', 'middle');
+          }
+        }
+      });
+
+      // ceiling/floor fixtures live in the floor plan, not the elevations
+      var offwall = (st.fx || []).filter(function (f) { return f.h === 'ceiling' || f.h === 'floor'; });
+      // wall width dim
+      el('line', { x1:px(0), y1:py(0) + 15, x2:px(wall.run), y2:py(0) + 15, stroke:'rgba(35,35,31,0.45)', 'stroke-width':0.75 });
+      txt(px(wall.run / 2), py(0) + 26, Math.round(wall.run) + '″ WIDE · ' + H + '″ TALL', 'dim', 'middle');
+      if (wall.key === 'back' && offwall.length) {
+        txt(px(0), py(0) + 44, offwall.map(function (f) { return fxName(f.i).toUpperCase(); }).join(' · ') + ' → FLOOR PLAN', 'tag');
+      }
+    });
+  }
+
+  // ------------------------------------------------------------- editing --
+  function flash(msg) {
+    var f = document.getElementById('flash');
+    f.textContent = msg; f.style.display = 'block';
+    clearTimeout(flash._t);
+    flash._t = setTimeout(function () { f.style.display = 'none'; }, 2200);
+  }
+  sheet.addEventListener('click', function (ev) {
+    var t = ev.target;
+    if (pop.contains(t)) return;
+    if (!t.classList || !t.classList.contains('fx') || !t.getAttribute('data-id')) { pop.style.display = 'none'; return; }
+    var st = loadState();
+    var id = t.getAttribute('data-id');
+    var f = (st.fx || []).filter(function (x) { return x.i === id; })[0];
+    if (!f) return;
+    if (st.lock) { flash('🔒 DESIGN IS LOCKED — UNLOCK IT IN THE 3D CONSTRUCT'); return; }
+    if (f.locked) { flash('🔒 ' + fxName(id).toUpperCase() + ' IS LOCKED IN PLACE'); return; }
+    if (!live) { flash('OPEN THE 3D CONSTRUCT ONCE TO SEED THE DESIGN, THEN EDIT HERE'); return; }
+    editing = id;
+    var wall = WALLS.filter(function (w) { return w.host === f.h; })[0];
+    var meta = id.indexOf('jet') === 0 ? jetMeta(id) : (FX[id] || {});
+    document.getElementById('popTitle').textContent = fxName(id) + ' — ' + (wall ? wall.label : f.h);
+    document.getElementById('popHLabel').textContent = (f.h === 'back' || f.h === 'glass') ? 'From left ″' : 'From back ″';
+    document.getElementById('popH').value = f.p[hIndex(f.h)];
+    document.getElementById('popY').value = f.p[1];
+    var aRow = document.getElementById('popARow'), bRow = document.getElementById('popBRow');
+    aRow.style.display = bRow.style.display = 'none';
+    if (meta.sizeKeys) {
+      aRow.style.display = 'flex';
+      document.getElementById('popALabel').textContent = meta.sizeLabels[0] + ' ″';
+      document.getElementById('popA').value = f[meta.sizeKeys[0]] || '';
+      if (meta.sizeKeys[1]) {
+        bRow.style.display = 'flex';
+        document.getElementById('popBLabel').textContent = meta.sizeLabels[1] + ' ″';
+        document.getElementById('popB').value = f[meta.sizeKeys[1]] || '';
+      }
+    }
+    var rect = t.getBoundingClientRect(), host = sheet.getBoundingClientRect();
+    pop.style.left = Math.min(rect.left - host.left + sheet.scrollLeft + 10, sheet.clientWidth - 244) + 'px';
+    pop.style.top = (rect.top - host.top + sheet.scrollTop - 6) + 'px';
+    pop.style.display = 'block';
+  });
+  document.getElementById('popCancel').addEventListener('click', function () { pop.style.display = 'none'; });
+  document.getElementById('popSave').addEventListener('click', function () {
+    if (!editing) return;
+    var env;
+    try { env = JSON.parse(localStorage.getItem(WORK_KEY) || 'null'); } catch (e) { env = null; }
+    if (!env || !env.state || !env.state.fx) { flash('NO WORKING DESIGN TO EDIT'); pop.style.display = 'none'; return; }
+    var st = env.state;
+    var f = st.fx.filter(function (x) { return x.i === editing; })[0];
+    if (!f || f.locked || st.lock) { flash('LOCKED — NOT SAVED'); pop.style.display = 'none'; return; }
+    var hv = Number(document.getElementById('popH').value);
+    var yv = Number(document.getElementById('popY').value);
+    var hi = hIndex(f.h);
+    f.p[hi] = Math.max(0, hv);
+    f.p[1] = Math.min(H, Math.max(0, yv));
+    var meta = editing.indexOf('jet') === 0 ? jetMeta(editing) : (FX[editing] || {});
+    if (meta.sizeKeys) {
+      var a = Number(document.getElementById('popA').value);
+      if (a > 0) f[meta.sizeKeys[0]] = a;
+      if (meta.sizeKeys[1]) {
+        var bb = Number(document.getElementById('popB').value);
+        if (bb > 0) f[meta.sizeKeys[1]] = bb;
+      }
+    }
+    env.by = '2d'; env.savedAt = new Date().toISOString();
+    try { localStorage.setItem(WORK_KEY, JSON.stringify(env)); } catch (e) { /* quota */ }
+    pop.style.display = 'none';
+    render();
+    flash('SAVED — THE 3D CONSTRUCT FOLLOWS THIS ELEVATION');
+  });
+
+  render();
+  window.addEventListener('storage', function (ev) {
+    if (ev.key === WORK_KEY) { pop.style.display = 'none'; render(); }
+  });
+})();
+</script>
+</body>
+</html>
