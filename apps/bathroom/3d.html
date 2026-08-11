@@ -880,6 +880,25 @@ document.getElementById('srcSub').textContent =
     { t: 'Fittings & light', ids: ['bar2', 'bar3', 'light', 'light2', 'nichesh'] },
   ];
   const byId = {}; S.items.forEach((it) => { byId[it.id] = it; });
+  // fittings you can add to this bathroom — sensible defaults on the vanity
+  // wall (face 0) or the bay wall (face 14.5); each carries a swatch so it
+  // renders in the right material without touching the build code. Move it
+  // afterward with the edit fields.
+  const ADD = [
+    { base: 'hook',   name: 'Robe hook',      item: { x: 122, w: 2.5, y: 62, h: 3, dep: 3, face: 0, shape: 'round', swatch: '#c9a35c' } },
+    { base: 'towel',  name: 'Towel bar',      item: { x: 118, w: 24, y: 48, h: 2, dep: 4, face: 0, swatch: '#c9a35c' } },
+    { base: 'tring',  name: 'Towel ring',     item: { x: 122, w: 7, y: 40, h: 7, dep: 4, face: 0, swatch: '#c9a35c' } },
+    { base: 'grab',   name: 'Grab bar',       item: { x: 4, w: 24, y: 34, h: 1.5, dep: 2.5, face: 14.5, swatch: '#c9a35c' } },
+    { base: 'tp',     name: 'Paper holder',   item: { x: 150, w: 6, y: 26, h: 3, dep: 4, face: 0, swatch: '#c9a35c' } },
+    { base: 'sconce', name: 'Wall sconce',    item: { x: 122, w: 2.5, y: 52, h: 14, dep: 3.5, face: 0, shape: 'soft', swatch: '#e6d8b0' } },
+    { base: 'board',  name: 'Shelf board',    item: { x: 116, w: 24, y: 52, h: 2, dep: 8, face: 0, swatch: '#8a5325' } },
+    { base: 'medcab', name: 'Medicine cabinet', item: { x: 116, w: 24, y: 44, h: 30, dep: 5, face: 0, swatch: '#f7f6f2' } },
+    { base: 'basin2', name: 'Second basin',   item: { x: 118, w: 22, y: 34.5, h: 4, dep: 13.8, face: 0, swatch: '#f7f6f2' } },
+  ];
+  const GROUPED = {}; GROUPS.forEach((g) => g.ids.forEach((id) => { GROUPED[id] = 1; }));
+  function extraItems() {
+    return S.items.filter((it) => !GROUPED[it.id] && !it.zoneOnly && it.id !== 'wet');
+  }
   const ZONES = [['bay', 'Bay / shower wall'], ['bay_back', 'Bay back'], ['splash', 'Splash'],
     ['wall', 'Main walls'], ['floor', 'Floor'], ['slope', 'Dormer slope'], ['skirt', 'Tub skirt']];
   const fin = (n) => (Math.round(Number(n) * 100) / 100) + '';
@@ -969,21 +988,32 @@ document.getElementById('srcSub').textContent =
       h += '<div class="grp"><p class="grp-t">' + g.t + '</p>' + items.map((it) =>
         row(it.name + (it.locked ? ' 🔒' : ''), dimText(it))).join('') + '</div>';
     });
+    var extra = extraItems();
+    if (extra.length) h += '<div class="grp"><p class="grp-t">Added fittings</p>' +
+      extra.map((it) => row(it.name + (it.locked ? ' 🔒' : ''), dimText(it))).join('') + '</div>';
     document.getElementById('pane-spec').innerHTML = h;
   }
   function row(k, v) { return '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; }
 
   let selId = null;
+  var addOpen = false;
+  function fxRow(it) {
+    return '<div class="fx' + (it.id === selId ? ' sel' : '') + '" data-id="' + it.id + '">' +
+      '<span class="nm">' + it.name + '</span><span class="dm">' + (it.locked ? '🔒 ' : '') + dimText(it) + '</span></div>' +
+      (it.id === selId ? editor(it) : '');
+  }
   function renderFix() {
-    let h = '';
+    let h = '<div class="grp"><button class="apply" id="fx-add" style="width:100%">＋ ADD FIXTURE</button>' +
+      (addOpen ? '<div style="margin-top:8px">' + ADD.map((d, i) =>
+        '<div class="fx add-pick" data-add="' + i + '"><span class="nm">' + d.name + '</span>' +
+        '<span class="dm">＋ add</span></div>').join('') + '</div>' : '') + '</div>';
     GROUPS.forEach((g) => {
       const items = g.ids.map((id) => byId[id]).filter(Boolean);
       if (!items.length) return;
-      h += '<div class="grp"><p class="grp-t">' + g.t + '</p>' + items.map((it) =>
-        '<div class="fx' + (it.id === selId ? ' sel' : '') + '" data-id="' + it.id + '">' +
-        '<span class="nm">' + it.name + '</span><span class="dm">' + (it.locked ? '🔒 ' : '') + dimText(it) + '</span></div>' +
-        (it.id === selId ? editor(it) : '')).join('') + '</div>';
+      h += '<div class="grp"><p class="grp-t">' + g.t + '</p>' + items.map(fxRow).join('') + '</div>';
     });
+    const extra = extraItems();
+    if (extra.length) h += '<div class="grp"><p class="grp-t">Added fittings</p>' + extra.map(fxRow).join('') + '</div>';
     document.getElementById('pane-fix').innerHTML = h;
   }
   function editor(it) {
@@ -995,7 +1025,9 @@ document.getElementById('srcSub').textContent =
       f('e-dep', 'Depth ″', it.dep != null ? it.dep : 0) +
       '<div class="lk-tog" id="e-lock"><span>' + (it.locked ? '🔒 Locked — click to unlock' : 'Lock this fitting') +
       '</span><span class="sw" style="' + (it.locked ? 'background:#c39a61' : '') + '"></span></div>' +
-      '<div class="btns"><button class="apply" id="e-apply">APPLY + REBUILD</button><button class="ghost" id="e-cancel">Close</button></div></div>';
+      '<div class="btns"><button class="apply" id="e-apply">APPLY + REBUILD</button><button class="ghost" id="e-cancel">Close</button></div>' +
+      (it.added ? '<div class="btns" style="margin-top:6px"><button class="ghost" id="e-del" style="flex:1;color:#c8837a;border-color:#5a2f2b">Delete this fitting</button></div>' : '') +
+      '</div>';
   }
 
   document.getElementById('pane-fix').addEventListener('click', (ev) => {
@@ -1016,20 +1048,47 @@ document.getElementById('srcSub').textContent =
       applyEdit(it.id, patch, true);
       return;
     }
+    if (ev.target.id === 'fx-add' || ev.target.closest('#fx-add')) { addOpen = !addOpen; renderFix(); return; }
+    const pick = ev.target.closest('.add-pick');
+    if (pick) { addFixture(ADD[+pick.getAttribute('data-add')]); return; }
+    if (ev.target.id === 'e-del') {
+      const it = byId[selId]; if (!it) return;
+      const state = seedState();
+      state.items = state.items.filter((x) => x.id !== it.id);
+      writeState(state); selId = null;
+      sessionStorage.setItem('b-view', currentView || ''); location.reload();
+      return;
+    }
     const fx = ev.target.closest('.fx');
     if (fx && !ev.target.closest('.ed')) { selId = selId === fx.dataset.id ? null : fx.dataset.id; renderFix(); }
   });
 
+  function addFixture(def) {
+    const state = seedState();
+    let n = 1; while (state.items.some((x) => x.id === def.base + '_' + n)) n++;
+    const id = def.base + '_' + n;
+    const it = Object.assign({ id: id, name: def.name + (n > 1 ? ' ' + n : ''), added: true }, def.item);
+    state.items.push(it);
+    writeState(state);
+    sessionStorage.setItem('b-view', currentView || '');
+    sessionStorage.setItem('b-select', id);
+    location.reload();
+  }
+
+  // The bathroom's work slot is a RAW design object ({items, surf, poly, …}),
+  // the same shape the planner and floor plan read and write — NOT the
+  // {state,by} envelope the sauna/shower use. Match it so panel edits round-
+  // trip through loadLayout and are adopted live by the planner/floor plan.
   function seedState() {
-    let env; try { env = JSON.parse(localStorage.getItem(WORK) || 'null'); } catch (e) { env = null; }
-    if (env && env.state && env.state.items) return env.state;
+    let d; try { d = JSON.parse(localStorage.getItem(WORK) || 'null'); } catch (e) { d = null; }
+    if (d && d.items && d.items.length) return d;
     // viewing a locked version with no work slot — seed one from the live design
     return { items: S.items.map((x) => Object.assign({}, x)), surf: S.surf, poly: S.poly, height: S.height,
       kneeH: S.kneeH, slopeRun: S.slopeRun, wallsOff: S.wallsOff, splashLinked: S.splashLinked,
       trimTone: S.trimTone, drawersLeft: S.drawersLeft, drawersRight: S.drawersRight, bankW: S.bankW, bankGap: S.bankGap };
   }
   function writeState(state) {
-    try { localStorage.setItem(WORK, JSON.stringify({ state: state, savedAt: new Date().toISOString(), by: '3d-panel' })); } catch (e) { /* quota */ }
+    try { localStorage.setItem(WORK, JSON.stringify(state)); } catch (e) { /* quota */ }
   }
   function applyEdit(id, patch, reload) {
     const state = seedState();
@@ -1117,6 +1176,12 @@ document.getElementById('srcSub').textContent =
     toastT = setTimeout(() => { toastEl.style.opacity = '0'; }, 2200);
   }
 
+  var wantSel = sessionStorage.getItem('b-select');
+  if (wantSel) { sessionStorage.removeItem('b-select'); if (byId[wantSel]) {
+    selId = wantSel;
+    rail.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x.dataset.p === 'fix'));
+    ['spec', 'fix', 'mat'].forEach((pp) => document.getElementById('pane-' + pp).classList.toggle('on', pp === 'fix'));
+  } }
   renderSpec(); renderFix(); renderMat();
 })();
 
