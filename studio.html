@@ -77,6 +77,7 @@
     <button id="h-restore" type="button"><b>Restore a save</b><span class="d">roll the whole house back to a saved snapshot</span></button>
     <button id="h-export" type="button"><b>Export house file</b><span class="d">download every room's design as one portable file</span></button>
     <button id="h-import" type="button"><b>Import house file</b><span class="d">load a house file — survives browser clears + device moves</span></button>
+    <button id="h-handoff" type="button" style="border-color:var(--accent)"><b>Contractor handoff →</b><span class="d">export + copy a ready-to-send message with the link</span></button>
     <input id="h-file" type="file" accept="application/json,.json" style="display:none">
     <div id="h-status" style="font-size:8.5px;line-height:1.5;color:var(--ink60);margin:2px 2px 0"></div>
   </div>
@@ -305,6 +306,39 @@
         location.reload();
       };
     }).catch(function () { say('Could not read that file — is it a YamaZina house export?'); });
+  });
+
+  // ---- Contractor handoff: export + a ready-to-send message ----
+  document.getElementById('h-handoff').addEventListener('click', function () {
+    var data = snapshot();
+    if (!Object.keys(data).length) { say('Make at least one edit first, then hand it off.'); return; }
+    document.getElementById('h-export').click();   // triggers the download + status
+    var url = location.href.split('#')[0];
+    var msg =
+      'YamaZina House — for your review and build\n\n' +
+      'The whole-house design is in the attached file (yamazina-house-*.json).\n\n' +
+      '1. Open the planner:  ' + url + '\n' +
+      '2. In the left rail under "House · Save & Handoff", click "Import house file" and pick the attached file.\n' +
+      '3. Walk each room — Floor Plan, Elevation Planner, and 3D. Every dimension is real inches; the schedules and elevations are what to build to.\n' +
+      '4. Make any changes needed. Use "Save snapshot" to keep a version whenever you want a checkpoint.\n' +
+      '5. When done, click "Export house file" and email the new file back.\n\n' +
+      'No login needed and nothing to install — it runs in the browser and works whether or not my computer is on.';
+    openModal('Contractor handoff', 'The house file just downloaded. Attach it to an email with the message below.');
+    mBody.innerHTML =
+      '<textarea id="m-msg" readonly style="width:100%;height:196px;font:inherit;font-size:10.5px;line-height:1.55;' +
+      'padding:10px;border:1px solid var(--ink30);border-radius:2px;background:#fff;resize:vertical">' + esc(msg) + '</textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:11px"><button id="m-copy" style="' + BTN_DARK + ';flex:1">COPY MESSAGE</button>' +
+      '<button id="m-x" style="' + BTN_GHOST + '">Close</button></div>' +
+      '<div id="m-copied" style="font-size:9px;color:var(--accent);margin-top:8px;min-height:12px"></div>';
+    document.getElementById('m-x').onclick = closeModal;
+    document.getElementById('m-copy').onclick = function () {
+      var ta = document.getElementById('m-msg');
+      var done = function () { document.getElementById('m-copied').textContent = 'Copied — paste it into your email, attach the file, send.'; };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(msg).then(done, function () { ta.select(); document.execCommand('copy'); done(); }); }
+        else { ta.select(); document.execCommand('copy'); done(); }
+      } catch (e) { ta.select(); document.getElementById('m-copied').textContent = 'Select-all done — press Cmd/Ctrl+C to copy.'; }
+    };
   });
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
