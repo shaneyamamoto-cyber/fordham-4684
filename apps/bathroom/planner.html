@@ -4876,6 +4876,13 @@ class Component extends DCLogic {
 <script>
 (function () {
   'use strict';
+  // Keep the detailed dock hidden until "Details" is pressed. The !important
+  // rule wins over the planner's React-driven inline display, and the
+  // dock-open body class re-reveals it on demand.
+  var st = document.createElement('style');
+  st.textContent = '#selDock{display:none !important;} body.dock-open #selDock{display:block !important;}';
+  document.head.appendChild(st);
+
   var pop = document.createElement('div');
   pop.id = 'editpop';
   pop.style.cssText = 'position:fixed;z-index:2147481500;display:none;background:#fbfaf7;border:1px solid #23231f;' +
@@ -4912,7 +4919,10 @@ class Component extends DCLogic {
     q('.k-del').onclick = function () { var p = P(); if (p && window.confirm('Delete ' + (it.name || it.id) + '?')) p.deleteItem(it.id); };
     q('.k-det').onclick = function () { openDock(); };
   }
+  var dockFor = null;
   function openDock() {
+    dockFor = shownId;
+    document.body.classList.add('dock-open');
     var d = document.getElementById('selDock');
     if (d) {
       d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -4922,6 +4932,7 @@ class Component extends DCLogic {
     }
     hide(true);
   }
+  function closeDock() { document.body.classList.remove('dock-open'); dockFor = null; }
   var shownId = null, dismissed = false;
   function show(it, x, y) {
     build(it); pop.style.display = 'block'; shownId = it.id; dismissed = false;
@@ -4952,6 +4963,9 @@ class Component extends DCLogic {
 
   // keep the popup's lock label / dims fresh while it's open (after edits)
   function tick() {
+    // the dock stays open only for the fitting it was opened for; any change
+    // of selection (or clearing it) re-hides it until Details is pressed again
+    if (dockFor && sel() !== dockFor) closeDock();
     if (shownId && pop.style.display === 'block') {
       var id = sel();
       if (id !== shownId) { var it2 = id ? itemById(id) : null; if (it2) { var r = pop.getBoundingClientRect(); show(it2, r.left - 10, r.top - 10); } else hide(true); }
