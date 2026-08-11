@@ -18,7 +18,7 @@
 }
 </script>
 <style>
-  html, body { margin: 0; height: 100%; background: #efece5; font-family: Archivo, Helvetica, Arial, sans-serif; }
+  html, body { margin: 0; height: 100%; background: #101315; font-family: Archivo, Helvetica, Arial, sans-serif; } /* dark shell — one look across all 3D builds (sauna/shower/bathroom) */
   three-d-stage:not(:defined) { visibility: hidden; }
   three-d-stage { display: block; width: 100vw; height: 100vh; }
   #hud {
@@ -450,7 +450,7 @@ if (!OFF.back_face)  wall('wall_back_face',   MAT.vanity,   X1 - BAY_X1, H, BAY_
 // EVERY view, not just end-on.
 function endWall(name, mat, x, rotY) {
   const kh = S.kneeH || 0, run = S.slopeRun || 0;
-  const dir = rotY < 0 ? 1 : -1;            // local +x in room-depth terms
+  const dir = rotY < 0 ? -1 : 1;            // local +x in room-depth terms (probe-verified: tall at the bay/vanity side, raked at the dormer side)
   const dc = (D1 + D0) / 2;
   const lx = (d) => dir * (d - dc) * IN;
   const sh = new THREE.Shape();
