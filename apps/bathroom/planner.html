@@ -4797,9 +4797,10 @@ class Component extends DCLogic {
   var b = document.createElement('button');
   b.textContent = 'EXPORT PLAN JSON';
   b.type = 'button';
-  b.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:2147483000;padding:11px 16px;' +
+  // top-centre, out of the way of the canvas and the bottom-corner widgets
+  b.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:2147483000;padding:8px 14px;' +
     'border:1px solid #23231f;background:#23231f;color:#fbfaf7;cursor:pointer;border-radius:2px;' +
-    "font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em";
+    "font:600 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em";
   b.addEventListener('click', function () {
     var raw = localStorage.getItem('yamazina.bathroom.versions.v1');
     if (!raw) { alert('No locked versions yet — lock a version first.'); return; }
