@@ -1,0 +1,35 @@
+name: Deploy platform to GitHub Pages
+
+# One URL for the whole house: serves the repo as a static site, so
+# studio.html runs with a single shared origin — every project reads and
+# writes the same platform store (yamazina.* keys), which is what makes
+# material picks, versions and 2D<->3D sync global across rooms instead of
+# per-file islands.
+on:
+  push:
+    branches: [claude/floor-sauna-planner-merge-d6g9r7]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
