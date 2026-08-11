@@ -30,9 +30,22 @@
   #rail .foot { margin-top:auto; padding:14px 16px 18px; font-size:8.5px; line-height:1.7;
     color:var(--ink60); border-top:1px solid var(--ink16); }
 
+  #main { flex:1 1 auto; display:flex; flex-direction:column; min-width:0; height:100vh; }
   #stage { flex:1 1 auto; display:flex; min-width:0; }
-  #stage iframe { border:0; flex:1 1 50%; min-width:0; height:100vh; background:var(--paper); }
+  #stage iframe { border:0; flex:1 1 50%; min-width:0; height:100%; background:var(--paper); }
   #stage iframe + iframe { border-left:1px solid var(--ink16); }
+
+  #areabar { display:none; align-items:center; gap:10px; padding:7px 14px; background:var(--panel);
+    border-bottom:1px solid var(--ink16); flex:0 0 auto; }
+  #areabar.on { display:flex; }
+  #areabar .an { font:600 9.5px/1 inherit; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink); }
+  #areabar .an span { color:var(--accent); }
+  #areabar button, #areabar select { font:600 9px/1 inherit; letter-spacing:0.06em; padding:6px 9px;
+    border:1px solid var(--ink30); background:#fbfaf7; color:var(--ink); border-radius:2px; cursor:pointer; }
+  #areabar button.dark { background:var(--ink); color:#fbfaf7; border-color:var(--ink); }
+  #areabar input { font:inherit; font-size:10px; padding:6px 8px; border:1px solid var(--ink30);
+    border-radius:2px; background:#fff; width:150px; }
+  #areabar .ac { margin-left:auto; font-size:8.5px; color:var(--ink60); }
 </style>
 </head>
 <body>
@@ -89,7 +102,20 @@
   </div>
 </div>
 
-<div id="stage"></div>
+<div id="main">
+  <div id="areabar">
+    <span class="an" id="areaName"></span>
+    <button id="area-save" class="dark" type="button">＋ Save snapshot</button>
+    <span id="area-saveform" style="display:none;align-items:center;gap:6px">
+      <input id="area-name" type="text" placeholder="snapshot name">
+      <button id="area-ok" class="dark" type="button">Save</button>
+      <button id="area-cancel" type="button">✕</button>
+    </span>
+    <select id="area-restore" title="Restore a snapshot of this build"><option value="">Restore…</option></select>
+    <span class="ac" id="area-count"></span>
+  </div>
+  <div id="stage"></div>
+</div>
 
 <div id="modal" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(35,35,31,0.42);
   align-items:center;justify-content:center;">
@@ -111,6 +137,7 @@
   // navigation buttons only — the Save/Handoff buttons carry ids, not data-view
   var buttons = Array.prototype.slice.call(document.querySelectorAll('#rail button[data-view]'));
 
+  var currentView = '';
   function show(view, btn) {
     // view = one page, or "left|right" for a split. Iframes are same-origin, so
     // every pane shares localStorage — the platform store's storage events give
@@ -123,8 +150,98 @@
       stage.appendChild(f);
     });
     buttons.forEach(function (b) { b.classList.toggle('on', b === btn); });
+    currentView = view;
     try { history.replaceState(null, '', '#' + encodeURIComponent(view)); } catch (e) { /* file:// */ }
+    updateArea(view);
   }
+
+  // ---- per-area snapshots: a Save snapshot scoped to the open build ----
+  // Any build under apps/<project>/ shares one work slot, so a snapshot taken
+  // here (of that project's live working design) is available from every one
+  // of its tools and rides along in the whole-house export.
+  var PROJ_LABEL = { sauna: 'Sauna', bathroom: 'Bathroom', shower: 'Shower' };
+  function projectOf(view) {
+    var first = (view || '').split('|')[0];
+    if (first.indexOf('lookbook') !== -1) return null;      // the global Look Book isn't a room build
+    var m = first.match(/^apps\/([^/]+)\//);
+    return m ? m[1] : null;
+  }
+  function snapKey(p) { return 'yamazina.' + p + '.snapshots.v1'; }
+  function workKey(p) { return 'yamazina.' + p + '.work.v1'; }
+  function loadSnaps(p) { try { return JSON.parse(localStorage.getItem(snapKey(p)) || '[]'); } catch (e) { return []; } }
+  function saveSnaps(p, l) { try { localStorage.setItem(snapKey(p), JSON.stringify(l)); } catch (e) { /* full */ } }
+  function reloadStage() {
+    Array.prototype.forEach.call(stage.querySelectorAll('iframe'), function (f) {
+      try { f.contentWindow.location.reload(); }
+      catch (e) { var s = f.src; f.src = 'about:blank'; setTimeout(function () { f.src = s; }, 30); }
+    });
+  }
+
+  var bar = document.getElementById('areabar');
+  var areaName = document.getElementById('areaName');
+  var areaCount = document.getElementById('area-count');
+  var areaRestore = document.getElementById('area-restore');
+  var areaSaveForm = document.getElementById('area-saveform');
+  var areaSaveBtn = document.getElementById('area-save');
+  var areaProject = null;
+
+  function updateArea(view) {
+    areaProject = projectOf(view);
+    if (!areaProject) { bar.classList.remove('on'); return; }
+    bar.classList.add('on');
+    var label = PROJ_LABEL[areaProject] || (areaProject.charAt(0).toUpperCase() + areaProject.slice(1));
+    areaName.innerHTML = 'This build · <span>' + label + '</span>';
+    areaSaveForm.style.display = 'none';
+    areaSaveBtn.style.display = '';
+    refreshArea();
+  }
+  function refreshArea() {
+    if (!areaProject) return;
+    var snaps = loadSnaps(areaProject);
+    areaCount.textContent = snaps.length ? (snaps.length + ' snapshot' + (snaps.length === 1 ? '' : 's')) : 'no snapshots yet';
+    areaRestore.innerHTML = '<option value="">Restore…</option>' + snaps.map(function (s, i) {
+      var when = ''; try { when = ' · ' + new Date(s.at).toLocaleDateString(); } catch (e) {}
+      return '<option value="' + i + '">' + String(s.name).replace(/</g, '&lt;') + when + '</option>';
+    }).join('');
+  }
+  areaSaveBtn.addEventListener('click', function () {
+    if (!areaProject) return;
+    if (localStorage.getItem(workKey(areaProject)) == null) {
+      areaCount.textContent = 'make an edit in this build first';
+      return;
+    }
+    document.getElementById('area-name').value = PROJ_LABEL[areaProject] + ' — ' + new Date().toLocaleString();
+    areaSaveBtn.style.display = 'none';
+    areaSaveForm.style.display = 'inline-flex';
+    document.getElementById('area-name').focus();
+    document.getElementById('area-name').select();
+  });
+  document.getElementById('area-cancel').addEventListener('click', function () {
+    areaSaveForm.style.display = 'none'; areaSaveBtn.style.display = '';
+  });
+  document.getElementById('area-ok').addEventListener('click', function () {
+    if (!areaProject) return;
+    var work = localStorage.getItem(workKey(areaProject));
+    if (work == null) { areaCount.textContent = 'nothing to snapshot yet'; return; }
+    var name = (document.getElementById('area-name').value || (PROJ_LABEL[areaProject] + ' snapshot')).trim();
+    var l = loadSnaps(areaProject);
+    l.push({ name: name, at: new Date().toISOString(), work: work });
+    saveSnaps(areaProject, l);
+    areaSaveForm.style.display = 'none'; areaSaveBtn.style.display = '';
+    refreshArea();
+    areaCount.textContent = 'saved “' + name.slice(0, 22) + '”';
+  });
+  areaRestore.addEventListener('change', function () {
+    if (!areaProject || areaRestore.value === '') return;
+    var s = loadSnaps(areaProject)[+areaRestore.value];
+    areaRestore.value = '';
+    if (!s) return;
+    var label = PROJ_LABEL[areaProject] || areaProject;
+    if (!window.confirm('Restore “' + s.name + '”?\nThis replaces the current working design for ' + label + '.')) return;
+    localStorage.setItem(workKey(areaProject), s.work);
+    reloadStage();
+    refreshArea();
+  });
 
   buttons.forEach(function (b) {
     b.addEventListener('click', function () { show(b.getAttribute('data-view'), b); });
