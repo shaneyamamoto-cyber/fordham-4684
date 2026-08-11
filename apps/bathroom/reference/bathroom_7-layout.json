@@ -890,5 +890,6 @@
    "z0": -20.55,
    "z1": -19.65
   }
- }
+ },
+ "decision": "2026-08-11 user direction: baseline follows this OBJ AS-IS \u2014 including the 36in vanity at x66.25 (y15,h19); the earlier 2-inch rule is superseded for the baseline. Rebuild planner FITTINGS + 3d FALLBACK from these measured boxes."
 }
