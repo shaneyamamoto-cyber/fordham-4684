@@ -71,19 +71,44 @@
     <button data-view="apps/shower/elevation.html|apps/shower/index.html"><b>2D + 3D side by side</b><span class="d">elevations left, construct right — live</span></button>
   </div>
 
+  <div class="proj" id="saveGroup">
+    <div class="pname">House · Save &amp; Handoff</div>
+    <button id="h-save" type="button"><b>Save snapshot</b><span class="d">name the whole house as it stands now</span></button>
+    <button id="h-restore" type="button"><b>Restore a save</b><span class="d">roll the whole house back to a saved snapshot</span></button>
+    <button id="h-export" type="button"><b>Export house file</b><span class="d">download every room's design as one portable file</span></button>
+    <button id="h-import" type="button"><b>Import house file</b><span class="d">load a house file — survives browser clears + device moves</span></button>
+    <input id="h-file" type="file" accept="application/json,.json" style="display:none">
+    <div id="h-status" style="font-size:8.5px;line-height:1.5;color:var(--ink60);margin:2px 2px 0"></div>
+  </div>
+
   <div class="foot">
     One design state per project, shared by its views through the platform store.
-    Switch freely — nothing here reloads your work.
+    Switch freely — nothing here reloads your work. Your edits persist across
+    reloads on this URL; Export makes them a file you own.
   </div>
 </div>
 
 <div id="stage"></div>
 
+<div id="modal" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(35,35,31,0.42);
+  align-items:center;justify-content:center;">
+  <div style="background:var(--paper);border:1px solid var(--ink);border-radius:3px;width:440px;max-width:92vw;
+    max-height:82vh;overflow:auto;box-shadow:0 18px 60px rgba(0,0,0,0.3);">
+    <div style="padding:16px 18px 12px;border-bottom:1px solid var(--ink16)">
+      <div class="kicker" style="font:600 8.5px/1 inherit;letter-spacing:0.18em;color:var(--accent);text-transform:uppercase">House · Save &amp; Handoff</div>
+      <div id="m-title" style="font:600 15px/1.2 Archivo,sans-serif;margin-top:7px"></div>
+      <div id="m-sub" style="font-size:9.5px;color:var(--ink60);margin-top:4px"></div>
+    </div>
+    <div id="m-body" style="padding:14px 18px 18px"></div>
+  </div>
+</div>
+
 <script>
 (function () {
   'use strict';
   var stage = document.getElementById('stage');
-  var buttons = Array.prototype.slice.call(document.querySelectorAll('#rail button'));
+  // navigation buttons only — the Save/Handoff buttons carry ids, not data-view
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('#rail button[data-view]'));
 
   function show(view, btn) {
     // view = one page, or "left|right" for a split. Iframes are same-origin, so
@@ -109,6 +134,187 @@
   var match = buttons.filter(function (b) { return b.getAttribute('data-view') === initial; })[0];
   if (match) { show(initial, match); }
   else { show(buttons[0].getAttribute('data-view'), buttons[0]); }
+})();
+
+/* ============================================================================
+   HOUSE · SAVE & HANDOFF — durability the user owns.
+   The studio and every room iframe share one origin, so this page can read
+   and write ALL of the platform's design keys directly. That lets the whole
+   house be snapshotted (named saves), rolled back, and exported to a single
+   portable file — so a design survives a browser clear, moves between
+   devices, and can be handed to a contractor. It is deliberately independent
+   of any room's build code: it copies each key's raw value, so a future
+   change to a room's internals can't invalidate a saved house (the room's
+   own loader migrates its slot on read).
+   ============================================================================ */
+(function () {
+  'use strict';
+  var SAVES_KEY = 'yamazina.house.saves.v1';
+  var status = document.getElementById('h-status');
+  var modal = document.getElementById('modal');
+  var mTitle = document.getElementById('m-title');
+  var mSub = document.getElementById('m-sub');
+  var mBody = document.getElementById('m-body');
+
+  function say(msg) { status.textContent = msg; }
+  // every design key EXCEPT the saves registry itself
+  function designKeys() {
+    var out = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.indexOf('yamazina.') === 0 && k !== SAVES_KEY) out.push(k);
+    }
+    return out;
+  }
+  function snapshot() {
+    var d = {};
+    designKeys().forEach(function (k) { d[k] = localStorage.getItem(k); });
+    return d;
+  }
+  function roomCount(data) {
+    // distinct project namespaces present in a snapshot, for a friendly count
+    var projs = {};
+    Object.keys(data || {}).forEach(function (k) {
+      var m = k.match(/^yamazina\.([^.]+)\./);
+      if (m && m[1] !== 'house') projs[m[1]] = 1;
+    });
+    return Object.keys(projs).length;
+  }
+  function applyData(data, replace) {
+    if (replace) designKeys().forEach(function (k) { if (!(k in data)) localStorage.removeItem(k); });
+    Object.keys(data).forEach(function (k) {
+      if (k === SAVES_KEY) return;
+      if (data[k] == null) localStorage.removeItem(k); else localStorage.setItem(k, data[k]);
+    });
+  }
+  function loadSaves() { try { return JSON.parse(localStorage.getItem(SAVES_KEY) || '[]'); } catch (e) { return []; } }
+  function storeSaves(list) { try { localStorage.setItem(SAVES_KEY, JSON.stringify(list)); } catch (e) { say('Storage full — export to a file instead.'); } }
+
+  function openModal(title, sub) { mTitle.textContent = title; mSub.textContent = sub || ''; modal.style.display = 'flex'; }
+  function closeModal() { modal.style.display = 'none'; mBody.innerHTML = ''; }
+  modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+
+  var BTN = 'width:100%;text-align:left;margin:0 0 7px;padding:9px 11px;border:1px solid var(--ink16);' +
+    'background:#fbfaf7;color:var(--ink);cursor:pointer;font:500 10.5px/1.3 inherit;border-radius:2px;';
+  var BTN_DARK = 'padding:8px 13px;border:1px solid var(--ink);background:var(--ink);color:#fbfaf7;cursor:pointer;' +
+    'font:600 9px/1 inherit;letter-spacing:0.1em;border-radius:2px;';
+  var BTN_GHOST = 'padding:8px 13px;border:1px solid var(--ink30);background:transparent;color:var(--ink);cursor:pointer;' +
+    'font:600 9px/1 inherit;letter-spacing:0.1em;border-radius:2px;';
+  var INPUT = 'width:100%;font:inherit;font-size:11px;padding:8px 9px;border:1px solid var(--ink30);border-radius:2px;background:#fff;';
+
+  function fmtTime(iso) { try { return new Date(iso).toLocaleString(); } catch (e) { return iso; } }
+
+  // ---- Save snapshot ----
+  document.getElementById('h-save').addEventListener('click', function () {
+    var data = snapshot();
+    var n = roomCount(data);
+    if (!Object.keys(data).length) { openModal('Nothing to save yet', 'Open a room and make an edit first — then snapshot the house.');
+      mBody.innerHTML = '<button id="m-x" style="' + BTN_GHOST + '">Close</button>';
+      document.getElementById('m-x').onclick = closeModal; return; }
+    openModal('Save snapshot', n + ' room' + (n === 1 ? '' : 's') + ' with edits · ' + Object.keys(data).length + ' design keys');
+    var def = 'House — ' + new Date().toLocaleDateString();
+    mBody.innerHTML = '<input id="m-name" style="' + INPUT + '" value="' + def + '">' +
+      '<div style="display:flex;gap:8px;margin-top:12px"><button id="m-ok" style="' + BTN_DARK + ';flex:1">SAVE SNAPSHOT</button>' +
+      '<button id="m-x" style="' + BTN_GHOST + '">Cancel</button></div>';
+    document.getElementById('m-x').onclick = closeModal;
+    document.getElementById('m-ok').onclick = function () {
+      var name = (document.getElementById('m-name').value || def).trim();
+      var list = loadSaves();
+      list.push({ name: name, at: new Date().toISOString(), data: data });
+      storeSaves(list);
+      closeModal();
+      say('Saved "' + name + '" · ' + list.length + ' snapshot' + (list.length === 1 ? '' : 's') + ' on this device.');
+    };
+  });
+
+  // ---- Restore ----
+  document.getElementById('h-restore').addEventListener('click', function () {
+    var list = loadSaves();
+    openModal('Restore a save', list.length ? 'Rolls the whole house back — your current edits are replaced.' : '');
+    if (!list.length) {
+      mBody.innerHTML = '<div style="font-size:11px;color:var(--ink60);line-height:1.6">No snapshots yet. Use “Save snapshot” first, or “Import house file” to load one.</div>' +
+        '<div style="margin-top:12px"><button id="m-x" style="' + BTN_GHOST + '">Close</button></div>';
+      document.getElementById('m-x').onclick = closeModal; return;
+    }
+    var rows = list.map(function (s, i) {
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--ink16)">' +
+        '<div style="flex:1;min-width:0"><div style="font:600 11px/1.3 Archivo,sans-serif">' + esc(s.name) + '</div>' +
+        '<div style="font-size:8.5px;color:var(--ink60)">' + fmtTime(s.at) + ' · ' + roomCount(s.data) + ' rooms</div></div>' +
+        '<button data-i="' + i + '" class="m-load" style="' + BTN_DARK + '">LOAD</button>' +
+        '<button data-i="' + i + '" class="m-del" style="' + BTN_GHOST + '">✕</button></div>';
+    }).join('');
+    mBody.innerHTML = rows + '<div style="margin-top:12px;text-align:right"><button id="m-x" style="' + BTN_GHOST + '">Close</button></div>';
+    document.getElementById('m-x').onclick = closeModal;
+    Array.prototype.forEach.call(mBody.querySelectorAll('.m-load'), function (b) {
+      b.onclick = function () {
+        var s = loadSaves()[+b.getAttribute('data-i')];
+        if (!s) return;
+        applyData(s.data, true);
+        location.reload();
+      };
+    });
+    Array.prototype.forEach.call(mBody.querySelectorAll('.m-del'), function (b) {
+      b.onclick = function () {
+        var list2 = loadSaves(); list2.splice(+b.getAttribute('data-i'), 1); storeSaves(list2);
+        document.getElementById('h-restore').click();
+      };
+    });
+  });
+
+  // ---- Export whole house ----
+  document.getElementById('h-export').addEventListener('click', function () {
+    var data = snapshot();
+    if (!Object.keys(data).length) { say('No edits to export yet — open a room and change something first.'); return; }
+    var payload = { app: 'yamazina-house', version: 1, exported: new Date().toISOString(),
+      rooms: roomCount(data), keys: data, saves: loadSaves() };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'yamazina-house-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    say('Exported ' + roomCount(data) + ' rooms — this file is your portable, contractor-ready copy.');
+  });
+
+  // ---- Import whole house ----
+  document.getElementById('h-import').addEventListener('click', function () { document.getElementById('h-file').click(); });
+  document.getElementById('h-file').addEventListener('change', function (ev) {
+    var f = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (!f) return;
+    f.text().then(function (txt) {
+      var p = JSON.parse(txt);
+      var keys = p && (p.keys || (p.app ? {} : p));   // tolerate a bare key-map too
+      if (!keys || typeof keys !== 'object' || !Object.keys(keys).length) { say('That file has no house design in it.'); return; }
+      openModal('Import house file', roomCount(keys) + ' rooms in this file · exported ' + (p.exported ? fmtTime(p.exported) : 'unknown'));
+      mBody.innerHTML =
+        '<label style="display:flex;gap:8px;align-items:flex-start;font-size:11px;color:var(--ink);line-height:1.5">' +
+        '<input type="checkbox" id="m-snap" checked style="margin-top:2px"><span>Snapshot my current house first (so I can roll back)</span></label>' +
+        '<div style="display:flex;gap:8px;margin-top:14px"><button id="m-ok" style="' + BTN_DARK + ';flex:1">REPLACE HOUSE WITH FILE</button>' +
+        '<button id="m-x" style="' + BTN_GHOST + '">Cancel</button></div>' +
+        '<div style="font-size:9px;color:var(--ink60);margin-top:9px;line-height:1.5">Replaces every room with the file’s design. Your Look Book library and app code are untouched.</div>';
+      document.getElementById('m-x').onclick = closeModal;
+      document.getElementById('m-ok').onclick = function () {
+        if (document.getElementById('m-snap').checked) {
+          var cur = snapshot();
+          if (Object.keys(cur).length) { var l = loadSaves(); l.push({ name: 'Before import — ' + new Date().toLocaleString(), at: new Date().toISOString(), data: cur }); storeSaves(l); }
+        }
+        // merge any saves the file carried, so their history travels too
+        if (p.saves && p.saves.length) { var mine = loadSaves(); storeSaves(mine.concat(p.saves)); }
+        applyData(keys, true);
+        location.reload();
+      };
+    }).catch(function () { say('Could not read that file — is it a YamaZina house export?'); });
+  });
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // gentle status on load
+  (function () {
+    var n = roomCount(snapshot()), sv = loadSaves().length;
+    if (n || sv) say((n ? n + ' room' + (n === 1 ? '' : 's') + ' with live edits' : 'no edits yet') + (sv ? ' · ' + sv + ' saved' : ''));
+    else say('Make edits in any room — they persist here, and Export makes them portable.');
+  })();
 })();
 </script>
 </body>
