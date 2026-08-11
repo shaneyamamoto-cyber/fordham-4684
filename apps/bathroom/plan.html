@@ -6,56 +6,110 @@
 <title>Bathroom — 2D Floor Plan</title>
 <style>
   :root { --paper:#faf9f5; --panel:#efece5; --ink:#23231f; --ink60:rgba(35,35,31,0.6);
-          --ink16:rgba(35,35,31,0.16); --accent:#8a5a2b; }
+          --ink30:rgba(35,35,31,0.3); --ink16:rgba(35,35,31,0.16); --accent:#8a5a2b; --note:#3d5457; }
   * { box-sizing:border-box; }
   html,body { margin:0; padding:0; background:var(--paper); color:var(--ink);
     font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace; }
-  #bar { padding:18px 24px 10px; }
+  #bar { padding:16px 24px 8px; }
   .kicker { font:600 10px/1 inherit; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase; }
   h1 { font:600 20px/1.2 Archivo,Helvetica,Arial,sans-serif; margin:8px 0 2px; }
   .sub { font-size:10px; color:var(--ink60); }
-  #sheet { padding:10px 24px 40px; overflow:auto; position:relative; }
-  svg text { font-family:inherit; }
-  .tag { font:600 8px/1 inherit; letter-spacing:0.08em; fill:var(--ink60); text-transform:uppercase; }
-  .dim { font:500 9px/1 inherit; fill:var(--ink60); }
-  rect.fit { cursor:pointer; }
-  rect.fit:hover { stroke-width:2; }
-  rect.fit.lock { cursor:not-allowed; }
+  #tools { display:flex; gap:8px; margin-top:11px; flex-wrap:wrap; align-items:center; }
+  #tools button { font:600 9px/1 inherit; letter-spacing:0.08em; padding:7px 11px; cursor:pointer;
+    border:1px solid var(--ink30); background:#fbfaf7; color:var(--ink); border-radius:2px; }
+  #tools button.on { background:var(--note); color:#fbfaf7; border-color:var(--note); }
+  #tools button.dark { background:var(--ink); color:#fbfaf7; border-color:var(--ink); }
+  #tools .syncnote { font-size:8.5px; color:var(--accent); letter-spacing:0.06em; margin-left:auto; }
 
-  #pop { position:absolute; display:none; z-index:40; background:#fbfaf7; border:1px solid #23231f;
-    border-radius:2px; box-shadow:0 8px 26px rgba(0,0,0,0.2); padding:12px 13px 13px; width:216px; }
-  #pop .pt { font:600 10px/1 inherit; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:9px; }
-  #pop .fr { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
-  #pop label { flex:0 0 92px; font-size:9px; color:var(--ink60); }
-  #pop input { flex:1; width:60px; font:inherit; font-size:10px; padding:4px 5px;
+  #wrap { display:flex; gap:22px; padding:6px 24px 44px; align-items:flex-start; }
+  #sheet { overflow:auto; position:relative; flex:1 1 auto; min-width:0; }
+  #sheet.noting { cursor:crosshair; }
+  svg text { font-family:inherit; }
+  .tag { font:600 8px/1 inherit; letter-spacing:0.06em; fill:var(--ink60); text-transform:uppercase; }
+  .dim { font:500 9px/1 inherit; fill:var(--ink60); }
+  .dimv { font:600 9px/1 inherit; fill:var(--ink); }
+  rect.fit { cursor:pointer; }
+  rect.fit:hover { stroke-width:2.4; }
+  rect.fit.lock { cursor:not-allowed; }
+  .badge { font:700 8.5px/1 inherit; fill:#fbfaf7; }
+  .noteg { cursor:pointer; }
+
+  /* schedule table */
+  #side { flex:0 0 322px; max-width:44vw; }
+  #side h2 { font:600 9px/1 inherit; letter-spacing:0.16em; color:var(--ink60); text-transform:uppercase; margin:2px 0 8px; }
+  table { width:100%; border-collapse:collapse; font-size:10px; }
+  th { text-align:left; font:600 8px/1 inherit; letter-spacing:0.1em; color:var(--ink60);
+    text-transform:uppercase; padding:0 6px 6px; border-bottom:1px solid var(--ink16); }
+  td { padding:6px 6px; border-bottom:1px solid var(--ink16); vertical-align:top; }
+  tr.frow { cursor:pointer; }
+  tr.frow:hover td { background:rgba(138,90,43,0.06); }
+  tr.frow.lockrow { color:var(--ink60); }
+  .num { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px;
+    border-radius:50%; background:var(--ink); color:#fbfaf7; font:700 8.5px/1 inherit; }
+  .num.lock { background:var(--ink60); }
+  #notesWrap { margin-top:20px; }
+  #notesWrap .n { display:flex; gap:8px; align-items:flex-start; padding:6px 0; border-bottom:1px solid var(--ink16); font-size:10px; }
+  #notesWrap .n .x { cursor:pointer; color:var(--ink60); font-weight:700; }
+  #notesWrap .empty { font-size:9.5px; color:var(--ink60); }
+
+  .pop { position:fixed; display:none; z-index:60; background:#fbfaf7; border:1px solid #23231f;
+    border-radius:2px; box-shadow:0 8px 26px rgba(0,0,0,0.22); padding:13px 14px; width:236px; }
+  .pop .pt { font:600 10px/1 inherit; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px; }
+  .pop .fr { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .pop label { flex:0 0 108px; font-size:9px; color:var(--ink60); }
+  .pop input { flex:1; width:52px; font:inherit; font-size:10px; padding:5px 6px;
     border:1px solid rgba(35,35,31,0.3); border-radius:2px; background:#fff; }
-  #pop .btns { display:flex; gap:6px; margin-top:9px; }
-  #pop button { flex:1; font:600 9px/1 inherit; letter-spacing:0.1em; padding:7px 0; cursor:pointer;
+  .pop .btns { display:flex; gap:6px; margin-top:10px; }
+  .pop button { flex:1; font:600 9px/1 inherit; letter-spacing:0.1em; padding:8px 0; cursor:pointer;
     border:1px solid #23231f; border-radius:2px; background:#23231f; color:#fbfaf7; }
-  #pop button.ghost { background:transparent; color:#23231f; }
-  #flash { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:50; display:none;
+  .pop button.ghost { background:transparent; color:#23231f; }
+  #flash { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:70; display:none;
     background:#23231f; color:#fbfaf7; padding:11px 17px; border-radius:2px;
-    font:600 10px/1.4 inherit; letter-spacing:0.1em; }
+    font:600 10px/1.4 inherit; letter-spacing:0.1em; max-width:80vw; }
 </style>
 </head>
 <body>
 <div id="bar">
   <div class="kicker">Measured Layout Tool · House Plan Set</div>
   <h1>Bathroom — Floor Plan</h1>
-  <div class="sub" id="src">baseline plan · click an unlocked fitting to edit its footprint — locked pieces refuse</div>
-</div>
-<div id="sheet">
-  <div id="pop">
-    <div class="pt" id="popTitle"></div>
-    <div class="fr"><label>Along wall — x ″</label><input id="popX" type="number" step="0.25"></div>
-    <div class="fr"><label>Width — w ″</label><input id="popW" type="number" step="0.25"></div>
-    <div class="fr" id="popDepRow"><label>Depth — dep ″</label><input id="popDep" type="number" step="0.25"></div>
-    <div class="btns">
-      <button id="popSave" type="button">SAVE</button>
-      <button id="popCancel" type="button" class="ghost">CANCEL</button>
-    </div>
+  <div class="sub" id="src">baseline plan — open the Elevation Planner once to start a working design</div>
+  <div id="tools">
+    <button id="btnRoom" type="button">Room dimensions…</button>
+    <button id="btnNote" type="button">＋ Add note</button>
+    <button id="btnClearNotes" type="button">Clear notes</button>
+    <span class="syncnote">Edits sync live to the Elevation Planner + 3D</span>
   </div>
 </div>
+
+<div id="wrap">
+  <div id="sheet"></div>
+  <div id="side">
+    <h2>Fixture schedule</h2>
+    <table id="sched"><thead><tr><th>#</th><th>Fixture</th><th>Size w×d ″</th><th>Position</th></tr></thead><tbody></tbody></table>
+    <div id="notesWrap"><h2>Markup notes</h2><div id="notesList"></div></div>
+  </div>
+</div>
+
+<!-- fixture edit -->
+<div class="pop" id="pop">
+  <div class="pt" id="popTitle"></div>
+  <div class="fr"><label id="popXlab">Along wall — x ″</label><input id="popX" type="number" step="0.25"></div>
+  <div class="fr"><label>Width — w ″</label><input id="popW" type="number" step="0.25"></div>
+  <div class="fr"><label>Depth — dep ″</label><input id="popDep" type="number" step="0.25"></div>
+  <div class="btns"><button id="popSave" type="button">SAVE</button><button id="popCancel" type="button" class="ghost">CANCEL</button></div>
+</div>
+
+<!-- room dimensions -->
+<div class="pop" id="roompop">
+  <div class="pt">Room layout — the clean shell first</div>
+  <div class="fr"><label>Overall run ″</label><input id="rRun" type="number" step="0.25"></div>
+  <div class="fr"><label>Overall depth ″</label><input id="rDep" type="number" step="0.25"></div>
+  <div class="fr"><label>Bay width ″</label><input id="rBayW" type="number" step="0.25"></div>
+  <div class="fr"><label>Bay depth ″</label><input id="rBayD" type="number" step="0.25"></div>
+  <div class="fr"><label>Dormer run ″</label><input id="rSlope" type="number" step="0.25"></div>
+  <div class="btns"><button id="roomSave" type="button">SAVE ROOM</button><button id="roomCancel" type="button" class="ghost">CANCEL</button></div>
+</div>
+
 <div id="flash"></div>
 
 <script src="../../platform/core/store.js"></script>
@@ -64,10 +118,16 @@
   'use strict';
   window.PlatformStore('bathroom');
   var WORK_KEY = 'yamazina.bathroom.work.v1';
+  var MARK_KEY = 'yamazina.bathroom.markup.v1';
 
-  // Baseline mirrors the built-in plan (bathroom_7 measures); the planner's
-  // working state supersedes it the moment one exists.
-  var SHELL = [{x:0,d:14.5},{x:60.5,d:14.5},{x:60.5,d:0},{x:169,d:0},{x:169,d:-56.5},{x:0,d:-56.5}];
+  // baseline shell (bathroom_7): an L — a shallow bay at the top-left, the
+  // main room below. Rebuildable from five numbers so the room layout is the
+  // governing step, populated by fixtures afterward.
+  var DEF = { run: 169, dep: 56.5, bayW: 60.5, bayD: 14.5, slope: 32 };
+  function shellFrom(r) {
+    return [{x:0,d:r.bayD},{x:r.bayW,d:r.bayD},{x:r.bayW,d:0},{x:r.run,d:0},{x:r.run,d:-r.dep},{x:0,d:-r.dep}];
+  }
+  var SHELL = shellFrom(DEF);
   var BASE_ITEMS = [
     {id:'tub',name:'Tub',x:0,w:32,dep:60,face:14.5,locked:true},
     {id:'tower',name:'Storage tower',x:44.5,w:16,dep:14.5,face:14.5},
@@ -87,186 +147,296 @@
       var w = JSON.parse(localStorage.getItem(WORK_KEY) || 'null');
       if (w && w.items && w.items.length) {
         live = true;
-        document.getElementById('src').textContent =
-          'working design — live with the Elevation Planner and 3D · click an unlocked fitting to edit';
+        document.getElementById('src').textContent = 'working design — live with the Elevation Planner and 3D';
         return { items: w.items, poly: w.poly || SHELL, raw: w };
       }
-    } catch (e) { /* fall through to baseline */ }
+    } catch (e) { /* baseline */ }
     live = false;
     return { items: BASE_ITEMS, poly: SHELL, raw: null };
   }
+  function loadNotes() { try { return JSON.parse(localStorage.getItem(MARK_KEY) || '[]'); } catch (e) { return []; } }
+  function saveNotes(l) { try { localStorage.setItem(MARK_KEY, JSON.stringify(l)); } catch (e) {} }
 
-  // plan footprint of an item, in plan inches {x0, d0, w, dp} — d measured
-  // toward the dormer (negative side); face 14.5 = bay-side fittings
   function footprint(it) {
     var dep = it.dep || 1;
-    if (it.wall === 'end') {
-      var dTop = 14.5 - (it.d || 0);
-      return { x0: it.flip ? it.x - dep : it.x, w: dep, d1: dTop, dp: it.w };
-    }
-    if (it.wall === 'slope') {
-      // dormer-wall pieces (towel bars) — small tick at the bottom edge
-      return { x0: it.x, w: it.w, d1: -56.5 + (it.dep || 4), dp: it.dep || 4 };
-    }
+    if (it.wall === 'end') { var dTop = 14.5 - (it.d || 0); return { x0: it.flip ? it.x - dep : it.x, w: dep, d1: dTop, dp: it.w }; }
+    if (it.wall === 'slope') { return { x0: it.x, w: it.w, d1: -56.5 + (it.dep || 4), dp: it.dep || 4 }; }
     var base = (it.face || 0) > 0 ? 14.5 : 0;
     return { x0: it.x, w: it.w, d1: base, dp: dep };
   }
+  // wall-mounted plumbing and accessories are elevation items, not floor
+  // footprints — keep them off the plan so it reads as a clean layout
+  var PLAN_SKIP = { spout:1, tap:1, taphl:1, taphr:1, rain:1, mixer:1, ring:1,
+    mir:1, light:1, light2:1, nichesh:1, base:1, dcase:1, vshelf:1 };
   function isPlanItem(it) {
-    if (it.wall === 'slope') return true;
-    if (it.h && !it.dep) return false;              // wall-only graphics
-    if (it.y != null && it.y > 40 && !it.zone) return false; // mirrors, lights, rails
+    if (PLAN_SKIP[it.id]) return false;
+    if (it.wall === 'slope') return true;                 // towel bars on the dormer wall
+    if (it.h && !it.dep) return false;                    // pure wall graphics
+    if (it.y != null && it.y > 40 && !it.zone && !it.added) return false; // high wall accessories
     return true;
   }
+  function positionText(it) {
+    if (it.wall === 'end') return fmt(it.d || 0) + '″ from end wall';
+    if (it.wall === 'slope') return 'x ' + fmt(it.x) + '″ · dormer';
+    return 'x ' + fmt(it.x) + '″' + ((it.face || 0) > 0 ? ' · bay wall' : ' · vanity wall');
+  }
 
-  var SC = 6.2, M = 60, TOP = 34;
+  var SC = 6.4, M = 58, TOP = 40;
   var NS = 'http://www.w3.org/2000/svg';
   var sheet = document.getElementById('sheet');
-  var svg = null;
+  var noting = false;
 
   function render() {
     var st = loadState();
+    renderPlan(st);
+    renderSchedule(st);
+    renderNotesList();
+  }
+
+  function renderPlan(st) {
     var xs = st.poly.map(function (p) { return p.x; }), ds = st.poly.map(function (p) { return p.d; });
     var X0 = Math.min.apply(0, xs), X1 = Math.max.apply(0, xs);
     var D0 = Math.min.apply(0, ds), D1 = Math.max.apply(0, ds);
-    // plan from above: x right, depth DOWN — bay/vanity wall top, dormer wall bottom
     var px = function (x) { return M + (x - X0) * SC; };
     var pd = function (d) { return M + TOP + (D1 - d) * SC; };
-    var W = M * 2 + (X1 - X0) * SC + 120, H = M + TOP + (D1 - D0) * SC + 118;
+    var W = M + (X1 - X0) * SC + 66, H = M + TOP + (D1 - D0) * SC + 70;
 
-    if (svg) svg.remove();
-    svg = document.createElementNS(NS, 'svg');
+    sheet.innerHTML = '';
+    var svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('width', W); svg.setAttribute('height', H);
     sheet.appendChild(svg);
+    svg._px = px; svg._pd = pd; svg._X0 = X0; svg._X1 = X1; svg._D0 = D0; svg._D1 = D1;
+    window.__svg = svg;
     function el(n, a) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; }
     function txt(x, y, t, cls, anch) { var e = el('text', { x: x, y: y, 'class': cls || 'dim', 'text-anchor': anch || 'start' }); e.textContent = t; return e; }
 
     // shell
     el('polygon', { points: st.poly.map(function (p) { return px(p.x) + ',' + pd(p.d); }).join(' '),
-      fill: '#fbfaf7', stroke: '#23231f', 'stroke-width': 2 });
-    // dormer slope: knee wall at the bottom edge, flat ceiling beyond the 32" run
-    el('line', { x1: px(X0), y1: pd(D0 + 32), x2: px(X1), y2: pd(D0 + 32),
+      fill: '#ffffff', stroke: '#23231f', 'stroke-width': 2 });
+    // dormer knee line
+    var slope = 32;
+    el('line', { x1: px(X0), y1: pd(D0 + slope), x2: px(X1), y2: pd(D0 + slope),
       stroke: 'rgba(138,90,43,0.55)', 'stroke-width': 1, 'stroke-dasharray': '6 4' });
-    txt(px((X0 + X1) / 2), pd(D0 + 32) + 12, 'DORMER SLOPE — 32″ RUN, FULL LENGTH', 'tag', 'middle');
+    txt(px((X0 + X1) / 2), pd(D0 + slope) + 12, 'DORMER SLOPE LINE — ' + fmt(slope) + '″ RUN', 'tag', 'middle');
 
-    // label ledger: fittings get leader lines to two margin rows so text
-    // never sits on top of other text
-    var topLabels = [], botLabels = [];
-    var inlineUsed = {};   // stack coincident inline labels (tub + wet zone)
+    // ---- dimension strings (ticked), clear of the fixtures ----
+    function hdim(xa, xb, y, label) {
+      el('line', { x1: px(xa), y1: y, x2: px(xb), y2: y, stroke: 'rgba(35,35,31,0.5)', 'stroke-width': 0.75 });
+      [xa, xb].forEach(function (xx) { el('line', { x1: px(xx), y1: y - 3, x2: px(xx), y2: y + 3, stroke: 'rgba(35,35,31,0.5)', 'stroke-width': 0.75 }); });
+      txt((px(xa) + px(xb)) / 2, y - 4, label, 'dimv', 'middle');
+    }
+    function vdim(da, db, x, label) {
+      el('line', { x1: x, y1: pd(da), x2: x, y2: pd(db), stroke: 'rgba(35,35,31,0.5)', 'stroke-width': 0.75 });
+      [da, db].forEach(function (dd) { el('line', { x1: x - 3, y1: pd(dd), x2: x + 3, y2: pd(dd), stroke: 'rgba(35,35,31,0.5)', 'stroke-width': 0.75 }); });
+      var e = txt(x - 4, (pd(da) + pd(db)) / 2, label, 'dimv', 'middle');
+      e.setAttribute('transform', 'rotate(-90 ' + (x - 4) + ' ' + ((pd(da) + pd(db)) / 2) + ')');
+    }
+    var bayW = 0; for (var i = 0; i < st.poly.length; i++) if (st.poly[i].d > 0 && st.poly[i].x > bayW) bayW = st.poly[i].x;
+    var bayD = D1;
+    // top: overall run + the bay / vanity-wall split
+    hdim(X0, X1, pd(D1) - 26, both(X1 - X0));
+    hdim(X0, bayW, pd(D1) - 12, 'bay ' + both(bayW));
+    hdim(bayW, X1, pd(D1) - 12, 'vanity wall ' + both(X1 - bayW));
+    // right: overall depth + bay depth
+    vdim(D0, D1, px(X1) + 30, both(D1 - D0));
+    if (bayD > 0) vdim(0, bayD, px(bayW) + 16, 'bay ' + both(bayD));
+    // bottom: dormer run marker already shown; add the main-room depth on the left
+    vdim(D0, 0, px(X0) - 20, both(0 - D0));
 
+    // ---- fixtures: numbered footprints (names live in the schedule table) ----
+    var n = 0;
     st.items.filter(isPlanItem).forEach(function (it) {
       var f = footprint(it);
       var x0 = px(f.x0), y0 = pd(f.d1), w = f.w * SC, h = f.dp * SC;
-      var r = el('rect', { x: x0, y: y0, width: Math.max(2, w), height: Math.max(2, h),
-        fill: it.zone ? 'none' : (it.door ? '#fff' : (it.locked ? '#e2d8c2' : '#e9e2d2')),
+      el('rect', { x: x0, y: y0, width: Math.max(2, w), height: Math.max(2, h),
+        fill: it.zone ? 'none' : (it.door ? '#fff' : (it.locked ? '#e4dccb' : '#efe7d6')),
         stroke: it.zone ? 'rgba(61,84,87,0.6)' : '#8a5a2b',
-        'stroke-width': it.zone ? 1 : 1.1,
-        'stroke-dasharray': it.zone ? '5 4' : 'none',
+        'stroke-width': it.zone ? 1 : 1.1, 'stroke-dasharray': it.zone ? '5 4' : (it.door ? '4 3' : 'none'),
         'class': 'fit' + (it.locked ? ' lock' : ''), 'data-id': it.id });
-      if (it.locked) {
-        txt(x0 + w / 2, y0 + h / 2 + 3, '🔒', 'tag', 'middle').setAttribute('font-size', '10');
+      // door: draw the leaf + a quarter-circle swing instead of a solid box
+      if (it.door) {
+        var swing = Math.min(f.w, 30) * SC;
+        el('path', { d: 'M ' + x0 + ' ' + y0 + ' L ' + (x0 + swing) + ' ' + y0 +
+          ' A ' + swing + ' ' + swing + ' 0 0 1 ' + x0 + ' ' + (y0 + swing),
+          fill: 'none', stroke: 'rgba(35,35,31,0.4)', 'stroke-width': 0.8, 'stroke-dasharray': '4 3' });
+        el('line', { x1: x0, y1: y0, x2: x0, y2: y0 + swing, stroke: '#23231f', 'stroke-width': 1.4 });
       }
-      var label = (it.name || it.id).toUpperCase() + ' · ' + fmt(f.w) + '×' + fmt(f.dp) + '″';
-      var big = w > 84 && h > 26;
-      if (big) {
-        var key = Math.round(x0) + ':' + Math.round(y0);
-        var bump = (inlineUsed[key] || 0);
-        inlineUsed[key] = bump + 1;
-        txt(x0 + 4, y0 + 12 + bump * 11, label, 'tag');
-      } else {
-        // route to the nearer ledger row
-        var side = (f.d1 > -20) ? topLabels : botLabels;
-        side.push({ x: x0 + w / 2, y: side === topLabels ? y0 : y0 + h, label: label, lock: !!it.locked });
-      }
-      // per-item position dim on the vanity wall pieces
-      if (!it.zone && !it.door && f.d1 === 0 && f.dp > 3) {
-        txt(x0 + w / 2, y0 + h + 10, 'x ' + fmt(f.x0), 'dim', 'middle');
-      }
+      if (it.zone) return;                 // the wet zone is a boundary, not a numbered item
+      n++;
+      it.__n = n;
+      var bx = x0 + Math.min(11, w / 2), by = y0 + Math.min(11, h / 2);
+      el('circle', { cx: bx, cy: by, r: 8, fill: it.locked ? 'rgba(35,35,31,0.55)' : '#23231f',
+        'class': 'fit' + (it.locked ? ' lock' : ''), 'data-id': it.id });
+      txt(bx, by + 3, String(n), 'badge', 'middle').setAttribute('pointer-events', 'none');
     });
 
-    function ledger(list, yRow, dirUp) {
-      list.sort(function (a, b) { return a.x - b.x; });
-      var rowEnd = [-1e9, -1e9], minGap = 26;
-      list.forEach(function (L, i) {
-        var row = i % 2;                        // alternate two text rows
-        var ry = yRow + (dirUp ? -row * 14 : row * 14);
-        var lx = Math.max(L.x, rowEnd[row] + minGap);
-        rowEnd[row] = lx + L.label.length * 6.4; // reserve the text's width
-        el('line', { x1: L.x, y1: L.y, x2: lx, y2: ry + (dirUp ? 5 : -8),
-          stroke: 'rgba(35,35,31,0.35)', 'stroke-width': 0.7 });
-        txt(lx - 2, ry + (dirUp ? 2 : 2), (L.lock ? '🔒 ' : '') + L.label, 'tag');
-      });
-    }
-    ledger(topLabels, pd(D1) - 24, true);
-    ledger(botLabels, pd(D0) + 40, false);
+    // ---- markup notes ----
+    loadNotes().forEach(function (nt, idx) {
+      var nx = px(nt.x), ny = pd(nt.d);
+      var g = el('g', { 'class': 'noteg', 'data-note': idx });
+      var w2 = Math.max(40, nt.text.length * 5.4 + 12);
+      var e = document.createElementNS(NS, 'rect');
+      e.setAttribute('x', nx); e.setAttribute('y', ny - 13); e.setAttribute('width', w2); e.setAttribute('height', 18);
+      e.setAttribute('rx', 2); e.setAttribute('fill', 'rgba(61,84,87,0.12)'); e.setAttribute('stroke', 'var(--note)'); e.setAttribute('stroke-width', 0.8);
+      g.appendChild(e);
+      var tx = document.createElementNS(NS, 'text');
+      tx.setAttribute('x', nx + 6); tx.setAttribute('y', ny); tx.setAttribute('class', 'dim'); tx.setAttribute('fill', 'var(--note)');
+      tx.textContent = nt.text;
+      g.appendChild(tx);
+      el('circle', { cx: nx, cy: ny - 4, r: 2.4, fill: 'var(--note)' });
+      svg.appendChild(g);
+    });
 
-    // overall dims
-    var runIn = X1 - X0, depIn = D1 - D0;
-    el('line', { x1: px(X0), y1: pd(D0) + 62, x2: px(X1), y2: pd(D0) + 62, stroke: 'rgba(35,35,31,0.45)', 'stroke-width': 0.75 });
-    txt((px(X0) + px(X1)) / 2, pd(D0) + 58, ftIn(runIn) + ' RUN', 'dim', 'middle');
-    el('line', { x1: px(X1) + 26, y1: pd(D1), x2: px(X1) + 26, y2: pd(D0), stroke: 'rgba(35,35,31,0.45)', 'stroke-width': 0.75 });
-    txt(px(X1) + 33, (pd(D1) + pd(D0)) / 2, ftIn(depIn), 'dim');
-    txt(px(X0), pd(D0) + 80, 'VANITY / BAY WALL AT TOP · DORMER WALL (TOWEL BARS) AT BOTTOM · SHADED = LOCKED', 'tag');
+    txt(px(X0), H - 8, 'VANITY / BAY WALL AT TOP · DORMER WALL AT BOTTOM · SHADED = LOCKED · CLICK A FIXTURE OR ROW TO EDIT', 'tag');
   }
-  function fmt(n) { return Math.round(n * 4) / 4 + ''; }
-  function ftIn(n) { return (n / 12 | 0) + '′-' + Math.round(n % 12) + '″'; }
+  function both(n) { return ftIn(n) + ' (' + fmt(n) + '″)'; }
 
-  // ------------------------------------------------------------- editing --
-  // The uniform platform rule: click a piece → if it's locked it refuses;
-  // if not, the edit window opens. Writes land in the shared work slot, so
-  // the Elevation Planner and the 3D pick them up as the working design.
-  var pop = document.getElementById('pop');
-  var editingId = null;
+  function renderSchedule(st) {
+    var tb = document.querySelector('#sched tbody');
+    tb.innerHTML = '';
+    st.items.filter(isPlanItem).filter(function (it) { return !it.zone; }).forEach(function (it, i) {
+      var f = footprint(it);
+      var tr = document.createElement('tr');
+      tr.className = 'frow' + (it.locked ? ' lockrow' : '');
+      tr.setAttribute('data-id', it.id);
+      tr.innerHTML = '<td><span class="num' + (it.locked ? ' lock' : '') + '">' + (i + 1) + '</span></td>' +
+        '<td>' + (it.locked ? '🔒 ' : '') + (it.name || it.id) + '</td>' +
+        '<td>' + fmt(f.w) + '×' + fmt(f.dp) + '</td>' +
+        '<td>' + positionText(it) + '</td>';
+      tb.appendChild(tr);
+    });
+  }
+  function renderNotesList() {
+    var host = document.getElementById('notesList');
+    var notes = loadNotes();
+    if (!notes.length) { host.innerHTML = '<div class="empty">No notes yet. Click “＋ Add note”, then click a spot on the plan to drop a markup note for the contractor.</div>'; return; }
+    host.innerHTML = notes.map(function (nt, i) {
+      return '<div class="n"><span class="x" data-del="' + i + '">✕</span><span>' + esc(nt.text) + '</span></div>';
+    }).join('');
+  }
+  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+  function fmt(n) { return Math.round(n * 4) / 4 + ''; }
+  function ftIn(n) { var neg = n < 0; n = Math.abs(n); return (neg ? '-' : '') + (n / 12 | 0) + '′-' + Math.round(n % 12) + '″'; }
+
   function flash(msg) {
     var f = document.getElementById('flash');
     f.textContent = msg; f.style.display = 'block';
-    clearTimeout(flash._t);
-    flash._t = setTimeout(function () { f.style.display = 'none'; }, 2200);
+    clearTimeout(flash._t); flash._t = setTimeout(function () { f.style.display = 'none'; }, 2400);
   }
-  sheet.addEventListener('click', function (ev) {
-    var t = ev.target;
-    if (pop.contains(t)) return;
-    if (!(t instanceof SVGRectElement) || !t.hasAttribute('data-id')) { pop.style.display = 'none'; return; }
+
+  // ---------------------------------------------------------------- edit --
+  var pop = document.getElementById('pop'), editingId = null;
+  function openEditor(id, anchorRect) {
     var st = loadState();
-    var it = st.items.filter(function (i) { return i.id === t.getAttribute('data-id'); })[0];
+    var it = st.items.filter(function (i) { return i.id === id; })[0];
     if (!it) return;
-    if (it.locked) { flash('🔒 ' + (it.name || it.id).toUpperCase() + ' IS LOCKED — UNLOCK IT IN THE ELEVATION PLANNER'); return; }
-    if (!live) { flash('OPEN THE ELEVATION PLANNER ONCE TO SEED THE WORKING DESIGN, THEN EDIT HERE'); return; }
-    editingId = it.id;
-    document.getElementById('popTitle').textContent = (it.name || it.id) + ' — footprint';
+    if (it.locked) { flash('🔒 ' + (it.name || id).toUpperCase() + ' IS LOCKED — UNLOCK IT IN THE ELEVATION PLANNER'); return; }
+    if (!live) { flash('OPEN THE ELEVATION PLANNER ONCE TO START A WORKING DESIGN, THEN EDIT HERE'); return; }
+    editingId = id;
+    document.getElementById('popTitle').textContent = (it.name || id) + ' — footprint';
+    document.getElementById('popXlab').textContent = it.wall === 'end' ? 'From end wall ″' : 'Along wall — x ″';
     document.getElementById('popX').value = it.wall === 'end' ? (it.d || 0) : it.x;
     document.getElementById('popW').value = it.w;
     document.getElementById('popDep').value = it.dep || 1;
-    var rect = t.getBoundingClientRect(), host = sheet.getBoundingClientRect();
-    pop.style.left = Math.min(rect.right - host.left + 10, host.width - 240) + 'px';
-    pop.style.top = Math.max(8, rect.top - host.top - 10 + sheet.scrollTop) + 'px';
+    var r = anchorRect || { left: window.innerWidth / 2 - 60, bottom: 160 };
+    pop.style.left = Math.min(r.left, window.innerWidth - 252) + 'px';
+    pop.style.top = Math.min((r.bottom || r.top) + 8, window.innerHeight - 220) + 'px';
     pop.style.display = 'block';
-  });
+  }
   document.getElementById('popCancel').addEventListener('click', function () { pop.style.display = 'none'; });
   document.getElementById('popSave').addEventListener('click', function () {
     if (!editingId) return;
-    var raw;
-    try { raw = JSON.parse(localStorage.getItem(WORK_KEY) || 'null'); } catch (e) { raw = null; }
+    var raw; try { raw = JSON.parse(localStorage.getItem(WORK_KEY) || 'null'); } catch (e) { raw = null; }
     if (!raw || !raw.items) { flash('NO WORKING DESIGN TO EDIT'); pop.style.display = 'none'; return; }
-    var nx = Number(document.getElementById('popX').value);
-    var nw = Number(document.getElementById('popW').value);
-    var nd = Number(document.getElementById('popDep').value);
+    var nx = Number(document.getElementById('popX').value), nw = Number(document.getElementById('popW').value), nd = Number(document.getElementById('popDep').value);
     raw.items = raw.items.map(function (i) {
       if (i.id !== editingId || i.locked) return i;
-      var n = Object.assign({}, i);
-      if (i.wall === 'end') n.d = nx; else n.x = nx;
-      if (nw > 0) n.w = nw;
-      if (nd > 0) n.dep = nd;
-      return n;
+      var o = Object.assign({}, i);
+      if (i.wall === 'end') o.d = nx; else o.x = nx;
+      if (nw > 0) o.w = nw;
+      if (nd > 0) o.dep = nd;
+      return o;
     });
-    try { localStorage.setItem(WORK_KEY, JSON.stringify(raw)); } catch (e) { /* quota */ }
-    pop.style.display = 'none';
-    render();
-    flash('SAVED — PLANNER AND 3D FOLLOW THE WORKING DESIGN');
+    try { localStorage.setItem(WORK_KEY, JSON.stringify(raw)); } catch (e) {}
+    pop.style.display = 'none'; render(); flash('SAVED — PLANNER AND 3D FOLLOW THE WORKING DESIGN');
   });
+
+  // click a footprint / badge / schedule row → edit
+  sheet.addEventListener('click', function (ev) {
+    if (noting) { placeNoteAt(ev); return; }
+    var del = ev.target.closest ? ev.target.closest('.noteg') : null;
+    if (del) { var i = +del.getAttribute('data-note'); if (window.confirm('Delete this note?')) { var l = loadNotes(); l.splice(i, 1); saveNotes(l); render(); } return; }
+    var t = ev.target;
+    var id = t.getAttribute && t.getAttribute('data-id');
+    if (!id) { pop.style.display = 'none'; return; }
+    openEditor(id, t.getBoundingClientRect());
+  });
+  document.querySelector('#sched tbody').addEventListener('click', function (ev) {
+    var tr = ev.target.closest('tr.frow'); if (!tr) return;
+    openEditor(tr.getAttribute('data-id'), tr.getBoundingClientRect());
+  });
+  document.getElementById('notesList').addEventListener('click', function (ev) {
+    var d = ev.target.getAttribute && ev.target.getAttribute('data-del');
+    if (d == null) return;
+    var l = loadNotes(); l.splice(+d, 1); saveNotes(l); render();
+  });
+
+  // ---------------------------------------------------------------- notes --
+  var btnNote = document.getElementById('btnNote');
+  btnNote.addEventListener('click', function () {
+    noting = !noting; btnNote.classList.toggle('on', noting); sheet.classList.toggle('noting', noting);
+    flash(noting ? 'NOTE MODE — CLICK A SPOT ON THE PLAN TO DROP A NOTE' : 'NOTE MODE OFF');
+  });
+  document.getElementById('btnClearNotes').addEventListener('click', function () {
+    if (!loadNotes().length) return;
+    if (window.confirm('Remove all markup notes?')) { saveNotes([]); render(); }
+  });
+  function placeNoteAt(ev) {
+    var svg = window.__svg; if (!svg) return;
+    var box = svg.getBoundingClientRect();
+    var sx = ev.clientX - box.left, sy = ev.clientY - box.top;
+    var x = (sx - M) / SC + svg._X0;
+    var d = svg._D1 - (sy - M - TOP) / SC;
+    var text = window.prompt('Note text (e.g. “verify 34″ clear here”):', '');
+    if (text == null || !text.trim()) return;
+    var l = loadNotes(); l.push({ x: Math.round(x * 4) / 4, d: Math.round(d * 4) / 4, text: text.trim() }); saveNotes(l);
+    noting = false; btnNote.classList.remove('on'); sheet.classList.remove('noting');
+    render(); flash('NOTE ADDED — IT TRAVELS IN THE HOUSE EXPORT');
+  }
+
+  // ------------------------------------------------------------ room dims --
+  var roompop = document.getElementById('roompop');
+  document.getElementById('btnRoom').addEventListener('click', function () {
+    if (!live) { flash('OPEN THE ELEVATION PLANNER ONCE TO START A WORKING DESIGN, THEN SET THE ROOM'); return; }
+    var st = loadState();
+    var xs = st.poly.map(function (p) { return p.x; }), dsv = st.poly.map(function (p) { return p.d; });
+    var run = Math.max.apply(0, xs), dep = Math.max.apply(0, dsv) - Math.min.apply(0, dsv);
+    var bayW = 0, bayD = Math.max.apply(0, dsv);
+    st.poly.forEach(function (p) { if (p.d > 0 && p.x > bayW) bayW = p.x; });
+    document.getElementById('rRun').value = run;
+    document.getElementById('rDep').value = dep;
+    document.getElementById('rBayW').value = bayW;
+    document.getElementById('rBayD').value = bayD;
+    document.getElementById('rSlope').value = st.raw && st.raw.slopeRun != null ? st.raw.slopeRun : 32;
+    roompop.style.left = '50%'; roompop.style.transform = 'translateX(-50%)';
+    roompop.style.top = '120px'; roompop.style.display = 'block';
+  });
+  document.getElementById('roomCancel').addEventListener('click', function () { roompop.style.display = 'none'; roompop.style.transform = ''; });
+  document.getElementById('roomSave').addEventListener('click', function () {
+    var raw; try { raw = JSON.parse(localStorage.getItem(WORK_KEY) || 'null'); } catch (e) { raw = null; }
+    if (!raw) { flash('NO WORKING DESIGN TO EDIT'); return; }
+    var r = { run: num('rRun', 169), dep: num('rDep', 56.5), bayW: num('rBayW', 60.5), bayD: num('rBayD', 14.5), slope: num('rSlope', 32) };
+    raw.poly = shellFrom(r);
+    raw.slopeRun = r.slope;
+    try { localStorage.setItem(WORK_KEY, JSON.stringify(raw)); } catch (e) {}
+    roompop.style.display = 'none'; roompop.style.transform = '';
+    render(); flash('ROOM UPDATED — LAYOUT FIRST, FIXTURES FOLLOW (CHECK FIXTURE POSITIONS)');
+  });
+  function num(id, dflt) { var v = Number(document.getElementById(id).value); return v > 0 ? v : dflt; }
 
   render();
   window.addEventListener('storage', function (ev) {
-    if (ev.key === WORK_KEY) { pop.style.display = 'none'; render(); }
+    if (ev.key === WORK_KEY || ev.key === MARK_KEY) { pop.style.display = 'none'; render(); }
   });
 })();
 </script>
