@@ -445,8 +445,30 @@ const HP = Math.PI / 2;
 const OFF = S.wallsOff || {};
 if (!OFF.bay_back)   wall('wall_bay_back',    MAT.bayback,   BAY_X1 - X0, H, X0 + (BAY_X1 - X0) / 2, H / 2, BAY);
 if (!OFF.back_face)  wall('wall_back_face',   MAT.vanity,   X1 - BAY_X1, H, BAY_X1 + (X1 - BAY_X1) / 2, H / 2, 0);
-if (!OFF.end_right)  wall('wall_end_right',   MAT.endR, D1 - D0, H, X1, H / 2, (D1 + D0) / 2, -HP);
-if (!OFF.end_left)   wall('wall_end_left',    MAT.endL, D1 - D0, H, X0, H / 2, (D1 + D0) / 2, HP);
+// End walls follow the dormer rake (user rule 2026-08-11): full height at the
+// back, cut to the slope at the front — so the toilet end reads angled from
+// EVERY view, not just end-on.
+function endWall(name, mat, x, rotY) {
+  const kh = S.kneeH || 0, run = S.slopeRun || 0;
+  const dir = rotY < 0 ? 1 : -1;            // local +x in room-depth terms
+  const dc = (D1 + D0) / 2;
+  const lx = (d) => dir * (d - dc) * IN;
+  const sh = new THREE.Shape();
+  sh.moveTo(lx(D1), -H / 2 * IN);
+  sh.lineTo(lx(D0), -H / 2 * IN);
+  sh.lineTo(lx(D0), (kh - H / 2) * IN);
+  sh.lineTo(lx(D0 + run), H / 2 * IN);
+  sh.lineTo(lx(D1), H / 2 * IN);
+  sh.closePath();
+  const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), mat);
+  m.name = name; m.receiveShadow = true;
+  m.position.copy(P(x, H / 2, dc));
+  m.rotation.y = rotY;
+  room.add(m);
+  return m;
+}
+if (!OFF.end_right)  endWall('wall_end_right', MAT.endR, X1, -HP);
+if (!OFF.end_left)   endWall('wall_end_left',  MAT.endL, X0, HP);
 if (!OFF.ceiling)    wall('ceiling',          MAT.plaster, X1 - X0, D1 - (D0 + S.slopeRun), (X0 + X1) / 2, H, (D1 + D0 + S.slopeRun) / 2, 0, HP);
 
 // the bay step is a real pier of wall, not a floating card — give it thickness so the
