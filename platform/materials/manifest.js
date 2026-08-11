@@ -142,14 +142,16 @@
   // (apps/<x>/ pages pass '../../'). Safe to call repeatedly.
   window.MATERIAL_LIBRARY.ensurePack = function (prefix, cb) {
     var L = window.MATERIAL_LIBRARY;
-    if (L.packLoaded) { if (cb) cb(); return; }
+    if (L.packLoaded || L._packFailed) { if (cb) cb(); return; }
     if (window.LB4684) { L.registerPack(window.LB4684); if (cb) cb(); return; }
     if (L._packLoading) { if (cb) window.addEventListener('materials:pack-loaded', function () { cb(); }, { once: true }); return; }
     L._packLoading = true;
     var s = document.createElement('script');
     s.src = (prefix || '') + L.PACK_SRC;
     s.onload = function () { L.registerPack(window.LB4684); if (cb) cb(); };
-    s.onerror = function () { L._packLoading = false; if (cb) cb(); };
+    // permanent: single-file bundles have no pack file to fetch — callers
+    // fall back to the photographic library instead of retrying forever
+    s.onerror = function () { L._packFailed = true; if (cb) cb(); };
     document.head.appendChild(s);
   };
   // shower pages load the pack before this manifest — fold it in right away

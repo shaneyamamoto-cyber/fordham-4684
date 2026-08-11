@@ -247,7 +247,7 @@ function textureRoom() {
   const L = window.MATERIAL_LIBRARY;
   if (!L) return;
   // a zone pinned to a 4684 sample-book material needs the pack in memory
-  const needsPack = !L.packLoaded && Object.keys(S.surf || {}).some(
+  const needsPack = !L.packLoaded && !L._packFailed && Object.keys(S.surf || {}).some(
     (k) => S.surf[k] && String(S.surf[k].lib || '').indexOf('lb4684-') === 0);
   if (needsPack) { L.ensurePack('../../', textureRoom); return; }
   const zoneOf = { stonetile: 'bay', baybacktile: 'bay_back', steppiertile: 'step_return',
