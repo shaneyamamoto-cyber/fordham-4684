@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bathroom — Elevation Planner</title>
+<style>
+  :root { --paper:#faf9f5; --panel:#efece5; --ink:#23231f; --ink60:rgba(35,35,31,0.6);
+          --ink30:rgba(35,35,31,0.3); --ink16:rgba(35,35,31,0.16); --accent:#8a5a2b; --note:#3d5457; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; height:100%; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace; }
+  body { display:flex; flex-direction:column; height:100vh; }
+  #bar { padding:14px 22px 10px; border-bottom:1px solid var(--ink16); flex:0 0 auto; }
+  .kicker { font:600 9.5px/1 inherit; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase; }
+  h1 { font:600 19px/1.2 Archivo,Helvetica,Arial,sans-serif; margin:7px 0 2px; }
+  .sub { font-size:10px; color:var(--ink60); }
+  #main { flex:1 1 auto; display:flex; min-height:0; }
+  #sheet { flex:1 1 auto; overflow:auto; padding:20px 24px 40px; position:relative; }
+  svg text { font-family:inherit; }
+  .tag { font:600 8px/1 inherit; letter-spacing:0.06em; fill:var(--ink60); text-transform:uppercase; }
+  .dim { font:500 9px/1 inherit; fill:var(--ink); }
+  rect.fit, rect.surf, circle.fit { cursor:pointer; }
+  rect.fit:hover, circle.fit:hover { stroke-width:2.4; }
+  rect.surf:hover { stroke:var(--accent); stroke-width:1.4; }
+
+  /* right rail */
+  #rail { flex:0 0 300px; border-left:1px solid var(--ink16); background:var(--panel);
+    overflow-y:auto; padding:16px 16px 40px; }
+  #rail h2 { font:600 9px/1 inherit; letter-spacing:0.16em; color:var(--ink60); text-transform:uppercase; margin:0 0 9px; }
+  #rail .sect { border-top:1px solid var(--ink16); padding:14px 0 4px; margin-top:6px; }
+  #rail .sect:first-child { border-top:0; padding-top:2px; margin-top:0; }
+  .surfchips, .patchips, .swatches, .grouts { display:flex; flex-wrap:wrap; gap:6px; }
+  .swatches { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  .grouts { display:grid; grid-template-columns:repeat(6,1fr); gap:5px; }
+  .chip { font:600 9px/1 inherit; letter-spacing:0.04em; padding:7px 9px; border:1px solid var(--ink30);
+    background:#fbfaf7; color:var(--ink); border-radius:2px; cursor:pointer; }
+  .chip.on { background:var(--ink); color:#fbfaf7; border-color:var(--ink); }
+  .sw { border:1px solid var(--ink30); border-radius:2px; cursor:pointer; overflow:hidden;
+    display:flex; flex-direction:column; }
+  .sw .c { height:30px; }
+  .sw .n { font:500 7.5px/1.2 inherit; color:var(--ink60); padding:3px 3px; text-align:center; }
+  .sw.on { outline:2px solid var(--accent); outline-offset:-2px; }
+  .gr { height:22px; border:1px solid var(--ink30); border-radius:2px; cursor:pointer; }
+  .gr.on { outline:2px solid var(--accent); outline-offset:-1px; }
+  #rail .note { font-size:9.5px; line-height:1.5; color:var(--ink60); margin-top:8px; }
+  #matTarget { font:600 10px/1.3 inherit; color:var(--accent); margin-bottom:8px; }
+
+  /* click-edit menu */
+  #menu { position:fixed; display:none; z-index:60; background:#fbfaf7; border:1px solid #23231f;
+    border-radius:2px; box-shadow:0 8px 26px rgba(0,0,0,0.22); padding:12px 13px; width:230px; }
+  #menu .mt { font:600 10px/1 inherit; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:9px; }
+  #menu .fr { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+  #menu label { flex:0 0 84px; font-size:9px; color:var(--ink60); }
+  #menu input { flex:1; width:46px; font:inherit; font-size:10px; padding:4px 5px;
+    border:1px solid var(--ink30); border-radius:2px; background:#fff; }
+  #menu .keys { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; }
+  #menu .keys button { flex:1 1 30%; font:600 8.5px/1 inherit; letter-spacing:0.04em; padding:7px 4px; cursor:pointer;
+    border:1px solid var(--ink30); background:#fbfaf7; color:var(--ink); border-radius:2px; }
+  #menu .keys button.k-mat { background:var(--note); color:#fbfaf7; border-color:var(--note); }
+  #menu .keys button.k-del { color:#a23; }
+  #menu .save { width:100%; margin-top:9px; font:600 9px/1 inherit; letter-spacing:0.1em; padding:8px 0; cursor:pointer;
+    border:1px solid #23231f; background:#23231f; color:#fbfaf7; border-radius:2px; }
+  #flash { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:70; display:none;
+    background:#23231f; color:#fbfaf7; padding:11px 17px; border-radius:2px; font:600 10px/1.4 inherit;
+    letter-spacing:0.1em; max-width:80vw; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <div class="kicker">Elevation Planner · House Plan Set</div>
+  <h1>Bathroom — Front Elevation</h1>
+  <div class="sub" id="src">click a fixture for its edit menu · click a wall to set its material · edits sync live to the Floor Plan + 3D</div>
+</div>
+
+<div id="main">
+  <div id="sheet"></div>
+  <div id="rail">
+    <div class="sect">
+      <h2>Material — one picker</h2>
+      <div id="matTarget">Editing: main walls</div>
+      <div class="surfchips" id="surfChips"></div>
+      <div class="note">Pick a surface, then choose colour, then pattern &amp; grout — each independent.</div>
+    </div>
+    <div class="sect">
+      <h2>Colour / texture</h2>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <div class="sect">
+      <h2>Pattern &amp; layout</h2>
+      <div class="patchips" id="patChips"></div>
+    </div>
+    <div class="sect">
+      <h2>Grout</h2>
+      <div class="grouts" id="grouts"></div>
+    </div>
+  </div>
+</div>
+
+<div id="menu">
+  <div class="mt" id="menuTitle"></div>
+  <div class="fr"><label>Along run x″</label><input id="mX" type="number" step="0.25"></div>
+  <div class="fr"><label>Height AFF″</label><input id="mY" type="number" step="0.25"></div>
+  <div class="fr"><label>Width w″</label><input id="mW" type="number" step="0.25"></div>
+  <div class="fr"><label>Tall h″</label><input id="mH" type="number" step="0.25"></div>
+  <div class="fr"><label>Depth dep″</label><input id="mDep" type="number" step="0.25"></div>
+  <button class="save" id="mSave" type="button">SAVE POSITION</button>
+  <div class="keys">
+    <button class="k-mat" id="kMat" type="button">Material</button>
+    <button id="kLock" type="button">Lock</button>
+    <button id="kDup" type="button">Duplicate</button>
+    <button id="kClose" type="button">Close</button>
+    <button class="k-del" id="kDel" type="button">Delete</button>
+  </div>
+</div>
+
+<div id="flash"></div>
+
+<script src="../../platform/core/store.js"></script>
+<script src="../../platform/materials/manifest.js"></script>
+<script src="./baseline.js"></script>
+<script>
+(function () {
+  'use strict';
+  window.PlatformStore('bathroom');
+  var WK = 'yamazina.bathroom.work.v1';
+  var LIB = window.MATERIAL_LIBRARY;
+  var BASE = window.BATHROOM_BASELINE;   // shared canonical design (also drives 3D + floor plan)
+
+  var DEF = { run: 169, dep: 56.5, bayW: 60.5, bayD: 14.5, slope: 32, H: 92 };
+  function shellPoly(r) { return [{x:0,d:r.bayD},{x:r.bayW,d:r.bayD},{x:r.bayW,d:0},{x:r.run,d:0},{x:r.run,d:-r.dep},{x:0,d:-r.dep}]; }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  var DEF_SURF = BASE.surf;
+
+  function readWork() { try { return JSON.parse(localStorage.getItem(WK) || 'null'); } catch (e) { return null; } }
+  function writeWork(d) { try { localStorage.setItem(WK, JSON.stringify(d)); } catch (e) {} }
+  function state() {
+    var w = readWork();
+    if (w && w.items && w.items.length) {
+      return { items: w.items, surf: Object.assign({}, DEF_SURF, w.surf || {}), poly: w.poly || BASE.poly, height: w.height || BASE.height, raw: w };
+    }
+    return { items: clone(BASE.items), surf: clone(BASE.surf), poly: clone(BASE.poly), height: BASE.height, raw: null };
+  }
+  function seedIfNeeded() {
+    // first edit on a fresh view: promote the FULL shared baseline into the
+    // work slot (lossless — the 3D model reads the very same items)
+    if (readWork()) return readWork();
+    var d = clone(BASE);
+    writeWork(d); return d;
+  }
+
+  // ---- material vocabulary ----
+  var SURFACES = [['bay', 'Shower & tub wall'], ['splash', 'Vanity splash'], ['wall', 'Main walls'], ['floor', 'Floor'], ['slope', 'Dormer ceiling']];
+  var PATTERNS = [['stack', 'Stacked'], ['offset2', 'Running bond'], ['offset3', 'Third offset'], ['herring', 'Herringbone'], ['chevron', 'Chevron'], ['vstack', 'Vertical'], ['basket', 'Basketweave']];
+  var SIZES = [['48×24', 48, 24], ['36×24', 36, 24], ['24×24', 24, 24], ['12×24', 12, 24], ['12×12', 12, 12], ['12×6', 12, 6], ['6×6', 6, 6], ['2×2', 2, 2]];
+  var GROUTS = ['#f4f1ea', '#e8e3d8', '#cfcabd', '#a99f8c', '#6f6656', '#3a352c'];
+  function colourName(e) {
+    // The Look Book samples are named "<pattern> <size> — <colour>". For a
+    // COLOUR picker we want the colour/material word (after the em dash),
+    // not the pattern prefix. Fall back to the head for names with no dash.
+    var parts = e.name.split('—').map(function (s) { return s.trim(); });
+    var word = e.name;
+    if (parts.length >= 2) {
+      var tail = parts[parts.length - 1];
+      word = /^(pbr|photographic)$/i.test(tail) ? parts[0] : tail;   // wood tails are meaningless
+    }
+    word = word.replace(/\bT&G\b/i, 'T&G').replace(/\s+/g, ' ').trim();
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }
+  function swatchList() {
+    // Look Book library colourways + a base paint set — colour ONLY, so it
+    // stays decoupled from pattern/size/grout (those are separate pickers).
+    var out = [
+      { id:null, name:'Soft white', color:'#e8e3d8', fin:'paint' },
+      { id:null, name:'Warm greige', color:'#cfc7b7', fin:'paint' },
+      { id:null, name:'Clay', color:'#b9a892', fin:'paint' },
+      { id:null, name:'Sage', color:'#9aa79b', fin:'paint' },
+      { id:null, name:'Deep olive', color:'#4a5442', fin:'paint' },
+      { id:null, name:'Charcoal', color:'#3f3c37', fin:'paint' }
+    ];
+    var seen = {};
+    (LIB || []).forEach(function (e) {
+      if (e.cat !== 'tile' && e.cat !== 'stone' && e.cat !== 'wood') return;
+      if (seen[e.tone]) return; seen[e.tone] = 1;   // one chip per distinct tone
+      out.push({ id:e.id, name:colourName(e), color:e.tone,
+                 fin: e.cat === 'wood' ? 'wood' : (e.cat === 'stone' ? 'stone' : 'tile') });
+    });
+    return out;
+  }
+
+  var SC = 5.4, M = 56, TOPP = 30;
+  var NS = 'http://www.w3.org/2000/svg';
+  var sheet = document.getElementById('sheet');
+  var activeSurf = 'wall';
+
+  function render() {
+    var st = state();
+    var H = st.height, RUN = 169;
+    var px = function (x) { return M + x * SC; };
+    var py = function (y) { return TOPP + (H - y) * SC; };
+    var W = M + RUN * SC + 40, HT = TOPP + H * SC + 64;
+
+    sheet.innerHTML = '';
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', W); svg.setAttribute('height', HT);
+    sheet.appendChild(svg);
+    function el(n, a) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; }
+    function txt(x, y, t, cls, anch) { var e = el('text', { x:x, y:y, 'class':cls || 'dim', 'text-anchor':anch || 'start' }); e.textContent = t; return e; }
+    function col(z) { return (st.surf[z] && st.surf[z].color) || '#e8e3d8'; }
+
+    // wall field (surface backgrounds — clickable to set material)
+    el('rect', { x:px(0), y:py(H), width:RUN * SC, height:H * SC, fill:col('wall'), stroke:'#23231f', 'stroke-width':1.6, 'class':'surf', 'data-surf':'wall' });
+    // bay tile region (left, behind tub/shower up to the bay width)
+    el('rect', { x:px(0), y:py(H), width:60.5 * SC, height:H * SC, fill:col('bay'), stroke:'rgba(35,35,31,0.25)', 'stroke-width':0.8, 'class':'surf', 'data-surf':'bay' });
+    // vanity splash region
+    el('rect', { x:px(61.25), y:py(85.25), width:46 * SC, height:66 * SC, fill:col('splash'), stroke:'rgba(35,35,31,0.25)', 'stroke-width':0.8, 'class':'surf', 'data-surf':'splash' });
+    // floor band
+    el('rect', { x:px(0), y:py(0), width:RUN * SC, height:6, fill:col('floor'), stroke:'rgba(35,35,31,0.3)', 'stroke-width':0.6, 'class':'surf', 'data-surf':'floor' });
+    // dormer ceiling rake at the toilet (right) end
+    el('polygon', { points:[px(RUN - 40) + ',' + py(H), px(RUN) + ',' + py(H), px(RUN) + ',' + py(H - 22)].join(' '),
+      fill:col('slope'), stroke:'rgba(138,90,43,0.5)', 'stroke-width':0.8, 'stroke-dasharray':'5 4', 'class':'surf', 'data-surf':'slope' });
+    txt(px(RUN) - 4, py(H - 10), 'DORMER', 'tag', 'end');
+
+    // AFF gridlines
+    for (var gy = 12; gy < H; gy += 12) {
+      el('line', { x1:px(0), y1:py(gy), x2:px(RUN), y2:py(gy), stroke:'rgba(35,35,31,0.06)', 'stroke-width':0.6 });
+      txt(px(0) - 5, py(gy) + 3, gy + '″', 'tag', 'end');
+    }
+
+    // fixtures
+    st.items.forEach(function (it) {
+      if (it.zoneOnly || it.zone) return;
+      if (it.id === 'base' || it.id === 'splash') return;   // drawn as surface/trim already
+      var w = Math.max(2, it.w * SC), h = Math.max(2, it.h * SC);
+      // end-wall fittings (toilet) live at x≈169; draw them flush inside the right edge
+      var ex = (it.x >= 169) ? (169 - it.w) : it.x;
+      var x0 = px(ex), y0 = py(it.y + it.h);
+      var fillc = it.tone || it.swatch || '#e9e2d2';
+      var round = it.shape === 'round';
+      if (round) {
+        el('circle', { cx:x0 + w / 2, cy:y0 + h / 2, r:Math.max(3, Math.min(w, h) / 2), fill:fillc,
+          stroke:'#8a5a2b', 'stroke-width':1.1, 'class':'fit', 'data-id':it.id });
+      } else {
+        el('rect', { x:x0, y:y0, width:w, height:h, rx:it.id === 'mir' ? 6 : 2, fill:fillc,
+          stroke: it.locked ? 'rgba(35,35,31,0.75)' : '#8a5a2b', 'stroke-width':1.1,
+          'stroke-dasharray': it.locked ? '4 3' : 'none', 'class':'fit', 'data-id':it.id });
+      }
+      if (w > 30 && h > 12) txt(x0 + 4, y0 + 12, (it.locked ? '🔒 ' : '') + (it.name || it.id).toUpperCase(), 'tag');
+    });
+
+    // overall dims
+    el('line', { x1:px(0), y1:py(0) + 20, x2:px(RUN), y2:py(0) + 20, stroke:'rgba(35,35,31,0.45)', 'stroke-width':0.75 });
+    txt(px(RUN / 2), py(0) + 32, "14′-1″ (169″) RUN · " + H + '″ CEILING', 'dim', 'middle');
+  }
+
+  // ---- rail (material picker) ----
+  function buildRail() {
+    var sc = document.getElementById('surfChips');
+    sc.innerHTML = SURFACES.map(function (s) { return '<button class="chip" data-surf="' + s[0] + '">' + s[1] + '</button>'; }).join('');
+    var pc = document.getElementById('patChips');
+    pc.innerHTML = PATTERNS.map(function (p) { return '<button class="chip" data-pat="' + p[0] + '">' + p[1] + '</button>'; }).join('') +
+      SIZES.map(function (s) { return '<button class="chip" data-size="' + s[1] + 'x' + s[2] + '" style="opacity:0.9">' + s[0] + '</button>'; }).join('');
+    var gr = document.getElementById('grouts');
+    gr.innerHTML = GROUTS.map(function (g) { return '<div class="gr" data-grout="' + g + '" style="background:' + g + '"></div>'; }).join('');
+    var sw = document.getElementById('swatches');
+    sw.innerHTML = swatchList().map(function (s, i) {
+      return '<div class="sw" data-sw="' + i + '"><div class="c" style="background:' + s.color + '"></div><div class="n">' + s.name + '</div></div>';
+    }).join('');
+    syncRail();
+  }
+  var SWATCHES = null;
+  function syncRail() {
+    SWATCHES = swatchList();
+    var st = state(); var s = st.surf[activeSurf] || DEF_SURF[activeSurf];
+    document.getElementById('matTarget').textContent = 'Editing: ' + (SURFACES.filter(function (x) { return x[0] === activeSurf; })[0] || [,activeSurf])[1];
+    document.querySelectorAll('#surfChips .chip').forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-surf') === activeSurf); });
+    document.querySelectorAll('#patChips .chip[data-pat]').forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-pat') === s.pattern); });
+    document.querySelectorAll('#patChips .chip[data-size]').forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-size') === (s.tileL + 'x' + s.tileW)); });
+    document.querySelectorAll('#grouts .gr').forEach(function (g) { g.classList.toggle('on', g.getAttribute('data-grout') === s.grout); });
+    document.querySelectorAll('#swatches .sw').forEach(function (el2) {
+      var sw = SWATCHES[+el2.getAttribute('data-sw')];
+      el2.classList.toggle('on', s.lib ? (sw.id === s.lib) : (!sw.id && sameC(sw.color, s.color)));
+    });
+  }
+  function sameC(a, b) { return (a || '').toLowerCase() === (b || '').toLowerCase(); }
+
+  function patchSurf(patch) {
+    var d = seedIfNeeded();
+    d.surf = Object.assign({}, DEF_SURF, d.surf || {});
+    d.surf[activeSurf] = Object.assign({}, d.surf[activeSurf], patch);
+    if (activeSurf === 'bay' && d.splashLinked) d.surf.splash = Object.assign({}, d.surf.bay);
+    writeWork(d); render(); syncRail();
+    flash('MATERIAL SAVED — FLOOR PLAN & 3D FOLLOW');
+  }
+  document.getElementById('surfChips').addEventListener('click', function (e) {
+    var s = e.target.getAttribute('data-surf'); if (!s) return; activeSurf = s; syncRail();
+  });
+  document.getElementById('patChips').addEventListener('click', function (e) {
+    var pat = e.target.getAttribute('data-pat'); if (pat) { patchSurf({ pattern: pat, fin: 'tile' }); return; }
+    var sz = e.target.getAttribute('data-size'); if (sz) { var a = sz.split('x'); patchSurf({ tileL: +a[0], tileW: +a[1], fin: 'tile' }); }
+  });
+  document.getElementById('grouts').addEventListener('click', function (e) {
+    var g = e.target.getAttribute('data-grout'); if (g) patchSurf({ grout: g });
+  });
+  document.getElementById('swatches').addEventListener('click', function (e) {
+    var el2 = e.target.closest('.sw'); if (!el2) return;
+    var sw = swatchList()[+el2.getAttribute('data-sw')];
+    // Colour is independent: set the tone (2D) + library texture (3D) only —
+    // keep whatever pattern / tile size / grout the surface already carries.
+    if (sw.id && LIB) patchSurf({ lib: sw.id, color: sw.color, fin: sw.fin });
+    else patchSurf({ color: sw.color, fin: sw.fin, lib: null });
+  });
+
+  // ---- click-edit menu (no auto-materials) ----
+  var menu = document.getElementById('menu'), editId = null;
+  function openMenu(id, rect) {
+    var st = state(); var it = st.items.filter(function (i) { return i.id === id; })[0]; if (!it) return;
+    editId = id;
+    document.getElementById('menuTitle').textContent = (it.name || id) + (it.locked ? ' · 🔒 locked' : '');
+    document.getElementById('mX').value = it.x; document.getElementById('mY').value = it.y;
+    document.getElementById('mW').value = it.w; document.getElementById('mH').value = it.h;
+    document.getElementById('mDep').value = it.dep != null ? it.dep : 0;
+    document.getElementById('kLock').textContent = it.locked ? 'Unlock' : 'Lock';
+    var dis = !!it.locked;
+    ['mX', 'mY', 'mW', 'mH', 'mDep'].forEach(function (f) { document.getElementById(f).disabled = dis; });
+    document.getElementById('mSave').style.opacity = dis ? 0.4 : 1;
+    menu.style.left = Math.min(rect.left, window.innerWidth - 246) + 'px';
+    menu.style.top = Math.min(rect.bottom + 8, window.innerHeight - 260) + 'px';
+    menu.style.display = 'block';
+  }
+  function itemsPatch(id, fn) {
+    var d = seedIfNeeded();
+    d.items = d.items.map(function (i) { return i.id === id ? fn(Object.assign({}, i)) : i; });
+    writeWork(d); render();
+  }
+  document.getElementById('mSave').addEventListener('click', function () {
+    if (!editId) return; var st = state(); var it = st.items.filter(function (i) { return i.id === editId; })[0];
+    if (it && it.locked) { flash('🔒 UNLOCK IT FIRST'); return; }
+    var H = state().height;
+    itemsPatch(editId, function (o) {
+      o.x = num('mX', o.x); o.y = num('mY', o.y); o.w = num('mW', o.w); o.h = num('mH', o.h); o.dep = num('mDep', o.dep);
+      if (o.y + o.h > H) o.h = Math.max(1, H - o.y);
+      return o;
+    });
+    menu.style.display = 'none'; flash('SAVED — FLOOR PLAN & 3D FOLLOW');
+  });
+  document.getElementById('kLock').addEventListener('click', function () {
+    if (!editId) return; itemsPatch(editId, function (o) { o.locked = !o.locked; return o; });
+    var st = state(); openMenu(editId, menuRect);
+  });
+  document.getElementById('kDup').addEventListener('click', function () {
+    if (!editId) return; var d = seedIfNeeded(); var it = d.items.filter(function (i) { return i.id === editId; })[0]; if (!it) return;
+    var base = editId.replace(/_\d+$/, ''), n = 2; while (d.items.some(function (i) { return i.id === base + '_' + n; })) n++;
+    var copy = Object.assign({}, it, { id: base + '_' + n, name: it.name + ' ' + n, x: it.x + 4, locked: false, added: true });
+    d.items = d.items.concat([copy]); writeWork(d); render();
+    menu.style.display = 'none'; flash('DUPLICATED ' + (it.name || editId).toUpperCase());
+  });
+  document.getElementById('kDel').addEventListener('click', function () {
+    if (!editId) return; if (!window.confirm('Delete this fitting?')) return;
+    var d = seedIfNeeded(); d.items = d.items.filter(function (i) { return i.id !== editId; }); writeWork(d); render();
+    menu.style.display = 'none'; flash('DELETED');
+  });
+  document.getElementById('kMat').addEventListener('click', function () {
+    // jump the material picker to this fixture's most relevant surface
+    var st = state(); var it = st.items.filter(function (i) { return i.id === editId; })[0];
+    activeSurf = (it && it.face > 0) ? 'bay' : 'wall'; if (it && it.id === 'splash') activeSurf = 'splash';
+    syncRail(); menu.style.display = 'none';
+    document.getElementById('swatches').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    flash('MATERIAL PICKER → ' + (SURFACES.filter(function (x) { return x[0] === activeSurf; })[0] || [,activeSurf])[1].toUpperCase());
+  });
+  document.getElementById('kClose').addEventListener('click', function () { menu.style.display = 'none'; });
+
+  var menuRect = null;
+  sheet.addEventListener('click', function (ev) {
+    var t = ev.target;
+    if (t.classList && t.classList.contains('fit') && t.getAttribute('data-id')) {
+      menuRect = t.getBoundingClientRect(); openMenu(t.getAttribute('data-id'), menuRect); return;
+    }
+    if (t.classList && t.classList.contains('surf') && t.getAttribute('data-surf')) {
+      activeSurf = t.getAttribute('data-surf'); syncRail(); menu.style.display = 'none';
+      flash('SURFACE → ' + (SURFACES.filter(function (x) { return x[0] === activeSurf; })[0] || [,activeSurf])[1].toUpperCase() + ' · pick a colour on the right');
+      return;
+    }
+    menu.style.display = 'none';
+  });
+
+  function num(id, dflt) { var v = Number(document.getElementById(id).value); return isNaN(v) ? dflt : v; }
+  function flash(msg) { var f = document.getElementById('flash'); f.textContent = msg; f.style.display = 'block'; clearTimeout(flash._t); flash._t = setTimeout(function () { f.style.display = 'none'; }, 2200); }
+
+  buildRail(); render();
+  window.addEventListener('storage', function (ev) { if (ev.key === WK) { menu.style.display = 'none'; render(); syncRail(); } });
+})();
+</script>
+<script src="../../platform/core/ai-prompt.js"></script>
+<script>AIPrompt("bathroom");</script>
+</body>
+</html>
