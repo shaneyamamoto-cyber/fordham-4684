@@ -14,6 +14,8 @@ window.__resources = {
 };
 </script>
 <script src="./support.js"></script>
+<script src="../../platform/core/store.js"></script>
+<script src="../../platform/materials/manifest.js"></script>
 </head>
 <body>
 <template id="__bundler_thumbnail">
@@ -39,7 +41,7 @@ window.__resources = {
         <div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:0.18em;color:rgba(35,35,31,0.5);margin-bottom:11px">ELEMENTS &amp; MATERIALS</div>
         <div style="font:600 46px/1 Archivo,sans-serif;letter-spacing:-0.02em">Look Book</div>
       </div>
-      <div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.6);max-width:340px;text-wrap:pretty">Every sample below is cut from your own reference photography. The tile fields are true seamless repeats built from those cuts — use them as fills, not as drawings.</div>
+      <div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.6);max-width:340px;text-wrap:pretty">Every sample below is cut from your own reference photography. The tile fields are true seamless repeats built from those cuts — use them as fills, not as drawings. Click any swatch to make it the HOUSE PICK: every room's material pickers and 3D builds see it immediately.</div>
     </div>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:48px">
@@ -370,6 +372,187 @@ class Component extends DCLogic {
     };
   }
 }
+</script>
+<script>
+// ============================================================================
+// HOUSE PICK — the Look Book is the house's material authority. Clicking a
+// swatch stores a global pick in yamazina.house.work.v1; every room's
+// pickers (sauna Materials card, bathroom planner zones, shower surfaces)
+// read it live through the platform store. Plain DOM outside the dc app,
+// same pattern as the planner's EXPORT button.
+// ============================================================================
+(function () {
+  'use strict';
+  var HOUSE = window.PlatformStore('house');
+  var LIB = window.MATERIAL_LIBRARY;
+
+  // look-book swatch image -> platform library id (only swatches that exist
+  // in the shared library are pickable; the rest are reference photography)
+  var FILEMAP = {
+    'running-half-greenstone.png': 'running-greenstone',
+    'running-half-ivory.png': 'running-ivory',
+    'running-half-sand.png': 'running-sand',
+    'running-half-charcoal.png': 'running-charcoal',
+    'running-half-olive.png': 'running-olive',
+    'running-half-ochre.png': 'running-ochre',
+    'running-half-oxblood.png': 'running-oxblood',
+    'running-half-slate-blue.png': 'running-slateblue',
+    'running-half-terracotta.png': 'running-terracotta',
+    'stack-greenstone.png': 'stack-greenstone',
+    'large-format-mineral.png': 'large-mineral',
+    'brick-mineral.png': 'brick-mineral',
+    'chevron-greenstone.png': 'chevron-greenstone',
+    'subway-marble.png': 'subway-marble',
+    'third-offset-marble.png': 'third-offset',
+    'hexagon-travertine.png': 'hex-travertine',
+    'penny-round-travertine.png': 'penny-travertine',
+    'penny-round-marble.png': 'penny-marble',
+    'travertine-floor.png': 'travertine-floor',
+    'floor-stone.png': 'floor-stone',
+    'teak.png': 'wood-teak',
+    'teak-grid.png': 'wood-teak',
+    'mahogany.png': 'wood-walnut',
+    'waterfall-walnut.png': 'wood-walnut',
+    'sculpted-walnut.png': 'wood-walnut',
+    'walnut-brass.png': 'wood-walnut',
+    'dark-walnut-slab.png': 'wood-walnut',
+    'smoked-oak.png': 'wood-walnut',
+  };
+
+  function idFromEl(el) {
+    // explicit tag first (the 4684 sample-book cards carry data-mat-id)
+    var tagged = el.closest && el.closest('[data-mat-id]');
+    if (tagged) return tagged.getAttribute('data-mat-id');
+    // otherwise walk up to a background-image swatch and map its filename
+    for (var n = el; n && n !== document.body; n = n.parentElement) {
+      var bg = n.style && n.style.backgroundImage;
+      if (bg && bg.indexOf('materials/') !== -1) {
+        var m = bg.match(/([^\/"')]+\.(?:png|jpg|webp))/i);
+        if (m && FILEMAP[m[1]]) return FILEMAP[m[1]];
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function cardOf(el) {
+    // the swatch's card is the nearest ancestor with the paper background
+    for (var n = el; n && n !== document.body; n = n.parentElement) {
+      var s = n.getAttribute && n.getAttribute('style');
+      if (s && s.indexOf('#fbfaf7') !== -1 && s.indexOf('border') !== -1) return n;
+    }
+    return null;
+  }
+
+  var toastEl = null, toastTimer = null;
+  function toast(msg) {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.style.cssText = 'position:fixed;left:50%;bottom:26px;transform:translateX(-50%);' +
+        'z-index:2147483000;background:#23231f;color:#fbfaf7;padding:13px 20px;border-radius:2px;' +
+        "font:600 10.5px/1.4 'IBM Plex Mono',monospace;letter-spacing:0.1em;max-width:80vw;" +
+        'box-shadow:0 6px 24px rgba(0,0,0,0.28);transition:opacity .35s;';
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    toastEl.style.opacity = '1';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.style.opacity = '0'; }, 2800);
+  }
+
+  var markedCard = null;
+  function markCard(card) {
+    if (markedCard) { markedCard.style.outline = ''; markedCard.style.outlineOffset = ''; }
+    markedCard = card || null;
+    if (markedCard) { markedCard.style.outline = '3px solid #8a5a2b'; markedCard.style.outlineOffset = '-3px'; }
+  }
+
+  function currentPickId() {
+    var env = HOUSE.loadWork();
+    return env && env.state && env.state.pick ? env.state.pick.id : null;
+  }
+
+  document.addEventListener('click', function (ev) {
+    if (ev.target.closest && ev.target.closest('a,button,input,select')) return;
+    var id = idFromEl(ev.target);
+    if (!id) return;
+    var entry = LIB.byId(id);
+    if (!entry) return;
+    HOUSE.saveWork({ pick: { id: entry.id, name: entry.name, cat: entry.cat, tone: entry.tone } }, 'lookbook');
+    markCard(cardOf(ev.target));
+    toast('HOUSE PICK — ' + entry.name.toUpperCase() + ' · LIVE IN EVERY ROOM’S MATERIAL PICKER');
+  });
+
+  // restore the outline once the dc app has rendered its swatches
+  function restore() {
+    var id = currentPickId();
+    if (!id) return true;
+    var found = null;
+    var all = document.body.querySelectorAll('div[style]');
+    for (var i = 0; i < all.length; i++) {
+      var got = null;
+      var bg = all[i].style.backgroundImage;
+      if (all[i].hasAttribute('data-mat-id')) got = all[i].getAttribute('data-mat-id');
+      else if (bg && bg.indexOf('materials/') !== -1) {
+        var m = bg.match(/([^\/"')]+\.(?:png|jpg|webp))/i);
+        if (m) got = FILEMAP[m[1]] || null;
+      }
+      if (got === id) { found = cardOf(all[i]) || all[i]; break; }
+    }
+    if (found) { markCard(found); return true; }
+    return false;
+  }
+  var tries = 0;
+  var iv = setInterval(function () { if (restore() || ++tries > 40) clearInterval(iv); }, 400);
+  HOUSE.onWorkChange(function () { restore(); });
+
+  // --------------------------------------------------------------------
+  // 09 · 4684 SAMPLE BOOK — the shower pack's 22 PBR materials, merged
+  // into the same global library and browsable (and pickable) here.
+  // --------------------------------------------------------------------
+  LIB.ensurePack('../../', function () {
+    var packEntries = [];
+    for (var i = 0; i < LIB.length; i++)
+      if (LIB[i].id.indexOf('lb4684-') === 0) packEntries.push(LIB[i]);
+    if (!packEntries.length) return;
+
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'max-width:1240px;margin:0 auto;padding:0 40px 90px;' +
+      'font-family:Archivo,sans-serif;color:#23231f;background:transparent';
+    var head = document.createElement('div');
+    head.innerHTML =
+      '<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">' +
+      '<div style="font:600 11px/1 \'IBM Plex Mono\',monospace;letter-spacing:0.16em">09 &nbsp; 4684 SAMPLE BOOK — RENDER-READY PBR</div>' +
+      '<div style="height:1px;background:rgba(35,35,31,0.16);flex:1"></div></div>' +
+      '<div style="font:400 13px/1.5 Archivo,sans-serif;color:rgba(35,35,31,0.55);margin-bottom:24px;max-width:640px">' +
+      'The shower project’s embedded sample book, folded into the house library. ' +
+      'Each card carries base colour, normal and packed ORM maps with true physical scale — click to make it the house pick.</div>';
+    wrap.appendChild(head);
+    var grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:16px';
+    packEntries.forEach(function (e) {
+      var card = document.createElement('div');
+      card.setAttribute('data-mat-id', e.id);
+      card.setAttribute('style', 'background:#fbfaf7;border:1px solid rgba(35,35,31,0.12);border-radius:2px;overflow:hidden;cursor:pointer');
+      var sw = document.createElement('div');
+      sw.style.cssText = 'height:140px;background-image:url("' + e.file + '");background-size:cover;background-position:center';
+      card.appendChild(sw);
+      var meta = document.createElement('div');
+      meta.style.cssText = 'padding:11px 12px 13px';
+      meta.innerHTML =
+        '<div style="font:600 13px/1.2 Archivo,sans-serif;margin-bottom:4px">' + e.name + '</div>' +
+        '<div style="font:400 11px/1.45 Archivo,sans-serif;color:rgba(35,35,31,0.55)">' + (e.use || '') + '</div>' +
+        '<div style="font:500 9px/1.5 \'IBM Plex Mono\',monospace;color:rgba(35,35,31,0.38);margin-top:8px">' +
+        (e.finish || '') + (e.lay ? ' · ' + e.lay : '') + (e.grout ? ' · grout ' + e.grout : '') +
+        (e.tileL ? ' · ' + Math.round(e.tileL) + '″×' + Math.round(e.tileW) + '″' : '') + '</div>';
+      card.appendChild(meta);
+      grid.appendChild(card);
+    });
+    wrap.appendChild(grid);
+    document.body.appendChild(wrap);
+    restore();
+  });
+})();
 </script>
 </body>
 </html>

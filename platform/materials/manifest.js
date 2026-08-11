@@ -69,12 +69,101 @@
     return null;
   };
 
+  // Translate a library entry into the bathroom planner's surface shape
+  // ({fin, color, tileL, tileW, shape, pattern}) plus `lib` so 3D renders
+  // the exact entry instead of re-matching heuristically.
+  window.MATERIAL_LIBRARY.surfPreset = function (entry) {
+    if (!entry) return null;
+    var id = entry.id;
+    var fin = entry.cat === 'wood' ? 'wood' : entry.cat === 'stone' ? 'stone' : 'tile';
+    var tileL = entry.tileL || 24, tileW = entry.tileW || 12;
+    var shape = 'rect', pattern = 'stack';
+    if (!entry.tileL) {
+      if (id.indexOf('running-') === 0) { tileL = 48; tileW = 24; pattern = 'offset2'; }
+      else if (id === 'stack-greenstone') { tileL = 12; tileW = 12; }
+      else if (id === 'large-mineral') { tileL = 36; tileW = 24; pattern = 'offset2'; }
+      else if (id === 'brick-mineral') { tileL = 12; tileW = 6; pattern = 'offset2'; }
+      else if (id.indexOf('chevron-') === 0) { tileL = 12; tileW = 4; pattern = 'chevron'; }
+      else if (id === 'subway-marble') { tileL = 12; tileW = 6; pattern = 'offset2'; }
+      else if (id === 'third-offset') { tileL = 24; tileW = 4; pattern = 'offset3'; }
+      else if (id === 'hex-travertine') { tileL = 6; tileW = 6; shape = 'hex'; }
+      else if (id.indexOf('penny-') === 0) { tileL = 2; tileW = 2; shape = 'round'; }
+      else if (entry.cat === 'stone') { tileL = 24; tileW = 24; pattern = 'offset2'; }
+      else if (entry.cat === 'wood') { tileL = 48; tileW = 6; pattern = 'offset3'; }
+    } else {
+      if (entry.lay === 'hex-grid') shape = 'hex';
+      if (/running-bond-50|running-bond-vertical/.test(entry.lay || '')) pattern = 'offset2';
+      else if (/running-bond-33/.test(entry.lay || '')) pattern = 'offset3';
+      else if (/herringbone/.test(entry.lay || '')) pattern = 'herring';
+      else if (/chevron/.test(entry.lay || '')) pattern = 'chevron';
+    }
+    return { fin: fin, color: entry.tone, tileL: tileL, tileW: tileW,
+             shape: shape, pattern: pattern, lib: id };
+  };
+
+  // --------------------------------------------------------------------
+  // 4684 sample book — the shower project's embedded PBR pack (22
+  // materials, data-URI baseColor / normal / packed ORM maps) folded into
+  // this one library. Entries get ids 'lb4684-<packId>'. The ORM map is
+  // glTF-packed (R=occlusion, G=roughness, B=metalness), which is exactly
+  // how three.js samples ao/roughness/metalness maps — so consumers can
+  // point all three at the same texture; `orm:true` flags it.
+  // --------------------------------------------------------------------
+  window.MATERIAL_LIBRARY.PACK_SRC = 'apps/shower/assets/materials-pack.js';
+  window.MATERIAL_LIBRARY.packLoaded = false;
+  window.MATERIAL_LIBRARY.registerPack = function (pack) {
+    var L = window.MATERIAL_LIBRARY;
+    if (!pack || !pack.materials || L.packLoaded) return;
+    var IN_PER_M = 39.3701;
+    pack.materials.forEach(function (m) {
+      var t = (pack.tex || {})[m.id] || {};
+      if (!t.baseColor) return;
+      var isWood = m.category === 'wood';
+      L.push({
+        id: 'lb4684-' + m.id, name: m.label,
+        cat: isWood ? 'wood' : 'tile',
+        file: t.baseColor, normal: t.normal, rough: t.orm, orm: !!t.orm,
+        spanW: (m.rep && m.rep[0] ? m.rep[0] : 1) * IN_PER_M,
+        spanH: (m.rep && m.rep[1] ? m.rep[1] : 1) * IN_PER_M,
+        // mm tile → inches, for planners that draw the tile module
+        tileL: m.tile ? Math.max(m.tile[0], m.tile[1]) / 25.4 : null,
+        tileW: m.tile ? Math.min(m.tile[0], m.tile[1]) / 25.4 : null,
+        lay: m.lay || null, grout: m.grout || null, groutW: m.gw || null,
+        use: m.use || '', finish: m.finish || '',
+        tone: '#' + (m.avg || [153,153,153]).map(function (c) {
+          return ('0' + c.toString(16)).slice(-2);
+        }).join(''),
+      });
+    });
+    L.packLoaded = true;
+    try { window.dispatchEvent(new CustomEvent('materials:pack-loaded')); } catch (e) { /* old browser */ }
+  };
+  // Lazy loader: prefix is the caller's path offset to the repo root
+  // (apps/<x>/ pages pass '../../'). Safe to call repeatedly.
+  window.MATERIAL_LIBRARY.ensurePack = function (prefix, cb) {
+    var L = window.MATERIAL_LIBRARY;
+    if (L.packLoaded) { if (cb) cb(); return; }
+    if (window.LB4684) { L.registerPack(window.LB4684); if (cb) cb(); return; }
+    if (L._packLoading) { if (cb) window.addEventListener('materials:pack-loaded', function () { cb(); }, { once: true }); return; }
+    L._packLoading = true;
+    var s = document.createElement('script');
+    s.src = (prefix || '') + L.PACK_SRC;
+    s.onload = function () { L.registerPack(window.LB4684); if (cb) cb(); };
+    s.onerror = function () { L._packLoading = false; if (cb) cb(); };
+    document.head.appendChild(s);
+  };
+  // shower pages load the pack before this manifest — fold it in right away
+  if (window.LB4684) window.MATERIAL_LIBRARY.registerPack(window.LB4684);
+
   // Nearest library entry for a zone: filter by rough tile size / finish,
   // then pick the colorway closest to the zone's chosen color. Shared by the
   // bathroom 3D's auto-mapping; pickers use the list directly.
   window.MATERIAL_LIBRARY.matchSurf = function (surf) {
     if (!surf || surf.fin === 'paint') return null;
     var L = window.MATERIAL_LIBRARY;
+    // An explicit library pick (set by the Look Book / house-pick apply)
+    // beats heuristics — the user chose this exact material for this zone.
+    if (surf.lib) { var picked = L.byId(surf.lib); if (picked) return picked; }
     function hex2rgb(h) {
       h = (h || '#999999').replace('#', '');
       return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)];

@@ -20,6 +20,7 @@
     // Single-file bundles inject window.__MATLIB_DATA = {path: dataURI} so
     // the library still works with no filesystem around it.
     if (window.__MATLIB_DATA && window.__MATLIB_DATA[file]) return window.__MATLIB_DATA[file];
+    if (file.indexOf('data:') === 0) return file; // 4684 pack maps are data URIs
     return BASE + file;
   }
 
@@ -70,6 +71,15 @@
       return true;
     }
     var lib = LIB.byId(id);
+    if (!lib && id.indexOf('lb4684-') === 0 && LIB.ensurePack) {
+      // a 4684 sample-book pick arrived before the pack was loaded — pull
+      // the pack in, then re-apply for real
+      LIB.ensurePack(BASE, function () {
+        if (LIB.byId(id)) window.setSurfaceLibraryMaterial(group, id);
+      });
+      current[group] = id; // keep the intent so the state round-trips
+      return true;
+    }
     if (!lib) return false;
     // Full PBR set where the library carries it: diffuse + normal/rough/bump
     // maps, all repeated at the surface's true physical scale.

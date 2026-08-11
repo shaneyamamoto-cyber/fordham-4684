@@ -232,7 +232,13 @@ async function dressMesh(mesh, lib) {
   const mat = mesh.material.clone();
   mat.map = mk(map);
   if (nrm) { mat.normalMap = mk(nrm); mat.normalScale = new THREE.Vector2(0.55, 0.55); }
-  if (rgh) { mat.roughnessMap = mk(rgh); mat.roughness = 1.0; }
+  if (rgh) {
+    mat.roughnessMap = mk(rgh); mat.roughness = 1.0;
+    // 4684 pack maps are glTF-packed ORM: R=occlusion, G=roughness,
+    // B=metalness — the same texture serves all three samplers
+    if (lib.orm) { mat.aoMap = mat.roughnessMap; mat.aoMapIntensity = 0.9;
+                   mat.metalnessMap = mat.roughnessMap; mat.metalness = 1.0; }
+  }
   if (bmp) { mat.bumpMap = mk(bmp); mat.bumpScale = 0.02; }
   mat.color.set(lib.tint || 0xffffff);
   mesh.material = mat;
@@ -240,6 +246,10 @@ async function dressMesh(mesh, lib) {
 function textureRoom() {
   const L = window.MATERIAL_LIBRARY;
   if (!L) return;
+  // a zone pinned to a 4684 sample-book material needs the pack in memory
+  const needsPack = !L.packLoaded && Object.keys(S.surf || {}).some(
+    (k) => S.surf[k] && String(S.surf[k].lib || '').indexOf('lb4684-') === 0);
+  if (needsPack) { L.ensurePack('../../', textureRoom); return; }
   const zoneOf = { stonetile: 'bay', baybacktile: 'bay_back', steppiertile: 'step_return',
                    floortile: 'floor', splashtile: 'splash', tubskirttile: 'skirt' };
   const woodOf = { walnut: 'wood-walnut', teak: 'wood-teak' };

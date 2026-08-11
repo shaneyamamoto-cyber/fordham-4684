@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shower — 2D Floor Plan</title>
+<style>
+  :root { --paper:#faf9f5; --panel:#efece5; --ink:#23231f; --ink60:rgba(35,35,31,0.6);
+          --ink16:rgba(35,35,31,0.16); --accent:#8a5a2b; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace; }
+  #bar { padding:18px 24px 10px; }
+  .kicker { font:600 10px/1 inherit; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase; }
+  h1 { font:600 20px/1.2 Archivo,Helvetica,Arial,sans-serif; margin:8px 0 2px; }
+  .sub { font-size:10px; color:var(--ink60); }
+  #sheet { padding:10px 24px 40px; overflow:auto; }
+  svg text { font-family:inherit; }
+  .tag { font:600 8px/1 inherit; letter-spacing:0.08em; fill:var(--ink60); text-transform:uppercase; }
+  .dim { font:500 9px/1 inherit; fill:var(--ink60); }
+  .big { font:600 10px/1 inherit; fill:var(--ink); }
+</style>
+</head>
+<body>
+<div id="bar">
+  <div class="kicker">Measured Layout Tool · House Plan Set</div>
+  <h1>Shower Enclosure — Floor Plan</h1>
+  <div class="sub" id="src">baseline construct · follows the 3D build's working design live</div>
+</div>
+<div id="sheet"></div>
+
+<script src="../../platform/core/store.js"></script>
+<script>
+(function () {
+  'use strict';
+  window.PlatformStore('shower');
+
+  // Envelope geometry — mirrors app.js (1 unit = 1 inch, origin back-left,
+  // +x right, +z toward the glass front).
+  var W = 51.5, D = 48, CURB_D = 4.5, PANEL_W = 22, DOOR_GAP = 1.5, DOOR_W = 27.5;
+  var GLASS_Z = D - CURB_D / 2;
+
+  function state() {
+    try {
+      var env = JSON.parse(localStorage.getItem('yamazina.shower.work.v1') || 'null');
+      if (env && env.state && env.state.fx) {
+        document.getElementById('src').textContent = 'working design — live from the 3D Construct';
+        return env.state;
+      }
+    } catch (e) { /* fall through */ }
+    // factory defaults, same as a fresh 3D load
+    return {
+      bench: { t: 'corner', w: 'left', c: 'bl', l: 24, d: 16, o: 0 },
+      jets: 4,
+      fx: [
+        { i: 'rain',  h: 'ceiling', p: [W / 2, 96, D / 2], dia: 12 },
+        { i: 'head',  h: 'right',   p: [W / 2, 80, D / 2] },
+        { i: 'valve', h: 'right',   p: [W / 2, 48, D / 2] },
+        { i: 'drain', h: 'floor',   p: [33.75, 0, 24], dtype: 'round4', tlen: W - 8 },
+        { i: 'niche', h: 'back',    p: [32, 50, 0], nw: 26, nh: 15 },
+        { i: 'jet1', h: 'right', p: [W / 2, 42, D / 2 - 7] }, { i: 'jet2', h: 'right', p: [W / 2, 42, D / 2 + 7] },
+        { i: 'jet3', h: 'right', p: [W / 2, 54, D / 2 - 7] }, { i: 'jet4', h: 'right', p: [W / 2, 54, D / 2 + 7] },
+      ],
+    };
+  }
+
+  var SC = 9, M = 70;
+  var NS = 'http://www.w3.org/2000/svg';
+  function render() {
+    var st = state();
+    var px = function (x) { return M + x * SC; };
+    var pz = function (z) { return M + 34 + z * SC; };
+    // extra bottom room for the door swing arc
+    var Wpx = M * 2 + W * SC + 260;
+    var Hpx = M + 34 + D * SC + DOOR_W * SC + 90;
+
+    var host = document.getElementById('sheet');
+    host.innerHTML = '';
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', Wpx); svg.setAttribute('height', Hpx);
+    host.appendChild(svg);
+    function el(n, a) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; }
+    function txt(x, y, t, cls, anch) { var e = el('text', { x: x, y: y, 'class': cls || 'dim', 'text-anchor': anch || 'start' }); e.textContent = t; return e; }
+
+    // masonry walls (back, left, right) — 4" poche
+    el('rect', { x: px(0) - 8, y: pz(0) - 8, width: W * SC + 16, height: 8, fill: '#d9d2c2', stroke: '#23231f', 'stroke-width': 1 });
+    el('rect', { x: px(0) - 8, y: pz(0) - 8, width: 8, height: D * SC + 8, fill: '#d9d2c2', stroke: '#23231f', 'stroke-width': 1 });
+    el('rect', { x: px(W), y: pz(0) - 8, width: 8, height: D * SC + 8, fill: '#d9d2c2', stroke: '#23231f', 'stroke-width': 1 });
+    // pan
+    el('rect', { x: px(0), y: pz(0), width: W * SC, height: D * SC, fill: '#fbfaf7', stroke: '#23231f', 'stroke-width': 1.6 });
+    // curb
+    el('rect', { x: px(0), y: pz(D - CURB_D), width: W * SC, height: CURB_D * SC, fill: '#efe9da', stroke: '#8a5a2b', 'stroke-width': 1 });
+    txt(px(W) - 4, pz(D - CURB_D) - 4, 'CURB 4½″', 'tag', 'end');
+    // glass line: fixed panel solid, door double-line
+    el('line', { x1: px(0), y1: pz(GLASS_Z), x2: px(PANEL_W), y2: pz(GLASS_Z), stroke: '#3d5457', 'stroke-width': 3 });
+    txt(px(1), pz(GLASS_Z) + 13, 'FIXED PANEL 22″', 'tag');
+    var hx = PANEL_W + DOOR_GAP; // hinge at the panel-side stile
+    el('line', { x1: px(hx), y1: pz(GLASS_Z), x2: px(hx + DOOR_W), y2: pz(GLASS_Z), stroke: '#3d5457', 'stroke-width': 1.2, 'stroke-dasharray': '7 4' });
+    // door swing (opens out, away from the wet zone)
+    var r = DOOR_W * SC;
+    el('path', { d: 'M ' + px(hx + DOOR_W) + ' ' + pz(GLASS_Z) +
+      ' A ' + r + ' ' + r + ' 0 0 1 ' + px(hx) + ' ' + (pz(GLASS_Z) + r),
+      fill: 'none', stroke: 'rgba(61,84,87,0.55)', 'stroke-width': 1, 'stroke-dasharray': '5 4' });
+    el('line', { x1: px(hx), y1: pz(GLASS_Z), x2: px(hx), y2: pz(GLASS_Z) + r, stroke: 'rgba(61,84,87,0.55)', 'stroke-width': 1 });
+    txt(px(hx + 6), pz(GLASS_Z) + 30, 'DOOR 27½″ — SWINGS OUT', 'tag');
+
+    // bench footprint
+    var b = st.bench || {};
+    if (b.t && b.t !== 'none') {
+      var bx0, bz0, bw, bd;
+      var wall = b.w || 'left', len = b.l || 24, dep = b.d || 16, off = b.o || 0;
+      if (wall === 'left') { bx0 = 0; bw = dep; bz0 = (b.c === 'bl' ? 0 : D - len) + off * 0; bd = len; }
+      else if (wall === 'right') { bx0 = W - dep; bw = dep; bz0 = (b.c && b.c[0] === 'b' ? 0 : D - len); bd = len; }
+      else { bx0 = (b.c && b.c[1] === 'l' ? 0 : W - len); bw = len; bz0 = 0; bd = dep; }
+      if (b.t === 'full') { bx0 = 0; bw = W; bz0 = 0; bd = dep; }
+      el('rect', { x: px(bx0), y: pz(bz0), width: bw * SC, height: bd * SC,
+        fill: '#e9e2d2', stroke: '#8a5a2b', 'stroke-width': 1.2 });
+      txt(px(bx0) + 4, pz(bz0) + bd * SC - 20, 'BENCH ' + Math.round(dep) + '″ D · ' + (b.t || '').toUpperCase(), 'tag');
+      txt(px(bx0) + 4, pz(bz0) + bd * SC - 7, 'SEAT ' + (b.h || 18.5) + '″', 'tag');
+    }
+
+    // fixtures projected to plan
+    function planPos(f) {
+      var x = f.p[0], z = f.p[2];
+      if (f.h === 'left') x = 0;
+      else if (f.h === 'right') x = W;
+      else if (f.h === 'back') { z = 0; }
+      return { x: x, z: z };
+    }
+    (st.fx || []).forEach(function (f) {
+      var q = planPos(f);
+      if (f.i === 'rain') {
+        var rr = (f.dia || 12) / 2 * SC;
+        el('circle', { cx: px(q.x), cy: pz(q.z), r: rr, fill: 'none', stroke: '#3d5457', 'stroke-width': 1.4, 'stroke-dasharray': '4 3' });
+        el('circle', { cx: px(q.x), cy: pz(q.z), r: 2.5, fill: '#3d5457' });
+        txt(px(q.x), pz(q.z) - rr - 7, 'RAIN HEAD ⌀' + (f.dia || 12) + '″ (CEILING)', 'tag', 'middle');
+      } else if (f.i === 'drain') {
+        if (f.dtype === 'trench') {
+          var tl = (f.tlen || W - 8) * SC;
+          el('rect', { x: px(q.x) - tl / 2, y: pz(q.z) - 4, width: tl, height: 8, fill: '#fff', stroke: '#23231f', 'stroke-width': 1.2 });
+          txt(px(q.x) - tl / 2, pz(q.z) + 20, 'TRENCH DRAIN ' + Math.round(f.tlen || W - 8) + '″', 'tag');
+        } else {
+          var dr = (f.dtype === 'round6' ? 3 : 2.5) * SC;
+          var sq = f.dtype === 'square5';
+          if (sq) el('rect', { x: px(q.x) - dr, y: pz(q.z) - dr, width: dr * 2, height: dr * 2, fill: '#fff', stroke: '#23231f', 'stroke-width': 1.2 });
+          else el('circle', { cx: px(q.x), cy: pz(q.z), r: dr, fill: '#fff', stroke: '#23231f', 'stroke-width': 1.2 });
+          el('line', { x1: px(q.x) - dr * 0.5, y1: pz(q.z), x2: px(q.x) + dr * 0.5, y2: pz(q.z), stroke: '#23231f', 'stroke-width': 0.7 });
+          el('line', { x1: px(q.x), y1: pz(q.z) - dr * 0.5, x2: px(q.x), y2: pz(q.z) + dr * 0.5, stroke: '#23231f', 'stroke-width': 0.7 });
+          txt(px(q.x), pz(q.z) + dr + 12, 'DRAIN ' + String(f.dtype || 'round4').toUpperCase(), 'tag', 'middle');
+          // locate the drain
+          el('line', { x1: px(0), y1: pz(q.z), x2: px(q.x), y2: pz(q.z), stroke: 'rgba(35,35,31,0.3)', 'stroke-width': 0.6, 'stroke-dasharray': '3 3' });
+          txt(px(q.x / 2), pz(q.z) + 12, Math.round(q.x * 4) / 4 + '″', 'dim', 'middle');
+        }
+      } else if (f.i === 'valve') {
+        el('rect', { x: px(q.x) - 4, y: pz(q.z) - 4, width: 8, height: 8, fill: '#3d5457' });
+        txt(px(q.x) + (f.h === 'right' ? -8 : 8), pz(q.z) + 50, 'VALVE @' + Math.round(f.p[1]) + '″ AFF', 'tag', f.h === 'right' ? 'end' : 'start');
+      } else if (f.i === 'head') {
+        el('circle', { cx: px(q.x), cy: pz(q.z), r: 4, fill: 'none', stroke: '#3d5457', 'stroke-width': 1.6 });
+        txt(px(q.x) + (f.h === 'right' ? -8 : 8), pz(q.z) - 12, 'HEAD @' + Math.round(f.p[1]) + '″', 'tag', f.h === 'right' ? 'end' : 'start');
+      } else if (f.i.indexOf('jet') === 0) {
+        el('circle', { cx: px(q.x), cy: pz(q.z), r: 2.6, fill: '#8a5a2b' });
+      } else if (f.i === 'niche' || (f.nw && f.h)) {
+        var nw = (f.nw || 26) * SC;
+        if (f.h === 'back') {
+          el('rect', { x: px(f.p[0]) - nw / 2, y: pz(0) - 7, width: nw, height: 7, fill: '#fff', stroke: '#8a5a2b', 'stroke-width': 1 });
+          txt(px(f.p[0]) - nw / 2, pz(0) - 11, 'NICHE ' + Math.round(f.nw || 26) + '″×' + Math.round(f.nh || 15) + '″', 'tag');
+        } else {
+          var side = f.h === 'left' ? px(0) - 7 : px(W);
+          el('rect', { x: side, y: pz(f.p[2]) - nw / 2, width: 7, height: nw, fill: '#fff', stroke: '#8a5a2b', 'stroke-width': 1 });
+        }
+      }
+    });
+    var jets = (st.fx || []).filter(function (f) { return f.i.indexOf('jet') === 0; });
+    if (jets.length) {
+      var j0 = planPos(jets[0]);
+      txt(px(j0.x) + (jets[0].h === 'right' ? -8 : 8), pz(j0.z) - 26,
+        jets.length + '× BODY JETS (' + (jets[0].h || 'right').toUpperCase() + ' WALL)', 'tag',
+        jets[0].h === 'right' ? 'end' : 'start');
+    }
+
+    // overall dims
+    el('line', { x1: px(0), y1: pz(0) - 26, x2: px(W), y2: pz(0) - 26, stroke: 'rgba(35,35,31,0.45)', 'stroke-width': 0.75 });
+    txt(px(W / 2), pz(0) - 30, '51½″', 'big', 'middle');
+    el('line', { x1: px(W) + 26, y1: pz(0), x2: px(W) + 26, y2: pz(D), stroke: 'rgba(35,35,31,0.45)', 'stroke-width': 0.75 });
+    txt(px(W) + 34, pz(D / 2), '48″', 'big');
+    txt(px(0), pz(D) + r + 26, 'BACK WALL AT TOP · GLASS + CURB AT BOTTOM · DOOR SWINGS OUT', 'tag');
+  }
+
+  render();
+  window.addEventListener('storage', function (ev) {
+    if (ev.key === 'yamazina.shower.work.v1') render();
+  });
+})();
+</script>
+</body>
+</html>

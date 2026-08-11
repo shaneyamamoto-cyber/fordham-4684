@@ -1499,6 +1499,7 @@ function commit(){
   hptr = history.length - 1;
   renderHistoryUI();
   saveDesign();
+  platformMirror();
 }
 function undo(){ if(designLocked) return; if(hptr > 0){ hptr--; applyState(history[hptr]); renderHistoryUI(); } }
 function redo(){ if(designLocked) return; if(hptr < history.length - 1){ hptr++; applyState(history[hptr]); renderHistoryUI(); } }
@@ -2296,6 +2297,125 @@ window.addEventListener('resize', function(){
 });
 
 /* ============================================================
+   PLATFORM — YamaZina shared store: live work-state mirror (the
+   2D floor plan reads it), named versions, and the Look Book's
+   global HOUSE PICK applied to the active surface.
+   ============================================================ */
+const PSTORE = window.PlatformStore ? window.PlatformStore('shower') : null;
+let psTimer = null, psBooted = false; // don't let the boot-time commit of the
+                                      // factory default clobber a saved design
+function platformMirror(){
+  if(!PSTORE || !psBooted) return;
+  clearTimeout(psTimer);
+  psTimer = setTimeout(function(){
+    try { PSTORE.saveWork(JSON.parse(captureState()), '3d'); } catch(e){ /* storage full */ }
+  }, 400);
+}
+if(PSTORE){
+  // another tab (versions panel elsewhere, future 2D editing) rewrote the design
+  PSTORE.onWorkChange(function(env){
+    if(env && env.state && env.by !== '3d') { applyState(JSON.stringify(env.state)); commit(); }
+  });
+
+  const dock = document.createElement('div');
+  dock.style.cssText = 'position:fixed;left:334px;bottom:18px;z-index:11;display:flex;gap:10px;align-items:flex-end;' +
+    "font-family:'IBM Plex Mono',ui-monospace,monospace";
+  document.body.appendChild(dock);
+
+  // ---- named versions on the platform store ----
+  const vbox = document.createElement('div');
+  vbox.style.cssText = 'background:rgba(20,18,16,0.92);border:1px solid rgba(255,255,255,0.18);border-radius:2px;' +
+    'padding:9px 10px;color:#e8e3d8;font-size:9px;letter-spacing:0.08em';
+  vbox.innerHTML = '<div style="font-weight:600;letter-spacing:0.16em;margin-bottom:6px;opacity:0.65">VERSIONS</div>' +
+    '<div style="display:flex;gap:6px"><select id="pv-list" style="max-width:150px;font:inherit;background:#141210;color:#e8e3d8;border:1px solid rgba(255,255,255,0.25);border-radius:2px;padding:3px"></select>' +
+    '<button id="pv-load" type="button" style="font:inherit;font-weight:600;background:transparent;color:#e8e3d8;border:1px solid rgba(255,255,255,0.4);border-radius:2px;padding:3px 8px;cursor:pointer">LOAD</button>' +
+    '<button id="pv-save" type="button" style="font:inherit;font-weight:600;background:#e8e3d8;color:#141210;border:1px solid #e8e3d8;border-radius:2px;padding:3px 8px;cursor:pointer">LOCK CURRENT</button></div>';
+  dock.appendChild(vbox);
+  const pvList = vbox.querySelector('#pv-list');
+  function pvRefresh(){
+    const list = PSTORE.loadVersions() || [];
+    pvList.innerHTML = '';
+    list.forEach(function(v, i){
+      const o = document.createElement('option');
+      o.value = i; o.textContent = v.name;
+      pvList.appendChild(o);
+    });
+    if(list.length) pvList.selectedIndex = list.length - 1;
+    pvList.disabled = !list.length;
+  }
+  pvRefresh();
+  vbox.querySelector('#pv-save').addEventListener('click', function(){
+    const list = PSTORE.loadVersions() || [];
+    const d = new Date();
+    list.push({ name: 'v' + (list.length + 1) + ' · ' + d.toISOString().slice(0, 16).replace('T', ' '),
+                at: d.toISOString(), state: JSON.parse(captureState()) });
+    PSTORE.saveVersions(list);
+    pvRefresh();
+  });
+  vbox.querySelector('#pv-load').addEventListener('click', function(){
+    if(designLocked) return;
+    const list = PSTORE.loadVersions() || [];
+    const v = list[Number(pvList.value)];
+    if(v && v.state){ applyState(JSON.stringify(v.state)); commit(); }
+  });
+
+  // ---- house pick (written by the Look Book) ----
+  const hbox = document.createElement('div');
+  hbox.style.cssText = 'display:none;background:rgba(20,18,16,0.92);border:1px solid rgba(255,255,255,0.18);border-radius:2px;' +
+    'padding:9px 10px;color:#e8e3d8;font-size:9px;letter-spacing:0.08em;max-width:250px';
+  hbox.innerHTML = '<div style="font-weight:600;letter-spacing:0.16em;margin-bottom:5px;color:#c9a35c">HOUSE PICK</div>' +
+    '<div id="hp-name" style="font-weight:600;margin-bottom:7px"></div>' +
+    '<button id="hp-apply" type="button" style="font:inherit;font-weight:600;background:#c9a35c;color:#141210;border:1px solid #c9a35c;border-radius:2px;padding:4px 9px;cursor:pointer;letter-spacing:0.1em"></button>';
+  dock.appendChild(hbox);
+  function houseEnv(){
+    try { return JSON.parse(localStorage.getItem('yamazina.house.work.v1') || 'null'); }
+    catch(e){ return null; }
+  }
+  function hpRefresh(){
+    const env = houseEnv();
+    const pick = env && env.state && env.state.pick;
+    hbox.style.display = pick ? 'block' : 'none';
+    if(pick){
+      hbox.querySelector('#hp-name').textContent = pick.name || pick.id;
+      hbox.querySelector('#hp-apply').textContent = 'APPLY TO ' + SURF[uiSurf].name.toUpperCase();
+    }
+  }
+  hpRefresh();
+  window.addEventListener('storage', function(ev){ if(ev.key === 'yamazina.house.work.v1') hpRefresh(); });
+  const hpTick = setInterval(hpRefresh, 1500); // uiSurf changes have no event — keep the button label honest
+  void hpTick;
+  hbox.querySelector('#hp-apply').addEventListener('click', function(){
+    if(designLocked) return;
+    const env = houseEnv();
+    const pick = env && env.state && env.state.pick;
+    if(!pick) return;
+    let target = null;
+    if(pick.id.indexOf('lb4684-') === 0){
+      // the pick IS one of this app's own sample-book materials
+      const raw = pick.id.slice('lb4684-'.length);
+      if(LBMAT[raw]) target = 'lb#' + raw;
+    }
+    if(!target){
+      // photographic look-book field: nearest parametric colour by tone
+      const t = hexToRgb(pick.tone || '#999999');
+      let bd = Infinity;
+      COLLECTIONS.forEach(function(c){
+        if(c.lookbook) return;
+        c.colours.forEach(function(col){
+          const d = (col.base[0]-t[0])*(col.base[0]-t[0]) + (col.base[1]-t[1])*(col.base[1]-t[1]) + (col.base[2]-t[2])*(col.base[2]-t[2]);
+          if(d < bd){ bd = d; target = col.id; }
+        });
+      });
+    }
+    if(!target) return;
+    const spec = SURF[uiSurf].spec;
+    spec.colour = target;
+    uiColl = collOf(target).id;
+    applySurface(uiSurf); renderTileUI();
+  });
+}
+
+/* ============================================================
    RUN
    ============================================================ */
 buildFloor(); buildCeiling(); buildLeftWall(); buildRightWall(); buildBackWall();
@@ -2303,9 +2423,16 @@ buildBench(); buildGlass(); buildJets(4); applyMetal('brass');
 renderTileUI(); renderBuildUI(); renderTileSchedule(); renderFixtureRows(); rebuildFixDims(); updateSubline();
 syncLockAll(); commit(); renderHistoryUI();
 loadDesign(true).then(function(ok){
+  if(!ok && PSTORE){
+    // static hosting has no dc storage bridge — the platform work slot is
+    // the real persistence there, and it's what the 2D floor plan reads
+    const env = PSTORE.loadWork();
+    if(env && env.state && applyState(JSON.stringify(env.state))) ok = true;
+  }
   if(ok){ history = [captureState()]; hptr = 0; renderHistoryUI(); setSaveState('restored'); }
-  else setSaveState(window.storage ? 'saved' : 'no storage');
-}).catch(function(){ setSaveState('no storage'); });
+  else setSaveState(window.storage ? 'saved' : 'local only');
+  psBooted = true; platformMirror(); // publish the settled truth for the 2D plan
+}).catch(function(){ setSaveState('local only'); psBooted = true; platformMirror(); });
 
 (function loop(){
   requestAnimationFrame(loop);
