@@ -48,7 +48,16 @@
 
   /* click-edit menu */
   #menu { position:fixed; display:none; z-index:60; background:#fbfaf7; border:1px solid #23231f;
-    border-radius:2px; box-shadow:0 8px 26px rgba(0,0,0,0.22); padding:12px 13px; width:230px; }
+    border-radius:2px; box-shadow:0 8px 26px rgba(0,0,0,0.22); padding:12px 13px; width:264px;
+    max-height:88vh; overflow-y:auto; }
+  #cab:not(:empty) { border-top:1px solid var(--ink16); margin-top:10px; padding-top:10px; }
+  #cab .ch { font:600 9px/1 inherit; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
+  #cab .bay { display:flex; align-items:center; gap:5px; margin-bottom:5px; }
+  #cab .bay select { flex:1; font:inherit; font-size:9.5px; padding:3px 4px; border:1px solid var(--ink30); border-radius:2px; background:#fff; }
+  #cab .bay input { width:42px; flex:0 0 42px; font:inherit; font-size:9.5px; padding:3px 4px; border:1px solid var(--ink30); border-radius:2px; background:#fff; }
+  #cab .bay .rm { flex:0 0 20px; cursor:pointer; border:1px solid var(--ink30); background:#fbfaf7; color:#a23; border-radius:2px; font:600 11px/1 inherit; padding:3px 0; }
+  #cab .add { width:100%; margin-top:4px; font:600 8.5px/1 inherit; letter-spacing:0.06em; padding:6px 0; cursor:pointer;
+    border:1px dashed var(--ink30); background:transparent; color:var(--ink60); border-radius:2px; }
   #menu .mt { font:600 10px/1 inherit; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:9px; }
   #menu .fr { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
   #menu label { flex:0 0 84px; font-size:9px; color:var(--ink60); }
@@ -94,6 +103,13 @@
       <h2>Grout</h2>
       <div class="grouts" id="grouts"></div>
     </div>
+    <div class="sect">
+      <h2>Hardware — metal finish</h2>
+      <div class="surfchips" id="metalChips"></div>
+      <h2 style="margin-top:12px">Pull style</h2>
+      <div class="surfchips" id="pullChips"></div>
+      <div class="note">Drives every drawer &amp; door pull and the tap/mixer trim across the elevation + 3D.</div>
+    </div>
   </div>
 </div>
 
@@ -104,6 +120,7 @@
   <div class="fr"><label>Width w″</label><input id="mW" type="number" step="0.25"></div>
   <div class="fr"><label>Tall h″</label><input id="mH" type="number" step="0.25"></div>
   <div class="fr"><label>Depth dep″</label><input id="mDep" type="number" step="0.25"></div>
+  <div id="cab"></div>
   <button class="save" id="mSave" type="button">SAVE POSITION</button>
   <div class="keys">
     <button class="k-mat" id="kMat" type="button">Material</button>
@@ -188,6 +205,18 @@
     return out;
   }
 
+  // ---- hardware ----
+  var METALS = [
+    ['copper', 'Copper', '#c9873f'], ['brass', 'Brushed brass', '#c9a35c'],
+    ['aged', 'Aged brass', '#9c7a3e'], ['nickel', 'Brushed nickel', '#c2c8ca'],
+    ['chrome', 'Chrome', '#d7dbdd'], ['black', 'Matte black', '#2e2c29'], ['bronze', 'Bronze', '#7a5a3a']
+  ];
+  var PULLS = [['bar', 'Bar'], ['knob', 'Knob'], ['edge', 'Edge / finger']];
+  function metalOf(id) { for (var i = 0; i < METALS.length; i++) if (METALS[i][0] === id) return METALS[i]; return METALS[1]; }
+  function trimTone() { var w = readWork(); return (w && w.trimTone) || BASE.trimTone || 'brass'; }
+  function pullStyle() { var w = readWork(); return (w && w.pullStyle) || 'bar'; }
+  function metalHex() { return metalOf(trimTone())[2]; }
+
   var SC = 5.4, M = 56, TOPP = 30;
   var NS = 'http://www.w3.org/2000/svg';
   var sheet = document.getElementById('sheet');
@@ -227,25 +256,143 @@
       txt(px(0) - 5, py(gy) + 3, gy + '″', 'tag', 'end');
     }
 
-    // fixtures
-    st.items.forEach(function (it) {
+    // ---- detailed fitting renderer -------------------------------------
+    var MET = metalHex(), PST = pullStyle();
+    // a brass/nickel pull drawn to the current hardware finish
+    function pull(cx0, cy0, len, vertical) {
+      if (PST === 'edge') return;   // fingerpull reveal — nothing proud of the face
+      if (PST === 'knob') { el('circle', { cx:cx0, cy:cy0, r:Math.max(1.6, len * SC * 0.14), fill:MET, 'pointer-events':'none' }); return; }
+      var t = Math.max(1.6, 0.5 * SC);
+      if (vertical) el('rect', { x:cx0 - t / 2, y:cy0 - len * SC / 2, width:t, height:len * SC, rx:1, fill:MET, 'pointer-events':'none' });
+      else el('rect', { x:cx0 - len * SC / 2, y:cy0 - t / 2, width:len * SC, height:t, rx:1, fill:MET, 'pointer-events':'none' });
+    }
+    function panel(x0, y0, w, h, fill, stroke) {
+      el('rect', { x:x0, y:y0, width:w, height:h, rx:1.5, fill:fill || 'rgba(255,240,220,0.10)',
+        stroke:stroke || 'rgba(28,16,8,0.55)', 'stroke-width':0.9, 'pointer-events':'none' });
+    }
+    function label(x0, y0, it, w, h) {
+      if (w > 30 && h > 12) txt(x0 + 4, y0 + 12, (it.locked ? '🔒 ' : '') + (it.name || it.id).toUpperCase(), 'tag');
+    }
+
+    // paint order: opaque cabinetry above the glass/zone overlays (so it stays
+    // clickable), thin wall fittings on top of that
+    var ZPRI = { glass:1, tub:2, wc:3, tower:5, van:5, shelf:6, nichesh:6, mir:7 };
+    var drawList = st.items.slice().sort(function (a, b) {
+      return (ZPRI[a.id] || 4) - (ZPRI[b.id] || 4);
+    });
+    drawList.forEach(function (it) {
       if (it.zoneOnly || it.zone) return;
       if (it.id === 'base' || it.id === 'splash') return;   // drawn as surface/trim already
       var w = Math.max(2, it.w * SC), h = Math.max(2, it.h * SC);
-      // end-wall fittings (toilet) live at x≈169; draw them flush inside the right edge
-      var ex = (it.x >= 169) ? (169 - it.w) : it.x;
+      var ex = (it.x >= 169) ? (169 - it.w) : it.x;         // toilet flush inside right edge
       var x0 = px(ex), y0 = py(it.y + it.h);
-      var fillc = it.tone || it.swatch || '#e9e2d2';
-      var round = it.shape === 'round';
-      if (round) {
-        el('circle', { cx:x0 + w / 2, cy:y0 + h / 2, r:Math.max(3, Math.min(w, h) / 2), fill:fillc,
-          stroke:'#8a5a2b', 'stroke-width':1.1, 'class':'fit', 'data-id':it.id });
-      } else {
-        el('rect', { x:x0, y:y0, width:w, height:h, rx:it.id === 'mir' ? 6 : 2, fill:fillc,
-          stroke: it.locked ? 'rgba(35,35,31,0.75)' : '#8a5a2b', 'stroke-width':1.1,
-          'stroke-dasharray': it.locked ? '4 3' : 'none', 'class':'fit', 'data-id':it.id });
+      var wood = it.tone || it.swatch || '#8a5325';
+      var lockStroke = it.locked ? 'rgba(35,35,31,0.75)' : '#8a5a2b';
+      var lockDash = it.locked ? '4 3' : 'none';
+
+      // base clickable body (everything detailed sits on top with pointer-events:none)
+      function body(fill, rx) {
+        el('rect', { x:x0, y:y0, width:w, height:h, rx:rx == null ? 2 : rx, fill:fill,
+          stroke:lockStroke, 'stroke-width':1.1, 'stroke-dasharray':lockDash, 'class':'fit', 'data-id':it.id });
       }
-      if (w > 30 && h > 12) txt(x0 + 4, y0 + 12, (it.locked ? '🔒 ' : '') + (it.name || it.id).toUpperCase(), 'tag');
+
+      // STORAGE TOWER / any item with a bay stack → real carcass
+      if (it.bays && it.bays.length) {
+        body(wood);
+        var fixed = it.bays.reduce(function (a, b) { return a + (b.h || 0); }, 0);
+        var autoN = it.bays.filter(function (b) { return !b.h; }).length;
+        var spare = Math.max(0, it.h - fixed);
+        var cy = it.y;
+        it.bays.forEach(function (b) {
+          var bh = b.h || (autoN ? spare / autoN : 0); if (bh <= 0) return;
+          var bx = px(ex + 0.3), bw = (it.w - 0.6) * SC, bt = py(cy + bh - 0.3), bhp = Math.max(2, (bh - 0.6) * SC);
+          if (b.t === 'void') {
+            el('rect', { x:bx, y:bt, width:bw, height:bhp, rx:1, fill:'#ffd89a',
+              stroke:'rgba(28,16,8,0.5)', 'stroke-width':0.8, 'pointer-events':'none' });
+            el('rect', { x:bx, y:bt, width:bw, height:Math.min(bhp, 5), fill:'rgba(255,236,200,0.9)', 'pointer-events':'none' });
+          } else {
+            panel(bx, bt, bw, bhp);
+            if (b.t === 'door') pull(px(ex + it.w - 1.9), bt + bhp / 2, Math.min(5, bh * 0.32), true);
+            else pull(px(ex + it.w / 2), bt + bhp / 2, Math.min(6, it.w * 0.34), false);
+          }
+          cy += bh;
+        });
+        label(x0, y0, it, w, h);
+        return;
+      }
+
+      // VANITY → drawer banks (left run + stepped right bank)
+      if (it.id === 'van') {
+        body(wood);
+        var nL = Math.max(1, (readWork() && readWork().drawersLeft) || BASE.drawersLeft);
+        var nR = Math.max(1, (readWork() && readWork().drawersRight) || BASE.drawersRight);
+        var wR = (readWork() && readWork().bankW) || BASE.bankW;
+        var gap = (readWork() && readWork().bankGap) || BASE.bankGap;
+        var wL = it.w - wR - gap;
+        if (wL > 0) {
+          var front = function (fx, fw, fy, fh, pw) {
+            panel(px(fx + 0.25), py(fy + fh - 0.25), (fw - 0.5) * SC, (fh - 0.5) * SC);
+            pull(px(fx + fw / 2), py(fy + fh / 2 + 0.35), pw, false);
+          };
+          var hL = it.h / nL; for (var i = 0; i < nL; i++) front(ex, wL, it.y + i * hL, hL, Math.min(6, wL * 0.26));
+          var hR = it.h / nR; for (var j = 0; j < nR; j++) front(ex + wL + gap, wR, it.y + j * hR, hR, Math.min(3.25, wR * 0.3));
+        }
+        label(x0, y0, it, w, h);
+        return;
+      }
+
+      // FLOATING SHELVES → N boards + warm LED
+      if (it.shelfN) {
+        var n = Math.max(1, Math.min(10, it.shelfN)), th = it.shelfThick || 2, sg = it.shelfGap == null ? 12 : it.shelfGap;
+        // invisible hit body spanning the stack
+        el('rect', { x:x0, y:y0, width:w, height:h, fill:'transparent', 'class':'fit', 'data-id':it.id });
+        for (var k = 0; k < n; k++) {
+          var by = it.y + k * (th + sg);
+          el('rect', { x:px(ex), y:py(by + th), width:w, height:Math.max(2, th * SC), rx:1, fill:wood,
+            stroke:'rgba(28,16,8,0.5)', 'stroke-width':0.8, 'pointer-events':'none' });
+          if (it.led) el('rect', { x:px(ex + 0.5), y:py(by), width:Math.max(3, (it.w - 1) * SC), height:Math.max(2, 0.5 * SC),
+            fill:'#ffcf85', 'pointer-events':'none' });
+        }
+        return;
+      }
+
+      // MIRROR → stadium/pill with metal frame
+      if (it.id === 'mir') {
+        var rr = it.radius ? Math.min(w, h) / 2 : 6;
+        el('rect', { x:x0, y:y0, width:w, height:h, rx:rr, ry:rr, fill:(it.tone || '#cfe0e3'),
+          stroke:MET, 'stroke-width':Math.max(1.5, (it.frame || 1.25) * SC * 0.5), 'class':'fit', 'data-id':it.id });
+        return;
+      }
+
+      // TOILET → simple profile (cistern + bowl) on the end wall
+      if (it.id === 'wc') {
+        body(it.tone || '#f7f6f2');
+        var tankW = Math.min(w * 0.34, 9 * SC);
+        el('rect', { x:x0, y:y0, width:tankW, height:h * 0.62, rx:1.5, fill:'#ffffff', stroke:'rgba(35,35,31,0.4)', 'stroke-width':0.8, 'pointer-events':'none' });
+        el('rect', { x:x0 + tankW * 0.5, y:y0 + h * 0.5, width:w - tankW * 0.5, height:h * 0.32, rx:5, fill:'#ffffff', stroke:'rgba(35,35,31,0.4)', 'stroke-width':0.8, 'pointer-events':'none' });
+        label(x0, y0, it, w, h);
+        return;
+      }
+
+      // LIT NICHE → warm recess
+      if (it.id === 'nichesh') {
+        el('rect', { x:x0, y:y0, width:w, height:h, rx:1.5, fill:'#ffd89a', stroke:'#c79a5a', 'stroke-width':1, 'class':'fit', 'data-id':it.id });
+        el('rect', { x:x0 + 2, y:y0 + 2, width:Math.max(2, w - 4), height:Math.max(2, h - 4), rx:1, fill:'none', stroke:'rgba(199,154,90,0.6)', 'stroke-width':0.7, 'pointer-events':'none' });
+        label(x0, y0, it, w, h);
+        return;
+      }
+
+      // round metal fittings (tap spout/handles, mixer) → metal circles
+      if (it.shape === 'round') {
+        el('circle', { cx:x0 + w / 2, cy:y0 + h / 2, r:Math.max(3, Math.min(w, h) / 2), fill:MET,
+          stroke:'rgba(35,35,31,0.35)', 'stroke-width':0.8, 'class':'fit', 'data-id':it.id });
+        return;
+      }
+
+      // brass linear fittings (towel bars, rainhead, sconces, ring, spout)
+      var metalIds = { bar2:1, bar3:1, rain:1, light:1, light2:1, ring:1, spout:1, tap:1, mixer:1, taphl:1, taphr:1 };
+      body(metalIds[it.id] ? MET : wood);
+      label(x0, y0, it, w, h);
     });
 
     // overall dims
@@ -266,7 +413,16 @@
     sw.innerHTML = swatchList().map(function (s, i) {
       return '<div class="sw" data-sw="' + i + '"><div class="c" style="background:' + s.color + '"></div><div class="n">' + s.name + '</div></div>';
     }).join('');
+    var mc = document.getElementById('metalChips');
+    mc.innerHTML = METALS.map(function (m) {
+      return '<button class="chip" data-metal="' + m[0] + '"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + m[2] + ';margin-right:5px;vertical-align:-1px"></span>' + m[1] + '</button>';
+    }).join('');
+    var pu = document.getElementById('pullChips');
+    pu.innerHTML = PULLS.map(function (p) { return '<button class="chip" data-pull="' + p[0] + '">' + p[1] + '</button>'; }).join('');
     syncRail();
+  }
+  function patchTop(patch) {
+    var d = seedIfNeeded(); Object.assign(d, patch); writeWork(d); render(); syncRail();
   }
   var SWATCHES = null;
   function syncRail() {
@@ -281,6 +437,9 @@
       var sw = SWATCHES[+el2.getAttribute('data-sw')];
       el2.classList.toggle('on', s.lib ? (sw.id === s.lib) : (!sw.id && sameC(sw.color, s.color)));
     });
+    var tt = trimTone(), ps = pullStyle();
+    document.querySelectorAll('#metalChips .chip').forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-metal') === tt); });
+    document.querySelectorAll('#pullChips .chip').forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-pull') === ps); });
   }
   function sameC(a, b) { return (a || '').toLowerCase() === (b || '').toLowerCase(); }
 
@@ -310,6 +469,14 @@
     if (sw.id && LIB) patchSurf({ lib: sw.id, color: sw.color, fin: sw.fin });
     else patchSurf({ color: sw.color, fin: sw.fin, lib: null });
   });
+  document.getElementById('metalChips').addEventListener('click', function (e) {
+    var b = e.target.closest('.chip'); if (!b) return; patchTop({ trimTone: b.getAttribute('data-metal') });
+    flash('HARDWARE → ' + metalOf(b.getAttribute('data-metal'))[1].toUpperCase());
+  });
+  document.getElementById('pullChips').addEventListener('click', function (e) {
+    var b = e.target.closest('.chip'); if (!b) return; patchTop({ pullStyle: b.getAttribute('data-pull') });
+    flash('PULLS → ' + b.textContent.toUpperCase());
+  });
 
   // ---- click-edit menu (no auto-materials) ----
   var menu = document.getElementById('menu'), editId = null;
@@ -324,10 +491,55 @@
     var dis = !!it.locked;
     ['mX', 'mY', 'mW', 'mH', 'mDep'].forEach(function (f) { document.getElementById(f).disabled = dis; });
     document.getElementById('mSave').style.opacity = dis ? 0.4 : 1;
-    menu.style.left = Math.min(rect.left, window.innerWidth - 246) + 'px';
-    menu.style.top = Math.min(rect.bottom + 8, window.innerHeight - 260) + 'px';
+    renderCab(it);
+    menu.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
+    menu.style.top = Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - 340)) + 'px';
     menu.style.display = 'block';
   }
+  // contextual cabinetry planner — bay stacks, drawer banks, shelf runs
+  var BAYT = [['drawer', 'Drawer'], ['door', 'Door'], ['void', 'Lit niche']];
+  function renderCab(it) {
+    var cab = document.getElementById('cab'); cab.innerHTML = '';
+    var w = readWork() || {};
+    function h2(t) { var d = document.createElement('div'); d.className = 'ch'; d.textContent = t; cab.appendChild(d); }
+    function numRow(lbl, val, on) {
+      var r = document.createElement('div'); r.className = 'fr';
+      var l = document.createElement('label'); l.textContent = lbl; var i = document.createElement('input');
+      i.type = 'number'; i.step = '0.25'; i.value = val; i.addEventListener('change', function () { on(Number(i.value)); });
+      r.appendChild(l); r.appendChild(i); cab.appendChild(r);
+    }
+    if (it.bays && it.bays.length) {
+      h2('Storage tower — bays (bottom→top)');
+      it.bays.forEach(function (b, bi) {
+        var row = document.createElement('div'); row.className = 'bay';
+        var sel = document.createElement('select');
+        BAYT.forEach(function (o) { var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; if (o[0] === b.t) op.selected = true; sel.appendChild(op); });
+        sel.addEventListener('change', function () { setBay(it.id, bi, { t: sel.value }); });
+        var inp = document.createElement('input'); inp.type = 'number'; inp.step = '1'; inp.value = b.h || 0; inp.title = 'height in';
+        inp.addEventListener('change', function () { setBay(it.id, bi, { h: Number(inp.value) }); });
+        var rm = document.createElement('button'); rm.className = 'rm'; rm.textContent = '×';
+        rm.addEventListener('click', function () { delBay(it.id, bi); });
+        row.appendChild(sel); row.appendChild(inp); row.appendChild(rm); cab.appendChild(row);
+      });
+      var add = document.createElement('button'); add.className = 'add'; add.textContent = '＋ add bay';
+      add.addEventListener('click', function () { addBay(it.id); }); cab.appendChild(add);
+    } else if (it.id === 'van') {
+      h2('Vanity — drawer layout');
+      numRow('Left drawers', w.drawersLeft || BASE.drawersLeft, function (v) { patchTop({ drawersLeft: Math.max(1, Math.min(6, Math.round(v))) }); reopen(); });
+      numRow('Right drawers', w.drawersRight || BASE.drawersRight, function (v) { patchTop({ drawersRight: Math.max(1, Math.min(6, Math.round(v))) }); reopen(); });
+      numRow('Right bank w″', w.bankW || BASE.bankW, function (v) { patchTop({ bankW: v }); reopen(); });
+      numRow('Bank gap″', w.bankGap != null ? w.bankGap : BASE.bankGap, function (v) { patchTop({ bankGap: v }); reopen(); });
+    } else if (it.shelfN) {
+      h2('Floating shelves');
+      numRow('Count', it.shelfN, function (v) { itemsPatch(it.id, function (o) { o.shelfN = Math.max(1, Math.min(10, Math.round(v))); return o; }); reopen(); });
+      numRow('Gap″', it.shelfGap == null ? 12 : it.shelfGap, function (v) { itemsPatch(it.id, function (o) { o.shelfGap = v; return o; }); reopen(); });
+      numRow('Thick″', it.shelfThick || 2, function (v) { itemsPatch(it.id, function (o) { o.shelfThick = v; return o; }); reopen(); });
+    }
+  }
+  function reopen() { if (editId && menuRect) { var it = state().items.filter(function (i) { return i.id === editId; })[0]; if (it) renderCab(it); } }
+  function setBay(id, bi, patch) { itemsPatch(id, function (o) { o.bays = o.bays.map(function (b, i) { return i === bi ? Object.assign({}, b, patch) : b; }); return o; }); reopen(); }
+  function delBay(id, bi) { itemsPatch(id, function (o) { o.bays = o.bays.filter(function (b, i) { return i !== bi; }); return o; }); reopen(); }
+  function addBay(id) { itemsPatch(id, function (o) { o.bays = (o.bays || []).concat([{ t: 'drawer', h: 8 }]); return o; }); reopen(); }
   function itemsPatch(id, fn) {
     var d = seedIfNeeded();
     d.items = d.items.map(function (i) { return i.id === id ? fn(Object.assign({}, i)) : i; });
