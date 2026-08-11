@@ -106,6 +106,18 @@ const FALLBACK = {
 
 function loadLayout() {
   try {
+    // LIVE-FIRST: the planner autosaves every edit (items, surf fills, shell)
+    // to the work slot, so the 3D follows the working design directly — no
+    // lock-and-reload ceremony. Locked versions remain available as fixed
+    // snapshots via LOAD PLAN JSON / the versions slot below.
+    const w = localStorage.getItem('yamazina.bathroom.work.v1');
+    if (w) {
+      const d = JSON.parse(w);
+      if (d && d.items && d.items.length) {
+        return { data: Object.assign({}, FALLBACK, d), name: 'working design — live',
+          note: 'follows the planner as you edit' };
+      }
+    }
     const raw = localStorage.getItem('yamazina.bathroom.versions.v1');
     if (!raw) return { data: FALLBACK, name: 'built-in plan', note: 'no saved version found' };
     const d = JSON.parse(raw);
@@ -128,6 +140,14 @@ document.getElementById('planFile').addEventListener('change', (ev) => {
     localStorage.setItem('yamazina.bathroom.versions.v1', txt);
     location.reload();
   }).catch(() => alert('Not a valid plan JSON export.'));
+});
+
+// Live sync: any planner edit (work slot) or new lock re-renders this view.
+window.addEventListener('storage', (ev) => {
+  if (ev.key === 'yamazina.bathroom.work.v1' || ev.key === 'yamazina.bathroom.versions.v1') {
+    clearTimeout(window.__liveReloadT);
+    window.__liveReloadT = setTimeout(() => location.reload(), 900);
+  }
 });
 
 const L = loadLayout();
