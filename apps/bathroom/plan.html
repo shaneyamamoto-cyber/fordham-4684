@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bathroom — 2D Floor Plan</title>
+<style>
+  :root { --paper:#faf9f5; --panel:#efece5; --ink:#23231f; --ink60:rgba(35,35,31,0.6);
+          --ink16:rgba(35,35,31,0.16); --accent:#8a5a2b; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace; }
+  #bar { padding:18px 24px 10px; }
+  .kicker { font:600 10px/1 inherit; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase; }
+  h1 { font:600 20px/1.2 Archivo,Helvetica,Arial,sans-serif; margin:8px 0 2px; }
+  .sub { font-size:10px; color:var(--ink60); }
+  #sheet { padding:10px 24px 40px; overflow:auto; }
+  svg text { font-family:inherit; }
+  .tag { font:600 8px/1 inherit; letter-spacing:0.08em; fill:var(--ink60); text-transform:uppercase; }
+  .dim { font:500 9px/1 inherit; fill:var(--ink60); }
+</style>
+</head>
+<body>
+<div id="bar">
+  <div class="kicker">Measured Layout Tool · House Plan Set</div>
+  <h1>Bathroom — Floor Plan</h1>
+  <div class="sub" id="src">baseline plan · follows the Elevation Planner's working design live</div>
+</div>
+<div id="sheet"></div>
+
+<script src="../../platform/core/store.js"></script>
+<script>
+(function () {
+  'use strict';
+  window.PlatformStore('bathroom');
+
+  // Shell + fitting footprints come from the planner's working state when it
+  // exists; this baseline mirrors the built-in plan (bathroom_7 measures).
+  var SHELL = [{x:0,d:14.5},{x:60.5,d:14.5},{x:60.5,d:0},{x:169,d:0},{x:169,d:-56.5},{x:0,d:-56.5}];
+  var BASE_ITEMS = [
+    {id:'tub',name:'Tub',x:0,w:32,dep:60,face:14.5},
+    {id:'tower',name:'Tower',x:44.5,w:16,dep:14.5,face:14.5},
+    {id:'shelf',name:'Shelves',x:32,w:12,dep:18,face:14.5},
+    {id:'wet',name:'Shower zone',x:0,w:32,dep:60,face:14.5,zone:true},
+    {id:'van',name:'Vanity',x:66.25,w:36,dep:12,face:0},
+    {id:'vessel',name:'Basin',x:67.75,w:22,dep:13.8,face:0},
+    {id:'stone',name:'Landing',x:91.5,w:10,dep:13.8,face:0},
+    {id:'splash',name:'Splash',x:61.25,w:46,dep:0.5,face:0},
+    {id:'door',name:'Door 30in',x:110.5,w:30,dep:1,face:0,door:true},
+    {id:'wc',name:'WC',x:169,w:16,dep:26,face:0,wall:'end',d:26.75,flip:true},
+  ];
+
+  function items() {
+    try {
+      var w = JSON.parse(localStorage.getItem('yamazina.bathroom.work.v1') || 'null');
+      if (w && w.items && w.items.length) {
+        document.getElementById('src').textContent = 'working design — live from the Elevation Planner';
+        return { items: w.items, poly: w.poly || SHELL };
+      }
+    } catch (e) { /* fall through to baseline */ }
+    return { items: BASE_ITEMS, poly: SHELL };
+  }
+
+  var SC = 6.2, M = 60;
+  var NS = 'http://www.w3.org/2000/svg';
+  function render() {
+    var st = items();
+    var xs = st.poly.map(function (p) { return p.x; }), ds = st.poly.map(function (p) { return p.d; });
+    var X0 = Math.min.apply(0, xs), X1 = Math.max.apply(0, xs);
+    var D0 = Math.min.apply(0, ds), D1 = Math.max.apply(0, ds);
+    // plan seen from above: x -> right, depth d -> DOWN (bay/vanity wall at top,
+    // dormer wall — opposite the vanity — at the bottom edge)
+    var px = function (x) { return M + (x - X0) * SC; };
+    var pd = function (d) { return M + 30 + (D1 - d) * SC; };
+    var W = M * 2 + (X1 - X0) * SC + 80, H = M + 90 + (D1 - D0) * SC + 60;
+
+    var host = document.getElementById('sheet');
+    host.innerHTML = '';
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', W); svg.setAttribute('height', H);
+    host.appendChild(svg);
+    function el(n, a) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; }
+    function txt(x, y, t, cls, anch) { var e = el('text', {x:x, y:y, 'class':cls || 'dim', 'text-anchor':anch || 'start'}); e.textContent = t; return e; }
+
+    // shell
+    el('polygon', { points: st.poly.map(function (p) { return px(p.x) + ',' + pd(p.d); }).join(' '),
+      fill: '#fbfaf7', stroke: '#23231f', 'stroke-width': 2 });
+    // dormer slope band along the bottom (wall opposite the vanity, full length)
+    el('rect', { x: px(X0), y: pd(D0) - 32 * SC * 0 - 0, width: (X1 - X0) * SC, height: 4,
+      fill: 'none' });
+    el('line', { x1: px(X0), y1: pd(D0 + 32), x2: px(X1), y2: pd(D0 + 32),
+      stroke: 'rgba(138,90,43,0.55)', 'stroke-width': 1, 'stroke-dasharray': '6 4' });
+    txt(px(X0) + 4, pd(D0 + 32) - 4, 'DORMER SLOPE LINE — 32″ RUN, FULL LENGTH', 'tag');
+
+    // fittings footprints
+    st.items.forEach(function (it) {
+      if (it.h && !it.dep) return;
+      var dep = it.dep || 1, face = it.face || 0;
+      var x0, y0, w, h;
+      if (it.wall === 'end') {
+        var dFar = 14.5 - (it.d || 0);
+        x0 = px(it.flip ? it.x - dep : it.x); w = dep * SC;
+        y0 = pd(dFar); h = it.w * SC;
+      } else {
+        x0 = px(it.x); w = it.w * SC;
+        var base = face > 0 ? 14.5 : 0;
+        y0 = pd(base); h = dep * SC;
+      }
+      el('rect', { x: x0, y: y0, width: Math.max(2, w), height: Math.max(2, h),
+        fill: it.zone ? 'none' : (it.door ? '#fff' : '#e9e2d2'),
+        stroke: it.zone ? 'rgba(61,84,87,0.6)' : '#8a5a2b',
+        'stroke-width': it.zone ? 1 : 1.1,
+        'stroke-dasharray': it.zone ? '5 4' : 'none' });
+      txt(x0 + 3, y0 + 11, (it.name || it.id).toUpperCase(), 'tag');
+    });
+
+    // overall dims
+    function dimH(a, b, y, label) {
+      el('line', { x1: a, y1: y, x2: b, y2: y, stroke: 'rgba(35,35,31,0.45)', 'stroke-width': 0.75 });
+      txt((a + b) / 2, y - 4, label, 'dim', 'middle');
+    }
+    dimH(px(X0), px(X1), pd(D1) - 10, ((X1 - X0) / 12 | 0) + '′-' + ((X1 - X0) % 12) + '″ RUN');
+    txt(px(X0), pd(D1) - 26, 'VANITY / BAY WALL AT TOP · DORMER WALL AT BOTTOM', 'tag');
+  }
+
+  render();
+  window.addEventListener('storage', function (ev) {
+    if (ev.key === 'yamazina.bathroom.work.v1') render();
+  });
+})();
+</script>
+</body>
+</html>
