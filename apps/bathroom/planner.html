@@ -475,7 +475,7 @@ window.__resources = {
     </div>
   </div>
 
-  <div style="{{ dockStyle }}">
+  <div id="selDock" style="{{ dockStyle }}">
     <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
       <div style="width:9px;height:9px;flex:0 0 9px;border-radius:1px;background:{{ selRow.swatch }}"></div>
       <input type="text" value="{{ selRow.name }}" onChange="{{ selRow.onName }}" style="flex:1;min-width:0;padding:3px 4px;border:1px solid transparent;background:transparent;font:600 12px/1.2 Archivo,sans-serif;color:#23231f;border-radius:2px" />
@@ -633,7 +633,7 @@ window.__resources = {
     </div>
   </div>
 
-  <div style="flex:1;min-width:0;padding:28px 32px 56px">
+  <div id="elevCol" style="flex:1;min-width:0;padding:28px 32px 56px">
     <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:3px">
       <div style="font:600 13px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em">FRONT ELEVATION</div>
       <div style="font:400 12px/1 'IBM Plex Mono',monospace;color:rgba(35,35,31,0.5)">{{ scaleLabel }}</div>
@@ -1166,6 +1166,7 @@ class Component extends DCLogic {
 
   componentDidMount() {
     const self = this;
+    window.__PLANNER = self;   // exposed for the additive click-to-edit popup
     this._onKey = function (e) {
       const t = e.target;
       const inField = t && (t.tagName === "INPUT" || t.tagName === "SELECT" || t.tagName === "TEXTAREA");
@@ -4869,5 +4870,97 @@ class Component extends DCLogic {
 </script>
 <script src="../../platform/core/ai-prompt.js"></script>
 <script>AIPrompt("bathroom");</script>
+<!-- Additive click-to-edit popup: floats hotkeys at the clicked fitting and
+     links through to the existing detailed dock. Reads the live planner
+     instance (window.__PLANNER); it never alters the planner's own render. -->
+<script>
+(function () {
+  'use strict';
+  var pop = document.createElement('div');
+  pop.id = 'editpop';
+  pop.style.cssText = 'position:fixed;z-index:2147481500;display:none;background:#fbfaf7;border:1px solid #23231f;' +
+    'border-radius:3px;box-shadow:0 10px 30px rgba(0,0,0,0.28);padding:9px 10px;width:196px;' +
+    'font-family:\'IBM Plex Mono\',ui-monospace,monospace;color:#23231f';
+  document.body.appendChild(pop);
+
+  function P() { return window.__PLANNER; }
+  function sel() { var p = P(); return (p && p.state) ? p.state.selItem : null; }
+  function itemById(id) { var p = P(); if (!p || !p.state) return null; for (var i = 0; i < p.state.items.length; i++) if (p.state.items[i].id === id) return p.state.items[i]; return null; }
+  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;' }[c]; }); }
+  function fmt(n) { return (Math.round(n * 100) / 100); }
+  function btn(cls, label, opt) {
+    opt = opt || {};
+    var bg = opt.bg || '#fbfaf7', bd = opt.bd || 'rgba(35,35,31,0.3)', fg = opt.fg || '#23231f';
+    return '<button class="' + cls + '" style="padding:6px 4px;border:1px solid ' + bd + ';background:' + bg + ';color:' + fg +
+      ';cursor:pointer;font:600 8.5px/1 \'IBM Plex Mono\',monospace;letter-spacing:0.04em;border-radius:2px">' + label + '</button>';
+  }
+  function q(s) { return pop.querySelector(s); }
+
+  function build(it) {
+    var locked = !!it.locked;
+    pop.innerHTML =
+      '<div style="font:600 10px/1.2 Archivo,sans-serif;margin-bottom:2px">' + esc(it.name || it.id) + (locked ? ' · 🔒' : '') + '</div>' +
+      '<div style="font:400 8.5px/1.3 \'IBM Plex Mono\',monospace;color:rgba(35,35,31,0.55);margin-bottom:8px">x ' + fmt(it.x) + '″ · y ' + fmt(it.y) + '″ · ' + fmt(it.w) + '×' + fmt(it.h) + '″</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">' +
+        btn('k-lock', locked ? 'Unlock' : 'Lock') +
+        btn('k-dup', 'Duplicate') +
+        btn('k-del', 'Delete', { fg:'#a23' }) +
+        btn('k-det', 'Details ▸', { bg:'#3d5457', bd:'#3d5457', fg:'#fbfaf7' }) +
+      '</div>';
+    q('.k-lock').onclick = function () { var p = P(); if (p) p.toggleLock(it.id); };
+    q('.k-dup').onclick = function () { var p = P(); if (p) p.duplicateItem(it.id); };
+    q('.k-del').onclick = function () { var p = P(); if (p && window.confirm('Delete ' + (it.name || it.id) + '?')) p.deleteItem(it.id); };
+    q('.k-det').onclick = function () { openDock(); };
+  }
+  function openDock() {
+    var d = document.getElementById('selDock');
+    if (d) {
+      d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      var old = d.style.boxShadow; d.style.transition = 'box-shadow 0.25s';
+      d.style.boxShadow = '0 0 0 2px #8a5a2b';
+      setTimeout(function () { d.style.boxShadow = old; }, 950);
+    }
+    hide(true);
+  }
+  var shownId = null, dismissed = false;
+  function show(it, x, y) {
+    build(it); pop.style.display = 'block'; shownId = it.id; dismissed = false;
+    var w = 196, h = pop.offsetHeight || 130;
+    pop.style.left = Math.max(8, Math.min(x + 10, window.innerWidth - w - 10)) + 'px';
+    pop.style.top = Math.max(8, Math.min(y + 10, window.innerHeight - h - 10)) + 'px';
+  }
+  function hide(dis) { pop.style.display = 'none'; shownId = null; dismissed = !!dis; }
+
+  // a click that isn't a drag, landing on a fitting in the elevation column,
+  // opens the popup at the pointer; empty-space / off clicks close it
+  var down = null;
+  document.addEventListener('pointerdown', function (e) { down = { x: e.clientX, y: e.clientY, t: Date.now() }; }, true);
+  document.addEventListener('pointerup', function (e) {
+    var start = down; down = null;
+    if (pop.contains(e.target)) return;                       // interacting with the popup itself
+    var moved = start && (Math.abs(e.clientX - start.x) > 4 || Math.abs(e.clientY - start.y) > 4);
+    var inElev = e.target.closest && e.target.closest('#elevCol');
+    var onControl = e.target.closest && e.target.closest('button, input, select, [contenteditable]');
+    if (!inElev || onControl || moved) { if (!inElev) hide(true); return; }
+    // let the planner update selItem from this same click, then mirror it
+    setTimeout(function () {
+      var id = sel();
+      if (id) { var it = itemById(id); if (it) show(it, e.clientX, e.clientY); }
+      else hide(true);
+    }, 40);
+  }, true);
+
+  // keep the popup's lock label / dims fresh while it's open (after edits)
+  function tick() {
+    if (shownId && pop.style.display === 'block') {
+      var id = sel();
+      if (id !== shownId) { var it2 = id ? itemById(id) : null; if (it2) { var r = pop.getBoundingClientRect(); show(it2, r.left - 10, r.top - 10); } else hide(true); }
+      else { var it = itemById(shownId); if (it) { var want = it.locked ? 'Unlock' : 'Lock'; var lb = q('.k-lock'); if (lb && lb.textContent !== want) build(it); } }
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
 </body>
 </html>
