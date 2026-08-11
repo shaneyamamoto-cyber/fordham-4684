@@ -266,7 +266,10 @@
       this._controls = controls;
 
       // Neutral studio: soft sky/ground wash, a shadow-casting key light,
-      // and a dim fill from behind so silhouettes never go black.
+      // and a dim fill from behind so silhouettes never go black. A low
+      // ambient lifts the deepest shadows the same way the shower's rig
+      // does (its 0.30 ambient), so the two builds read at one grade.
+      scene.add(new THREE.AmbientLight(0xffffff, 0.14));
       scene.add(new THREE.HemisphereLight(0xfff6e8, 0xcabfa8, 0.55));
       const key = new THREE.DirectionalLight(0xfff1dd, 1.7);
       key.position.set(4, 7, 5);

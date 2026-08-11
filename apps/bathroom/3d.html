@@ -860,6 +860,266 @@ document.getElementById('srcSub').textContent =
     renderer.domElement.toBlob((blob) => dl(blob, stamp + '-plate.png'), 'image/png');
   });
 })();
+
+/* ============================================================
+   BUILD PANEL — the shower's Spec / Fixtures / Materials rail,
+   brought to the bathroom 3D so this view carries the same
+   construction detail: a live schedule, click-a-fitting to edit
+   its placement and lock it, a material schedule with house-pick
+   apply, and construction-view camera presets. Edits land in the
+   shared work slot; the model rebuilds from them (same channel
+   the planner writes), so 2D and 3D stay one design.
+   ============================================================ */
+(function buildPanel() {
+  const LIB = window.MATERIAL_LIBRARY;
+  const WORK = 'yamazina.bathroom.work.v1';
+  const GROUPS = [
+    { t: 'Bathing & plumbing', ids: ['tub', 'vessel', 'wc', 'taphl', 'tap', 'taphr', 'rain', 'mixer', 'spout', 'ring'] },
+    { t: 'Cabinetry', ids: ['tower', 'van', 'shelf', 'vshelf', 'stone'] },
+    { t: 'Trim & glazing', ids: ['door', 'dcase', 'base', 'mir', 'splash', 'glass'] },
+    { t: 'Fittings & light', ids: ['bar2', 'bar3', 'light', 'light2', 'nichesh'] },
+  ];
+  const byId = {}; S.items.forEach((it) => { byId[it.id] = it; });
+  const ZONES = [['bay', 'Bay / shower wall'], ['bay_back', 'Bay back'], ['splash', 'Splash'],
+    ['wall', 'Main walls'], ['floor', 'Floor'], ['slope', 'Dormer slope'], ['skirt', 'Tub skirt']];
+  const fin = (n) => (Math.round(Number(n) * 100) / 100) + '';
+  const dimText = (it) => {
+    const wd = fin(it.w) + '×' + fin(it.h) + (it.dep != null ? '×' + fin(it.dep) : '') + '″';
+    return wd + ' · ' + (it.wall === 'end' ? 'd' + fin(it.d || 0) : 'x' + fin(it.x));
+  };
+  const matName = (s) => {
+    if (!s) return '—';
+    if (s.lib && LIB) { const e = LIB.byId(s.lib); if (e) return e.name; }
+    const f = s.fin || '';
+    return (f.charAt(0).toUpperCase() + f.slice(1)) + (s.tileL ? ' ' + Math.round(s.tileL) + '×' + Math.round(s.tileW) + '″' : '');
+  };
+  const houseEnv = () => { try { return JSON.parse(localStorage.getItem('yamazina.house.work.v1') || 'null'); } catch (e) { return null; } };
+
+  const css = document.createElement('style');
+  css.textContent = [
+    "#hud{ left:auto !important; right:16px; max-width:240px; }",
+    "#back{ left:auto !important; right:16px; }",
+    "#brail{ position:fixed; top:0; left:0; bottom:0; width:300px; z-index:11; background:rgba(15,19,21,0.93);",
+    "  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-right:1px solid #222e36;",
+    "  display:flex; flex-direction:column; font-family:'IBM Plex Sans',system-ui,sans-serif; color:#c9d2d7; }",
+    "#brail .head{ padding:18px 18px 0; border-bottom:1px solid #222e36; }",
+    "#brail .eyebrow{ font:600 9.5px/1 'IBM Plex Mono',monospace; letter-spacing:.22em; text-transform:uppercase; color:#c39a61; margin:0 0 8px; }",
+    "#brail h1{ font:300 20px/1.1 Archivo,sans-serif; margin:0; color:#edf1f3; }",
+    "#brail .sub{ font:400 10px/1.4 'IBM Plex Mono',monospace; color:#7c8a92; margin:7px 0 12px; }",
+    "#brail .tabs{ display:flex; margin:0 -18px; }",
+    "#brail .tabs button{ flex:1; background:none; border:0; border-top:1px solid #222e36; border-right:1px solid #222e36;",
+    "  padding:11px 0; cursor:pointer; font:400 10px/1 'IBM Plex Mono',monospace; letter-spacing:.14em; text-transform:uppercase; color:#7c8a92; }",
+    "#brail .tabs button:last-child{ border-right:0; }",
+    "#brail .tabs button.on{ color:#c39a61; background:rgba(195,154,97,.10); }",
+    "#brail .body{ flex:1; overflow-y:auto; padding:4px 0 26px; scrollbar-width:thin; }",
+    "#brail .body::-webkit-scrollbar{ width:5px; } #brail .body::-webkit-scrollbar-thumb{ background:#222e36; border-radius:3px; }",
+    "#brail .pane{ display:none; } #brail .pane.on{ display:block; }",
+    "#brail .grp{ padding:13px 18px 6px; border-bottom:1px solid #1a242b; }",
+    "#brail .grp-t{ font:400 9px/1 'IBM Plex Mono',monospace; letter-spacing:.2em; text-transform:uppercase; color:#7c8a92; margin:0 0 9px; }",
+    "#brail .row{ display:flex; justify-content:space-between; gap:10px; padding:3px 0; font-size:12px; align-items:baseline; }",
+    "#brail .row .k{ color:#c9d2d7; font-weight:300; } #brail .row .v{ font:400 10.5px/1 'IBM Plex Mono',monospace; color:#d8d3ca; white-space:nowrap; }",
+    "#brail .fx{ cursor:pointer; padding:6px; margin:0 -6px; border-radius:2px; display:flex; justify-content:space-between; gap:8px; align-items:baseline; }",
+    "#brail .fx:hover{ background:rgba(255,255,255,.04); } #brail .fx.sel{ background:rgba(195,154,97,.13); } #brail .fx.sel .nm{ color:#c39a61; }",
+    "#brail .fx .nm{ font-size:12px; font-weight:300; } #brail .fx .dm{ font:400 9.5px/1 'IBM Plex Mono',monospace; color:#7c8a92; white-space:nowrap; }",
+    "#brail .note{ font-size:10.5px; line-height:1.5; color:#7c8a92; padding:9px 0 2px; }",
+    "#brail .ed{ border-top:1px dashed #222e36; margin:4px 0 2px; padding:10px 0 2px; }",
+    "#brail .fld{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }",
+    "#brail .fld label{ flex:0 0 92px; font-size:10.5px; color:#7c8a92; }",
+    "#brail .fld input,#brail .fld select{ flex:1; width:50px; background:#0a0f13; border:1px solid #222e36; border-radius:2px;",
+    "  color:#d8d3ca; font:400 11px/1 'IBM Plex Mono',monospace; padding:5px 6px; }",
+    "#brail .btns{ display:flex; gap:6px; margin-top:8px; }",
+    "#brail .btns button{ flex:1; font:600 9px/1 'IBM Plex Mono',monospace; letter-spacing:.1em; padding:8px 0; cursor:pointer; border-radius:2px; }",
+    "#brail .apply{ background:#c39a61; color:#141210; border:1px solid #c39a61; } #brail .ghost{ background:none; color:#c9d2d7; border:1px solid #222e36; }",
+    "#brail .lk-tog{ display:flex; align-items:center; justify-content:space-between; margin-top:8px; font-size:11px; color:#7c8a92; cursor:pointer; }",
+    "#brail .sw{ width:12px; height:12px; border-radius:2px; border:1px solid #33414b; display:inline-block; vertical-align:middle; }",
+    "#bviews{ position:fixed; bottom:18px; left:calc(150px + 50%); transform:translateX(-50%); z-index:11; display:flex;",
+    "  background:rgba(15,19,21,0.92); border:1px solid #222e36; border-radius:2px; overflow:hidden; }",
+    "#bviews button{ background:none; border:0; border-right:1px solid #222e36; cursor:pointer; padding:9px 13px;",
+    "  font:400 10px/1 'IBM Plex Mono',monospace; letter-spacing:.12em; text-transform:uppercase; color:#7c8a92; }",
+    "#bviews button:last-child{ border-right:0; } #bviews button:hover{ color:#d8d3ca; background:rgba(255,255,255,.04); }",
+    "#bviews button.on{ color:#c39a61; background:rgba(195,154,97,.10); }",
+    "@media (max-width:900px){ #brail{ transform:translateX(-100%); } #bviews{ left:50%; } }",
+  ].join('\n');
+  document.head.appendChild(css);
+
+  const rail = document.createElement('div');
+  rail.id = 'brail';
+  rail.innerHTML =
+    '<div class="head"><p class="eyebrow">Construct model · Bathroom</p><h1>Bathroom Build</h1>' +
+    '<p class="sub" id="b-sub"></p><div class="tabs">' +
+    '<button data-p="spec" class="on">Spec</button><button data-p="fix">Fixtures</button><button data-p="mat">Materials</button>' +
+    '</div></div><div class="body"><div class="pane on" id="pane-spec"></div>' +
+    '<div class="pane" id="pane-fix"></div><div class="pane" id="pane-mat"></div></div>';
+  document.body.appendChild(rail);
+  document.getElementById('b-sub').textContent =
+    Math.round(X1 - X0) + '″ run · ' + Math.round(D1 - D0) + '″ deep · ' + H + '″ ceiling';
+  rail.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => {
+    rail.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === b));
+    ['spec', 'fix', 'mat'].forEach((p) => document.getElementById('pane-' + p).classList.toggle('on', p === b.dataset.p));
+  }));
+
+  function renderSpec() {
+    let h = '<div class="grp"><p class="grp-t">Envelope</p>' +
+      row('Wall run', Math.round(X1 - X0) + '″') + row('Depth (to dormer)', Math.round(D1 - D0) + '″') +
+      row('Ceiling', H + '″') + row('Dormer slope run', (S.slopeRun || 0) + '″') +
+      '<div class="row"><span class="k">Model scale</span><span class="v" style="color:#c39a61">1 : 1 true</span></div></div>';
+    GROUPS.forEach((g) => {
+      const items = g.ids.map((id) => byId[id]).filter(Boolean);
+      if (!items.length) return;
+      h += '<div class="grp"><p class="grp-t">' + g.t + '</p>' + items.map((it) =>
+        row(it.name + (it.locked ? ' 🔒' : ''), dimText(it))).join('') + '</div>';
+    });
+    document.getElementById('pane-spec').innerHTML = h;
+  }
+  function row(k, v) { return '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; }
+
+  let selId = null;
+  function renderFix() {
+    let h = '';
+    GROUPS.forEach((g) => {
+      const items = g.ids.map((id) => byId[id]).filter(Boolean);
+      if (!items.length) return;
+      h += '<div class="grp"><p class="grp-t">' + g.t + '</p>' + items.map((it) =>
+        '<div class="fx' + (it.id === selId ? ' sel' : '') + '" data-id="' + it.id + '">' +
+        '<span class="nm">' + it.name + '</span><span class="dm">' + (it.locked ? '🔒 ' : '') + dimText(it) + '</span></div>' +
+        (it.id === selId ? editor(it) : '')).join('') + '</div>';
+    });
+    document.getElementById('pane-fix').innerHTML = h;
+  }
+  function editor(it) {
+    const endw = it.wall === 'end';
+    const f = (id, lab, val) => '<div class="fld"><label>' + lab + '</label><input id="' + id + '" type="number" step="0.25" value="' + val + '"></div>';
+    return '<div class="ed">' +
+      f('e-x', endw ? 'From end ″' : 'Along run ″', endw ? (it.d || 0) : it.x) +
+      f('e-w', 'Width ″', it.w) + f('e-y', 'Height AFF ″', it.y) + f('e-h', 'Tall ″', it.h) +
+      f('e-dep', 'Depth ″', it.dep != null ? it.dep : 0) +
+      '<div class="lk-tog" id="e-lock"><span>' + (it.locked ? '🔒 Locked — click to unlock' : 'Lock this fitting') +
+      '</span><span class="sw" style="' + (it.locked ? 'background:#c39a61' : '') + '"></span></div>' +
+      '<div class="btns"><button class="apply" id="e-apply">APPLY + REBUILD</button><button class="ghost" id="e-cancel">Close</button></div></div>';
+  }
+
+  document.getElementById('pane-fix').addEventListener('click', (ev) => {
+    if (ev.target.id === 'e-cancel') { selId = null; renderFix(); return; }
+    if (ev.target.closest('#e-lock')) { const it = byId[selId]; if (it) applyEdit(it.id, { locked: !it.locked }, false); return; }
+    if (ev.target.id === 'e-apply') {
+      const it = byId[selId]; if (!it) return;
+      if (it.locked) { toast('🔒 Unlock it first to change the placement'); return; }
+      const endw = it.wall === 'end', patch = {};
+      const gx = parseFloat(document.getElementById('e-x').value);
+      if (endw) patch.d = gx; else patch.x = gx;
+      patch.w = parseFloat(document.getElementById('e-w').value);
+      patch.y = parseFloat(document.getElementById('e-y').value);
+      patch.h = parseFloat(document.getElementById('e-h').value);
+      const dep = parseFloat(document.getElementById('e-dep').value);
+      if (!isNaN(dep)) patch.dep = dep;
+      if (patch.y + patch.h > H) patch.h = Math.max(1, H - patch.y);   // ceiling clamp
+      applyEdit(it.id, patch, true);
+      return;
+    }
+    const fx = ev.target.closest('.fx');
+    if (fx && !ev.target.closest('.ed')) { selId = selId === fx.dataset.id ? null : fx.dataset.id; renderFix(); }
+  });
+
+  function seedState() {
+    let env; try { env = JSON.parse(localStorage.getItem(WORK) || 'null'); } catch (e) { env = null; }
+    if (env && env.state && env.state.items) return env.state;
+    // viewing a locked version with no work slot — seed one from the live design
+    return { items: S.items.map((x) => Object.assign({}, x)), surf: S.surf, poly: S.poly, height: S.height,
+      kneeH: S.kneeH, slopeRun: S.slopeRun, wallsOff: S.wallsOff, splashLinked: S.splashLinked,
+      trimTone: S.trimTone, drawersLeft: S.drawersLeft, drawersRight: S.drawersRight, bankW: S.bankW, bankGap: S.bankGap };
+  }
+  function writeState(state) {
+    try { localStorage.setItem(WORK, JSON.stringify({ state: state, savedAt: new Date().toISOString(), by: '3d-panel' })); } catch (e) { /* quota */ }
+  }
+  function applyEdit(id, patch, reload) {
+    const state = seedState();
+    state.items = state.items.map((x) => x.id === id ? Object.assign({}, x, patch) : x);
+    writeState(state);
+    Object.assign(byId[id], patch);
+    if (reload) { sessionStorage.setItem('b-view', currentView || ''); location.reload(); }
+    else { renderFix(); renderSpec(); }
+  }
+
+  function renderMat() {
+    let h = '<div class="grp"><p class="grp-t">Material schedule</p>' +
+      ZONES.map((z) => { const s = (S.surf || {})[z[0]]; if (!s) return '';
+        return '<div class="row"><span class="k"><span class="sw" style="background:' + (s.color || '#888') + '"></span> ' +
+          z[1] + '</span><span class="v">' + matName(s) + '</span></div>'; }).join('') + '</div>';
+    h += '<div class="grp" id="b-house" style="display:none"><p class="grp-t">House pick — Look Book</p>' +
+      '<div class="row"><span class="k" id="b-hp-name"></span></div>' +
+      '<div class="fld"><label>Apply to zone</label><select id="b-hp-zone"></select></div>' +
+      '<div class="btns"><button class="apply" id="b-hp-apply">APPLY + REBUILD</button></div>' +
+      '<p class="note">Pins the exact Look Book material on that surface, then rebuilds.</p></div>';
+    h += '<div class="grp"><p class="note">Per-zone colour, tile size, pattern and grout are edited in the Elevation Planner — this model follows those edits live.</p></div>';
+    document.getElementById('pane-mat').innerHTML = h;
+    const zsel = document.getElementById('b-hp-zone');
+    ZONES.forEach((z) => { const o = document.createElement('option'); o.value = z[0]; o.textContent = z[1]; zsel.appendChild(o); });
+    refreshHouse();
+  }
+  function refreshHouse() {
+    const box = document.getElementById('b-house'); if (!box) return;
+    const env = houseEnv(); const pick = env && env.state && env.state.pick;
+    box.style.display = pick ? 'block' : 'none';
+    if (pick) document.getElementById('b-hp-name').textContent = pick.name || pick.id;
+  }
+  document.getElementById('pane-mat').addEventListener('click', (ev) => {
+    if (ev.target.id !== 'b-hp-apply') return;
+    const env = houseEnv(); const pick = env && env.state && env.state.pick; if (!pick || !LIB) return;
+    const zone = document.getElementById('b-hp-zone').value;
+    const go = () => {
+      const e = LIB.byId(pick.id); if (!e) return;
+      const preset = LIB.surfPreset(e);
+      const state = seedState();
+      state.surf = Object.assign({}, state.surf);
+      state.surf[zone] = Object.assign({}, state.surf[zone], preset);
+      if (zone === 'bay' && state.splashLinked) state.surf.splash = Object.assign({}, state.surf.bay);
+      writeState(state);
+      sessionStorage.setItem('b-view', currentView || ''); location.reload();
+    };
+    if (!LIB.byId(pick.id) && pick.id.indexOf('lb4684-') === 0) LIB.ensurePack('../../', go); else go();
+  });
+  window.addEventListener('storage', (ev) => { if (ev.key === 'yamazina.house.work.v1') refreshHouse(); });
+
+  // ---- construction-view camera presets ----
+  const viewsEl = document.createElement('div'); viewsEl.id = 'bviews';
+  const VIEW_ORDER = ['iso', 'front', 'left', 'right', 'back', 'plan'];
+  viewsEl.innerHTML = VIEW_ORDER.map((v) => '<button data-v="' + v + '"' + (v === 'iso' ? ' class="on"' : '') + '>' + v + '</button>').join('');
+  document.body.appendChild(viewsEl);
+  let currentView = 'iso';
+  const DIRS = { iso: [0.9, 0.65, 1.1], front: [0, 0.12, 1.3], back: [0, 0.12, -1.3],
+    left: [-1.3, 0.12, 0], right: [1.3, 0.12, 0], plan: [0.001, 1, 0.001] };
+  function setView(name) {
+    const cam = stage._camera, ctr = stage._controls; if (!cam || !ctr) return;
+    const box = new THREE.Box3().setFromObject(room);
+    const c = box.getCenter(new THREE.Vector3()), sph = box.getBoundingSphere(new THREE.Sphere());
+    const dist = (sph.radius / Math.tan(cam.fov * Math.PI / 360)) * 1.4;
+    const d = DIRS[name] || DIRS.iso;
+    const dv = new THREE.Vector3(d[0], d[1], d[2]).normalize().multiplyScalar(dist);
+    cam.position.copy(c).add(dv); ctr.target.copy(c);
+    cam.near = Math.max(dist / 100, 0.01); cam.far = dist * 100; cam.updateProjectionMatrix(); ctr.update();
+    currentView = name;
+    viewsEl.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === name));
+  }
+  viewsEl.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.v)));
+  const wantView = sessionStorage.getItem('b-view');
+  if (wantView) { sessionStorage.removeItem('b-view'); setTimeout(() => setView(wantView), 80); }
+
+  let toastEl = null, toastT;
+  function toast(m) {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.style.cssText = "position:fixed;left:calc(150px + 50%);bottom:66px;transform:translateX(-50%);z-index:20;" +
+        "background:#141210;color:#e8e3d8;border:1px solid #c39a61;padding:9px 14px;border-radius:2px;" +
+        "font:600 10px/1.3 'IBM Plex Mono',monospace;letter-spacing:.08em;transition:opacity .3s;";
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = m; toastEl.style.opacity = '1'; clearTimeout(toastT);
+    toastT = setTimeout(() => { toastEl.style.opacity = '0'; }, 2200);
+  }
+
+  renderSpec(); renderFix(); renderMat();
+})();
+
 </script>
 </body>
 </html>
