@@ -108,7 +108,7 @@ document.getElementById('planFile').addEventListener('change', (ev) => {
 
 // Live sync: any planner edit (work slot) or new lock re-renders this view.
 window.addEventListener('storage', (ev) => {
-  if (ev.key === 'yamazina.bathroom.work.v1' || ev.key === 'yamazina.bathroom.versions.v1') {
+  if (ev.key === 'yamazina.bathroom.work.v1' || ev.key === 'yamazina.bathroom.versions.v1' || ev.key === 'yamazina.bathroom.fixtures.v1') {
     clearTimeout(window.__liveReloadT);
     window.__liveReloadT = setTimeout(() => location.reload(), 900);
   }
@@ -116,6 +116,57 @@ window.addEventListener('storage', (ev) => {
 
 const L = loadLayout();
 const S = L.data;
+
+// ---- Fixture Options overlay -------------------------------------------
+// The Fixture Options picker saves a combination to this key; reflect the
+// choice on the model so picking e.g. a round mirror or a wall-hung toilet
+// actually changes the 3D. Applied as a render-time overlay (parametric:
+// size / shape / profile per option), not written back to the design.
+const FX = (function () { try { return JSON.parse(localStorage.getItem('yamazina.bathroom.fixtures.v1') || '{}') || {}; } catch (e) { return {}; } })();
+const FX_TARGETS = { Mirror: ['mir'], Toilet: ['wc'], Showerhead: ['rain'], Tap: ['tap'], Lighting: ['light', 'light2'] };
+const FIX_MAP = {
+  mir: {
+    '1d': { frame: 1.25, radius: 10.75 },                        // pill / stadium
+    '1e': { frame: 1.25, radius: 4 },                            // rounded rectangle
+    '1f': { frame: 0, radius: 16 },                              // arched top
+    '1g': { frame: 0, shape: 'round', w: 26, h: 26, radius: 13 },// round
+    '1v': { frame: 0, radius: 2 },                               // backlit rectangle
+    '1w': { frame: 0.9, radius: 6 },                             // octagon (approx)
+    '1x': { frame: 0, shape: 'round', w: 22, h: 22, radius: 11 },// round pair (approx)
+    '1y': { frame: 0, radius: 0 }                                // frameless beveled
+  },
+  wc: {
+    '1a': { w: 15, dep: 28 }, '1b': { w: 15.5, dep: 27 }, '1c': { w: 16.5, dep: 27, shape: 'square' },
+    '1q': { h: 22, dep: 21, y: 15 },                             // wall-hung, concealed tank (floats)
+    '1r': { w: 18, h: 31, dep: 28 },                             // two-piece traditional
+    '1s': { w: 15, dep: 24 }, '1t': { h: 52 },                   // corner compact / high tank
+    '1u': { w: 15, dep: 25 }
+  },
+  rain: {
+    '1k': {}, '1l': { y: 78, dep: 14 }, '1m': { w: 4, dep: 6, y: 72 },
+    '1aj': { w: 12, dep: 12, shape: 'square' }, '1ai': { h: 40, w: 6 }, '1ah': { w: 8, h: 10, dep: 3 }
+  },
+  tap: {
+    '1ad': { w: 4, dep: 8 }, '1ae': { h: 8, dep: 9 }, '1af': { h: 8, dep: 9 }, '1aa': { h: 5, dep: 6 }
+  },
+  light: {
+    '1am': { w: 8, h: 8, shape: 'round' }, '1ao': { w: 5, h: 5, shape: 'round' },
+    '1ak': { w: 4, h: 7 }, '1n': { w: 3, h: 8, shape: 'round' }
+  }
+};
+FIX_MAP.light2 = FIX_MAP.light;
+(function () {
+  const patchById = {};
+  Object.keys(FX_TARGETS).forEach(function (cat) {
+    const opt = FX[cat]; if (!opt) return;
+    FX_TARGETS[cat].forEach(function (id) {
+      const m = FIX_MAP[id]; if (m && m[opt]) patchById[id] = Object.assign({ fxOpt: opt }, m[opt]);
+    });
+  });
+  if (Object.keys(patchById).length && S.items) {
+    S.items = S.items.map(function (it) { return patchById[it.id] ? Object.assign({}, it, patchById[it.id]) : it; });
+  }
+})();
 document.getElementById('srcName').textContent = L.name;
 
 const SF = S.surf || {};
@@ -990,7 +1041,7 @@ document.getElementById('srcSub').textContent =
       '<div class="lk-tog" id="e-lock"><span>' + (it.locked ? '🔒 Locked — click to unlock' : 'Lock this fitting') +
       '</span><span class="sw" style="' + (it.locked ? 'background:#c39a61' : '') + '"></span></div>' +
       '<div class="btns"><button class="apply" id="e-apply">APPLY + REBUILD</button><button class="ghost" id="e-cancel">Close</button></div>' +
-      (it.added ? '<div class="btns" style="margin-top:6px"><button class="ghost" id="e-del" style="flex:1;color:#c8837a;border-color:#5a2f2b">Delete this fitting</button></div>' : '') +
+      '<div class="btns" style="margin-top:6px"><button class="ghost" id="e-del" style="flex:1;color:#c8837a;border-color:#5a2f2b">Delete this fitting</button></div>' +
       '</div>';
   }
 
@@ -1017,6 +1068,7 @@ document.getElementById('srcSub').textContent =
     if (pick) { addFixture(ADD[+pick.getAttribute('data-add')]); return; }
     if (ev.target.id === 'e-del') {
       const it = byId[selId]; if (!it) return;
+      if (!window.confirm('Delete “' + (it.name || it.id) + '” from the design? This updates the Elevation Planner and floor plan too.')) return;
       const state = seedState();
       state.items = state.items.filter((x) => x.id !== it.id);
       writeState(state); selId = null;

@@ -371,15 +371,24 @@
 
 <script>
 (function(){
+  if (window.PlatformStore) window.PlatformStore('bathroom');
+  var KEY = 'yamazina.bathroom.fixtures.v1';
+  function loadSaved(){ try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function saveState(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
   var cats = Array.from(document.querySelectorAll('.grp[data-cat]'));
   var preview = document.getElementById('cb-preview');
   var controls = document.getElementById('cb-controls');
   var state = {};
+  var saved = loadSaved();
 
   cats.forEach(function(grp){
     var cat = grp.getAttribute('data-cat');
     var opts = Array.from(grp.querySelectorAll('.dv-opt'));
-    var initial = opts.find(function(o){ return o.classList.contains('locked-tag'); }) || opts[0];
+    var def = opts.find(function(o){ return o.classList.contains('locked-tag'); }) || opts[0];
+    // restore a previously-saved choice if it still exists
+    var initial = (saved[cat] && document.getElementById(saved[cat]) && grp.contains(document.getElementById(saved[cat])))
+      ? document.getElementById(saved[cat]) : def;
     state[cat] = initial.id;
 
     var slot = document.createElement('div');
@@ -408,16 +417,31 @@
       var chosen = document.getElementById(sel.value);
       chosen.classList.add('chosen');
       renderSlot(cat, chosen);
+      state[cat] = sel.value;
+      saveState();       // persist → the 3D model + render package read this
+      flash();
     });
 
     renderSlot(cat, initial);
     initial.classList.add('chosen');
   });
+  saveState();   // make sure defaults are persisted the first time through
 
   function renderSlot(cat, optEl){
     var slot = document.getElementById('cb-slot-' + cat);
     var svg = optEl.querySelector('.ic svg');
     slot.innerHTML = svg ? svg.outerHTML : '';
+  }
+  var flashEl;
+  function flash(){
+    if (!flashEl) {
+      flashEl = document.createElement('div');
+      flashEl.style.cssText = 'position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:200;background:#23231f;color:#fbfaf7;padding:10px 16px;border-radius:3px;font:600 10px/1.4 "IBM Plex Mono",monospace;letter-spacing:0.08em;box-shadow:0 8px 24px rgba(0,0,0,0.3)';
+      document.body.appendChild(flashEl);
+    }
+    flashEl.textContent = 'SAVED — the 3D model + render package now use this combination';
+    flashEl.style.display = 'block';
+    clearTimeout(flash._t); flash._t = setTimeout(function(){ flashEl.style.display = 'none'; }, 2200);
   }
 })();
 </script>
