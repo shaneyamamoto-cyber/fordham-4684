@@ -304,7 +304,9 @@
     btn.type = 'button';
     btn.textContent = '✦ AI RENDER PROMPT';
     var pos = opts.position || 'bottom-right';
-    var anchor = pos === 'bottom-left' ? 'left:18px;bottom:18px;' : pos === 'top-right' ? 'right:18px;top:12px;' : 'right:18px;bottom:18px;';
+    // opts.anchor lets a page place the button precisely to dodge its own
+    // toolbars (e.g. the 3D pages' bottom-right Download OBJ/GLB bar)
+    var anchor = opts.anchor || (pos === 'bottom-left' ? 'left:18px;bottom:18px;' : pos === 'top-right' ? 'right:18px;top:12px;' : 'right:18px;bottom:18px;');
     btn.style.cssText = 'position:fixed;' + anchor + 'z-index:2147482000;padding:9px 14px;border:1px solid #8a5a2b;' +
       'background:#8a5a2b;color:#fbfaf7;cursor:pointer;border-radius:2px;font:600 9px/1 \'IBM Plex Mono\',ui-monospace,monospace;letter-spacing:0.1em;';
     document.body.appendChild(btn);
