@@ -1009,18 +1009,35 @@ const FITTINGS = [
 
 // ready-made finishes. Pick one, then click surfaces on the key plan to fill them —
 // no wall dropdown, no separate size/pattern hunting.
-const MATS = [
-  { name:"Large stone 48×24", fin:"tile",  color:"#9aa79b", tileL:48, tileW:24, shape:"rect", pattern:"offset2" },
-  { name:"Subway 12×6",       fin:"tile",  color:"#e6e3d9", tileL:12, tileW:6,  shape:"rect", pattern:"offset2" },
-  { name:"Stack bond 12×12",  fin:"tile",  color:"#cfd6cd", tileL:12, tileW:12, shape:"rect", pattern:"stack" },
-  { name:"Herringbone 12×3",  fin:"tile",  color:"#d9d3c6", tileL:12, tileW:3,  shape:"rect", pattern:"herring" },
-  { name:"Chevron 12×4",      fin:"tile",  color:"#c8cec4", tileL:12, tileW:4,  shape:"rect", pattern:"chevron" },
-  { name:"Hexagon 6\"",       fin:"tile",  color:"#dfe3dc", tileL:6,  tileW:6,  shape:"hex",  pattern:"stack" },
-  { name:"Penny round 2\"",   fin:"tile",  color:"#eceae3", tileL:2,  tileW:2,  shape:"round",pattern:"stack" },
-  { name:"Stone slab",        fin:"stone", color:"#bdb5a6", tileL:24, tileW:24, shape:"rect", pattern:"stack" },
-  { name:"Oak boards",        fin:"wood",  color:"#a8763f", tileL:48, tileW:6,  shape:"rect", pattern:"offset3" },
-  { name:"Painted plaster",   fin:"paint", color:"#e8e3d8", tileL:24, tileW:12, shape:"rect", pattern:"stack" }
+// Quick materials = the shared Look Book library (the same 4684 tiles/woods
+// the shower + 3D use), so a pick here pins the exact library texture (`lib`)
+// that the 3D renders. A short paint set is appended since the library carries
+// no plaster. Falls back to a small built-in set if the library isn't loaded.
+const PAINTS = [
+  { name:"Soft white plaster",  fin:"paint", color:"#e8e3d8", tileL:24, tileW:12, shape:"rect", pattern:"stack", lib:null },
+  { name:"Warm greige plaster", fin:"paint", color:"#cfc7b7", tileL:24, tileW:12, shape:"rect", pattern:"stack", lib:null },
+  { name:"Clay plaster",        fin:"paint", color:"#b9a892", tileL:24, tileW:12, shape:"rect", pattern:"stack", lib:null },
+  { name:"Deep olive paint",    fin:"paint", color:"#4a5442", tileL:24, tileW:12, shape:"rect", pattern:"stack", lib:null },
+  { name:"Charcoal paint",      fin:"paint", color:"#3f3c37", tileL:24, tileW:12, shape:"rect", pattern:"stack", lib:null }
 ];
+const MATS = (function () {
+  const LIB = window.MATERIAL_LIBRARY;
+  if (!LIB || !LIB.length || !LIB.surfPreset) {
+    return [
+      { name:"Large stone 48×24", fin:"tile",  color:"#9aa79b", tileL:48, tileW:24, shape:"rect", pattern:"offset2", lib:null },
+      { name:"Subway 12×6",       fin:"tile",  color:"#e6e3d9", tileL:12, tileW:6,  shape:"rect", pattern:"offset2", lib:null },
+      { name:"Stone slab",        fin:"stone", color:"#bdb5a6", tileL:24, tileW:24, shape:"rect", pattern:"stack",   lib:null },
+      { name:"Oak boards",        fin:"wood",  color:"#a8763f", tileL:48, tileW:6,  shape:"rect", pattern:"offset3", lib:null }
+    ].concat(PAINTS);
+  }
+  const fromLib = LIB.map(function (e) {
+    const p = LIB.surfPreset(e) || {};
+    return { name: e.name, fin: p.fin || (e.cat === 'wood' ? 'wood' : e.cat === 'stone' ? 'stone' : 'tile'),
+      color: e.tone || p.color || '#c9c3b6', tileL: p.tileL || 24, tileW: p.tileW || 12,
+      shape: p.shape || 'rect', pattern: p.pattern || 'stack', lib: e.id };
+  });
+  return fromLib.concat(PAINTS);
+})();
 
 class Component extends DCLogic {
   // browsable reference photos from the user's uploads — for looking up real fixture
@@ -1371,6 +1388,15 @@ class Component extends DCLogic {
   saveWork() {
     const s = this.state, out = {};
     Component.WORK_KEYS.forEach(function (k) { out[k] = s[k]; });
+    // The planner keeps granular surface runs (bay_back, vanity, shelf_wall …)
+    // but the 3D model + floor plan read the base keys (bay, wall). Mirror the
+    // run a user actually edits onto its base key so a tile/pattern change on
+    // the shower wall or vanity wall reaches the rest of the platform.
+    const surf = Object.assign({}, s.surf);
+    const flat = function (base, run) { if (surf[run]) surf[base] = Object.assign({}, surf[run]); };
+    flat("bay", "bay_back");     // main shower/tub wall → the 3D's "bay"
+    flat("wall", "vanity");      // vanity wall run → the 3D's "wall"
+    out.surf = surf;
     try { localStorage.setItem("yamazina.bathroom.work.v1", JSON.stringify(out)); } catch (e) { /* quota */ }
   }
 
@@ -2754,7 +2780,7 @@ class Component extends DCLogic {
           self.setState(function (st) {
             const n = Object.assign({}, st.surf);
             n[key] = { fin: m.fin, color: m.color, tileL: m.tileL, tileW: m.tileW,
-              shape: m.shape, pattern: m.pattern };
+              shape: m.shape, pattern: m.pattern, lib: m.lib || null };
             if (key === "bay_back" && st.splashLinked) n.splash = Object.assign({}, n[key]);
             return { surf: n, activeSurf: key, flash: m.name + " → " + key.toUpperCase() };
           });
