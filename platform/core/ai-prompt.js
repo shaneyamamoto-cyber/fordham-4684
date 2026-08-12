@@ -302,6 +302,7 @@
 
     var btn = document.createElement('button');
     btn.type = 'button';
+    btn.className = 'aip-fab';   // stable hook so a page can reposition it responsively
     btn.textContent = '✦ AI RENDER PROMPT';
     var pos = opts.position || 'bottom-right';
     // opts.anchor lets a page place the button precisely to dodge its own

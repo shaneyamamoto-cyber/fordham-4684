@@ -31,10 +31,18 @@
   #hud .sub { font: 400 11px/1.5 'IBM Plex Mono', monospace; color: rgba(35,35,31,0.6); margin-top: 5px; }
   #hud a { color: #8a5a2b; pointer-events: auto; }
   #back {
-    position: fixed; left: 18px; bottom: 18px; z-index: 10;
+    position: fixed; left: 18px; bottom: 18px; z-index: 12;
     display: block; padding: 11px 16px; border: 1px solid #23231f; background: #23231f;
     color: #fbfaf7; font: 600 10px/1 'IBM Plex Mono', monospace; letter-spacing: 0.12em;
     border-radius: 2px; text-decoration: none;
+  }
+  /* Narrow windows: the bottom row (view bar + download toolbar + back + AI
+     button) collides. Lift the view bar above the toolbar and move the two
+     page buttons up to the empty top-left so nothing overlaps. */
+  @media (max-width: 900px) {
+    .aip-fab { top: 14px !important; left: 14px !important; right: auto !important; bottom: auto !important; }
+    #back { top: 52px !important; left: 14px !important; right: auto !important; bottom: auto !important; }
+    #bviews { bottom: 64px !important; }
   }
 </style>
 </head>
@@ -1125,6 +1133,8 @@ document.getElementById('srcSub').textContent =
       '<div class="fld"><label>Apply to zone</label><select id="b-hp-zone"></select></div>' +
       '<div class="btns"><button class="apply" id="b-hp-apply">APPLY + REBUILD</button></div>' +
       '<p class="note">Pins the exact Look Book material on that surface, then rebuilds.</p></div>';
+    h += '<div class="grp"><button class="ghost" id="b-reset-surf" style="width:100%;color:#c8837a;border-color:#5a2f2b">Reset surfaces to default palette</button>' +
+      '<p class="note">Clears any applied tile/colour and restores the built-in shower green stone, olive splash, warm floor and soft-white walls. Fittings are untouched.</p></div>';
     h += '<div class="grp"><p class="note">Per-zone colour, tile size, pattern and grout are edited in the Elevation Planner — this model follows those edits live.</p></div>';
     document.getElementById('pane-mat').innerHTML = h;
     const zsel = document.getElementById('b-hp-zone');
@@ -1138,6 +1148,17 @@ document.getElementById('srcSub').textContent =
     if (pick) document.getElementById('b-hp-name').textContent = pick.name || pick.id;
   }
   document.getElementById('pane-mat').addEventListener('click', (ev) => {
+    if (ev.target.id === 'b-reset-surf') {
+      if (!window.confirm('Reset every surface to the default palette? Applied tiles/colours will be cleared (fittings are kept).')) return;
+      const def = (window.BATHROOM_BASELINE && window.BATHROOM_BASELINE.surf) || {};
+      const state = seedState();
+      state.surf = JSON.parse(JSON.stringify(def));
+      // clear the planner's granular run keys too, so they don't re-flatten stale tile back on
+      ['bay_back', 'shelf_wall', 'vanity', 'step_return', 'end_left', 'end_right', 'skirt'].forEach((k) => { delete state.surf[k]; });
+      writeState(state);
+      sessionStorage.setItem('b-view', currentView || ''); location.reload();
+      return;
+    }
     if (ev.target.id !== 'b-hp-apply') return;
     const env = houseEnv(); const pick = env && env.state && env.state.pick; if (!pick || !LIB) return;
     const zone = document.getElementById('b-hp-zone').value;
