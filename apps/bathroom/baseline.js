@@ -48,6 +48,7 @@
       {id:'rain',name:'Rainhead',x:11,w:10,y:80,h:4,dep:12,face:14.5,tone:'#c9a35c'},
       {id:'mixer',name:'Mixer / diverter',x:13,w:6,y:41.38,h:6,dep:3,face:14.5,shape:'round',tone:'#c9a35c'},
       {id:'spout',name:'Tub spout',x:13,w:6,y:26,h:3,dep:6,face:14.5,tone:'#c9a35c'},
+      {id:'handbar',name:'Hand shower + bar',x:24,w:3,y:20,h:42,dep:4,face:14.5,tone:'#c9a35c',locked:true},
       {id:'bar2',name:'Towel bar — tub upper',x:38.33,w:18,y:27.5,h:2,dep:4,face:14.5,wall:'slope',d:14,tone:'#c9a35c'},
       {id:'bar3',name:'Towel bar — tub lower',x:36.72,w:18,y:22.5,h:2,dep:4,face:14.5,wall:'slope',d:14,tone:'#c9a35c'},
       {id:'ring',name:'Hand towel ring',x:62.5,w:7,y:40.63,h:7.25,dep:4,face:0,tone:'#c9a35c'}

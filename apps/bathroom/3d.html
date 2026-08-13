@@ -475,7 +475,7 @@ const MAT_FOR = {
   splash: MAT.splashm, nichesh: MAT.stone,
   stone: MAT.solid,
   glass: MAT.glass,
-  bar: MAT.brass, bar2: MAT.brass, bar3: MAT.brass, ring: MAT.brass, rain: MAT.brass, mixer: MAT.brass, spout: MAT.brass, tap: MAT.brass, taphl: MAT.brass,
+  bar: MAT.brass, bar2: MAT.brass, bar3: MAT.brass, ring: MAT.brass, rain: MAT.brass, mixer: MAT.brass, spout: MAT.brass, tap: MAT.brass, taphl: MAT.brass, handbar: MAT.brass,
   mir: MAT.white
 };
 
@@ -554,6 +554,7 @@ const HW3D = {
   tap: wallSpout, spout: gooseneckSpout,
   rain: rainhead,
   mixer: diverterPlate,
+  handbar: handBar,
   bar2: towelBar, bar3: towelBar,
   ring: towelRing,
   light: sconce, light2: sconce
@@ -620,6 +621,31 @@ function diverterPlate(it, mat, nm) {
   const lever = hwMesh(new THREE.CylinderGeometry(leverR, leverR, leverLen, 14), mat, nm + '_lever',
     cx, cy, dz + dir * proj * 0.35, 0, 0);
   lever.rotation.z = Math.PI / 3.2;
+}
+// Hand shower on an adjustable slide bar (the upstairs-bathroom kit): two wall
+// brackets, a vertical bar, a holder cradling a square hand shower, a wall
+// supply elbow and the hose looping up to it. Mounted on the tub/tap wall.
+function handBar(it, mat, nm) {
+  const base = it.face > 0 ? BAY : 0, dir = it.face > 0 ? 1 : -1;
+  const cx = it.x + it.w / 2, y0 = it.y, y1 = it.y + it.h, so = 2.4, barZ = base + dir * so;
+  [y0 + 2, y1 - 2].forEach((yb, k) => {                       // top + bottom brackets
+    box(nm + '_brk' + k, mat, 2.0, 2.0, 0.5, cx, yb, base - dir * 0.25, 'soft', 0.6);
+    hwMesh(new THREE.CylinderGeometry(0.35 * IN, 0.35 * IN, so * IN, 16), mat, nm + '_bp' + k, cx, yb, base + dir * so * 0.5, Math.PI / 2);
+  });
+  hwMesh(new THREE.CylinderGeometry(0.35 * IN, 0.35 * IN, (y1 - y0) * IN, 20), mat, nm + '_bar', cx, (y0 + y1) / 2, barZ);
+  const hy = y0 + (y1 - y0) * 0.6;                            // adjustable holder + square hand shower
+  hwMesh(new THREE.CylinderGeometry(0.7 * IN, 0.7 * IN, 1.5 * IN, 20), mat, nm + '_holder', cx, hy, barZ, Math.PI / 2);
+  const hz = barZ + dir * 1.7;
+  hwMesh(new THREE.CylinderGeometry(0.5 * IN, 0.6 * IN, 6 * IN, 18), mat, nm + '_grip', cx - 1.9, hy - 1.4, hz, Math.PI / 2);
+  box(nm + '_head', mat, 3.4, 4.4, 0.9, cx - 4.0, hy + 1.9, hz, 'soft', 0.6);
+  const ey = y0 + 1;                                          // wall supply elbow + hose loop
+  box(nm + '_elb', mat, 2.0, 2.0, 0.5, cx, ey, base - dir * 0.25, 'soft', 0.6);
+  hwMesh(new THREE.CylinderGeometry(0.42 * IN, 0.42 * IN, 1.9 * IN, 16), mat, nm + '_elbarm', cx, ey, base + dir * 1.0, Math.PI / 2);
+  const hose = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+    P(cx + 1.3, ey, base + dir * 1.9), P(cx + 3.2, ey - 3.5, base + dir * 3.6),
+    P(cx + 2.0, hy - 7, base + dir * 3.0), P(cx - 1.7, hy - 2.2, hz)
+  ]), 44, 0.4 * IN, 10, false), mat);
+  hose.castShadow = true; room.add(hose);
 }
 function towelBar(it, mat, nm) {
   // wall:'slope' mounts the bar on the angled dormer wall: the wall plane
