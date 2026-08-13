@@ -265,6 +265,36 @@
       controls.dampingFactor = 0.08;
       this._controls = controls;
 
+      // Live-sync continuity: the side-by-side view reloads this page on every
+      // 2D edit, so persist the orbit camera and restore it after the reload —
+      // the model updates in place instead of snapping back to the framed
+      // default, which is what made the 2D↔3D pairing feel broken. sessionStorage
+      // survives a same-document reload and is per-iframe, so each pane keeps
+      // its own view.
+      const camKey = 'stagecam:' + (this.getAttribute('name') || 'stage');
+      let saveT = 0;
+      const saveCam = () => {
+        clearTimeout(saveT);
+        saveT = setTimeout(() => {
+          try { sessionStorage.setItem(camKey, JSON.stringify({
+            p: this._camera.position.toArray(), t: controls.target.toArray() })); } catch (e) {}
+        }, 120);
+      };
+      controls.addEventListener('end', saveCam);
+      controls.addEventListener('change', saveCam);
+      this._restoreCam = () => {
+        try {
+          const s = JSON.parse(sessionStorage.getItem(camKey) || 'null');
+          if (s && s.p && s.t) {
+            this._camera.position.fromArray(s.p);
+            controls.target.fromArray(s.t);
+            controls.update();
+            return true;
+          }
+        } catch (e) {}
+        return false;
+      };
+
       // Neutral studio: soft sky/ground wash, a shadow-casting key light,
       // and a dim fill from behind so silhouettes never go black. A low
       // ambient lifts the deepest shadows the same way the shower's rig
@@ -388,6 +418,9 @@
         this._key.shadow.camera.top = span;
         this._key.shadow.camera.bottom = -span;
         this._key.shadow.camera.updateProjectionMatrix();
+        // keep the user's live orbit across live-sync reloads (falls back to the
+        // framing above on the very first load, when nothing is saved yet)
+        if (this._restoreCam) this._restoreCam();
       }
       this._scene.add(object);
       this._setButtonsEnabled(true);

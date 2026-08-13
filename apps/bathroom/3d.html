@@ -1525,7 +1525,15 @@ document.getElementById('srcSub').textContent =
   }
   viewsEl.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.v)));
   const wantView = sessionStorage.getItem('b-view');
-  if (wantView) { sessionStorage.removeItem('b-view'); setTimeout(() => setView(wantView), 80); }
+  if (wantView) {
+    sessionStorage.removeItem('b-view');
+    // the stage restores the exact live orbit across reloads; only snap to the
+    // named preset when there's no saved orbit yet, so a 2D edit never yanks the
+    // camera back to a preset mid-session
+    let hasCam = false; try { hasCam = !!sessionStorage.getItem('stagecam:bathroom'); } catch (e) {}
+    if (!hasCam) setTimeout(() => setView(wantView), 80);
+    else currentView = wantView;
+  }
 
   let toastEl = null, toastT;
   function toast(m) {
