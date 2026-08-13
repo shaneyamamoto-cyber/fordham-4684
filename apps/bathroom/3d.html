@@ -154,6 +154,9 @@ const MAT = {
   litvoid:  new THREE.MeshStandardMaterial({ name: 'litniche', color: 0xffd9a0, roughness: 0.5, metalness: 0.0, emissive: 0xffb765, emissiveIntensity: 0.85 }),
   slope:    new THREE.MeshStandardMaterial({ name: 'dormer',   color: sc('slope', 0xe8e3d8), roughness: 0.88, metalness: 0.0, side: THREE.FrontSide }),
   bayback:  new THREE.MeshStandardMaterial({ name: 'baybacktile', color: sc('bay_back', 0x9aa79b), roughness: 0.55, metalness: 0.03, side: THREE.FrontSide }),
+  // the wall beside the shower, behind the floating shelves — its OWN zone so
+  // it can carry a different finish from the shower tile (matches the 2D)
+  shelfwall: new THREE.MeshStandardMaterial({ name: 'shelfwalltile', color: sc('shelf_wall', 0xe8e3d8), roughness: 0.72, metalness: 0.02, side: THREE.FrontSide }),
   steppier: new THREE.MeshStandardMaterial({ name: 'steppiertile', color: sc('step_return', 0x9aa79b), roughness: 0.55, metalness: 0.03 }),
   vanity:   new THREE.MeshStandardMaterial({ name: 'vanitywall', color: sc('vanity', 0xe8e3d8), roughness: 0.7, metalness: 0.02, side: THREE.FrontSide }),
   endL:     new THREE.MeshStandardMaterial({ name: 'endwallL',  color: sc('end_left', 0xe8e3d8), roughness: 0.92, metalness: 0.0, side: THREE.FrontSide }),
@@ -180,6 +183,9 @@ const DEFAULT_SURF = {
   splash: { fin: 'stone', color: '#4a5442', tileL: 60, tileW: 45, shape: 'rect', pattern: 'stack' },
   floor:  { fin: 'stone', color: '#bdb5a6', tileL: 24, tileW: 24, shape: 'rect', pattern: 'offset2' },
   skirt:  { fin: 'acrylic', color: '#f4f2ee', tileL: 24, tileW: 24, shape: 'rect', pattern: 'stack' },
+  // the shelf wall defaults to plain paint so the shower tile does NOT run
+  // behind the floating shelves unless the user deliberately tiles it
+  shelf_wall: { fin: 'paint', color: '#e8e3d8', tileL: 24, tileW: 12, shape: 'rect', pattern: 'stack' },
 };
 function surfFor(k) {
   return SF[k] || SF[RUN_BASE[k]] || DEFAULT_SURF[k] || DEFAULT_SURF[RUN_BASE[k]] || DEFAULT_SURF.bay;
@@ -224,22 +230,146 @@ async function dressMesh(mesh, lib) {
   mat.color.set(lib.tint || 0xffffff);
   mesh.material = mat;
 }
+/* ============================================================
+   PROCEDURAL TILE / STONE SURFACES  (colour-true, matches the 2D)
+   ------------------------------------------------------------
+   The elevation planner draws every surface in the EXACT colour, tile
+   size, pattern and grout you choose. The 3D must do the SAME or edits
+   look like they "do nothing". So tiled + stone zones are drawn
+   procedurally here, straight from the surf spec, at each mesh's real
+   physical scale — the identical geometry the 2D uses (running bond,
+   third-offset, herringbone, chevron, basketweave, hex, penny), so a
+   colour/size/pattern/grout pick shows up in both views at once.
+
+   Paint stays a flat colour (no texture). An explicit Look Book pick
+   (surf.lib) still gets its photographic PBR texture — that is a
+   deliberate override the user asked for, not a heuristic guess.
+   ============================================================ */
+const HEX2RGB = (h) => { h = String(h || '#999999').replace('#', '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; };
+const _cl = (v) => Math.max(0, Math.min(255, Math.round(v)));
+const _rgb = (a) => 'rgb(' + a[0] + ',' + a[1] + ',' + a[2] + ')';
+const _shade = (a, d) => 'rgb(' + _cl(a[0] + d) + ',' + _cl(a[1] + d) + ',' + _cl(a[2] + d) + ')';
+const _hash = (n) => { const x = Math.sin(n * 127.1 + 11.7) * 43758.5453; return x - Math.floor(x); };
+// tileL is the HORIZONTAL module, tileW the vertical — same convention as the 2D
+const PROC_LAYS = { stack: { off: [0], rot: 0 }, offset2: { off: [0, 0.5], rot: 0 },
+  offset3: { off: [0, 1 / 3, 2 / 3], rot: 0 }, vstack: { off: [0], rot: 90 } };
+function procRects(SW, SH, tw, th, pattern) {
+  const out = [];
+  if (pattern === 'herring') { const hh = Math.min(tw, th), ww = hh * 2, N = Math.ceil((SW + SH) / hh) + 4;
+    for (let m = -N; m <= N; m++) for (let n = -N; n <= N; n++) {
+      const ox = m * (ww + hh) + n * ww, oy = m * hh + n * ww;
+      if (ox > SW + ww || oy > SH + ww || ox < -2 * ww || oy < -2 * ww) continue;
+      out.push([ox + ww / 2, oy + hh / 2, ww, hh, 0]); out.push([ox + ww + hh / 2, oy + ww / 2, hh, ww, 0]); }
+    return out; }
+  if (pattern === 'basket') { const hh = Math.min(tw, th), ww = hh * 2, bc = Math.ceil(SW / ww) + 2, br = Math.ceil(SH / ww) + 2;
+    for (let i = -1; i < bc; i++) for (let j = -1; j < br; j++) { const ox = i * ww, oy = j * ww;
+      if ((i + j + 2) % 2 === 0) { out.push([ox + ww / 2, oy + hh / 2, ww, hh, 0]); out.push([ox + ww / 2, oy + hh * 1.5, ww, hh, 0]); }
+      else { out.push([ox + hh / 2, oy + ww / 2, hh, ww, 0]); out.push([ox + hh * 1.5, oy + ww / 2, hh, ww, 0]); } }
+    return out; }
+  if (pattern === 'chevron') { const L = Math.max(tw, th), T = Math.min(tw, th), c45 = Math.cos(Math.PI / 4);
+    const bw = L * c45, step = T / c45, bands = Math.ceil(SW / bw) + 2, per = Math.ceil(SH / step) + Math.ceil(bw / step) + 3;
+    for (let c = -1; c < bands; c++) { const bx = c * bw, sign = (((c % 2) + 2) % 2) ? -1 : 1;
+      for (let k = -2; k < per; k++) out.push([bx + bw / 2, k * step + (sign > 0 ? 0 : step / 2), L * 1.6, T, sign * Math.PI / 4, [bx, -L, bw, SH + 2 * L]]); }
+    return out; }
+  const lay = PROC_LAYS[pattern] || PROC_LAYS.stack;
+  let w = tw, h = th; if (lay.rot === 90) { w = th; h = tw; }
+  const offs = lay.off, rows = Math.ceil(SH / h) + 3, cols = Math.ceil(SW / w) + 3;
+  for (let r = -2; r < rows; r++) { const dx = offs[((r % offs.length) + offs.length) % offs.length] * w;
+    for (let c = -2; c < cols; c++) out.push([c * w + dx + w / 2, r * h + h / 2, w, h, 0]); }
+  return out;
+}
+function procHex(SW, SH, size) { const w = size, r = w / Math.sqrt(3), vstep = 1.5 * r, out = [];
+  const rowMax = Math.ceil((SH + 2 * r) / vstep) + 1, colMax = Math.ceil((SW + 2 * w) / w) + 1;
+  for (let row = -1; row <= rowMax; row++) { const y = row * vstep, xoff = (((row % 2) + 2) % 2) ? w / 2 : 0;
+    for (let col = -1; col <= colMax; col++) { const x = col * w + xoff, pts = [];
+      for (let k = 0; k < 6; k++) { const a = Math.PI / 180 * (60 * k - 90); pts.push([x + r * Math.cos(a), y + r * Math.sin(a)]); }
+      out.push(pts); } }
+  return out;
+}
+function procTileTexture(surf, faceW, faceH) {
+  const base = HEX2RGB(surf.color || '#9aa79b');
+  const grout = surf.grout ? HEX2RGB(surf.grout) : [_cl(base[0] * 0.78), _cl(base[1] * 0.78), _cl(base[2] * 0.78)];
+  const stone = surf.fin === 'stone';
+  const tl = Math.max(2, surf.tileL || (stone ? 24 : 12)), tw = Math.max(2, surf.tileW || (stone ? 24 : 12));
+  const pat = surf.pattern || 'stack', shp = surf.shape || 'rect';
+  const tmin = Math.min(tl, tw), gw = Math.max(0.0625, Math.min(0.28, tmin / 26)), varAmt = stone ? 15 : 9;
+  const ppi = Math.max(2.6, Math.min(12, 1100 / Math.max(faceW, faceH)));
+  const cw = Math.max(8, Math.round(faceW * ppi)), ch = Math.max(8, Math.round(faceH * ppi));
+  const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+  const g = cv.getContext('2d');
+  g.setTransform(ppi, 0, 0, ppi, 0, 0);
+  g.fillStyle = _rgb(grout); g.fillRect(0, 0, faceW, faceH);
+  const sheen = stone ? 0.11 : 0.08;
+  function finishPass(x, y, w, h) { const lg = g.createLinearGradient(x, y, x + w * 0.45, y + h);
+    lg.addColorStop(0, 'rgba(255,255,255,' + sheen + ')'); lg.addColorStop(0.55, 'rgba(255,255,255,0)');
+    lg.addColorStop(1, 'rgba(0,0,0,' + (sheen * 0.7) + ')'); g.fillStyle = lg; g.fillRect(x, y, w, h); }
+  if (shp === 'hex') {
+    procHex(faceW, faceH, tmin).forEach((pts, i) => { let cx = 0, cy = 0; pts.forEach((p) => { cx += p[0]; cy += p[1]; }); cx /= 6; cy /= 6;
+      if (cx < -tmin || cx > faceW + tmin || cy < -tmin || cy > faceH + tmin) return;
+      const k = 1 - (gw / tmin) * 1.15, path = new Path2D();
+      pts.forEach((p, j) => { const px = cx + (p[0] - cx) * k, py = cy + (p[1] - cy) * k; j ? path.lineTo(px, py) : path.moveTo(px, py); }); path.closePath();
+      g.save(); g.clip(path); g.fillStyle = _shade(base, (_hash(i * 1.7) - 0.5) * varAmt); g.fillRect(cx - tmin, cy - tmin, tmin * 2, tmin * 2);
+      finishPass(cx - tmin / 2, cy - tmin / 2, tmin, tmin); g.restore(); });
+  } else if (shp === 'round') {
+    const r = tmin / 2, cols = Math.ceil(faceW / (2 * r)) + 2, rows = Math.ceil(faceH / (2 * r)) + 2;
+    for (let rr = -1; rr < rows; rr++) for (let cc = -1; cc < cols; cc++) { const cx = cc * 2 * r + r, cy = rr * 2 * r + r;
+      g.beginPath(); g.arc(cx, cy, Math.max(0.5, r - gw), 0, 6.2832); g.fillStyle = _shade(base, (_hash((rr * 97 + cc) * 2.9) - 0.5) * varAmt); g.fill(); }
+  } else {
+    let dtw = tl, dth = tw; if (pat === 'herring') { const hh = Math.min(dtw, dth); dtw = hh * 2; dth = hh; }
+    procRects(faceW, faceH, dtw, dth, pat).forEach((r, i) => { const cx = r[0], cy = r[1], rot = r[4] || 0, clip = r[5], w = r[2] - gw, h = r[3] - gw;
+      if (w <= 0 || h <= 0) return; const reach = (Math.abs(r[2]) + Math.abs(r[3])) / 2 + 1;
+      if (cx - reach > faceW || cy - reach > faceH || cx + reach < 0 || cy + reach < 0) return;
+      g.save(); if (clip) { g.beginPath(); g.rect(clip[0], clip[1], clip[2], clip[3]); g.clip(); }
+      g.translate(cx, cy); if (rot) g.rotate(rot); g.beginPath(); g.rect(-w / 2, -h / 2, w, h); g.clip();
+      g.fillStyle = _shade(base, (_hash(i * 2.9) - 0.5) * varAmt); g.fillRect(-w / 2, -h / 2, w, h);
+      finishPass(-w / 2, -h / 2, w, h); g.restore(); });
+  }
+  const map = new THREE.CanvasTexture(cv);
+  map.wrapS = map.wrapT = THREE.ClampToEdgeWrapping; map.anisotropy = 8;
+  if ('colorSpace' in map) map.colorSpace = THREE.SRGBColorSpace; else map.encoding = THREE.sRGBEncoding;
+  map.needsUpdate = true;
+  return map;
+}
+// real face size of a mesh, in inches (floors/counters map their two horizontal
+// extents; walls map width × height)
+function faceSize(mesh) {
+  const size = new THREE.Box3().setFromObject(mesh).getSize(new THREE.Vector3());
+  const flat = size.y / IN < 6;
+  return { w: (flat ? size.x : Math.max(size.x, size.z)) / IN, h: (flat ? size.z : size.y) / IN };
+}
+function applyProcSurf(mesh, surf) {
+  const fs = faceSize(mesh);
+  const mat = mesh.material.clone();
+  mat.map = procTileTexture(surf, Math.max(4, fs.w), Math.max(4, fs.h));
+  mat.color.set(0xffffff);       // colour lives in the texture now, don't double-tint
+  mat.normalMap = null; mat.roughnessMap = null; mat.aoMap = null; mat.metalnessMap = null; mat.bumpMap = null;
+  mat.needsUpdate = true;
+  mesh.material = mat;
+}
 function textureRoom() {
   const L = window.MATERIAL_LIBRARY;
-  if (!L) return;
-  // a zone pinned to a 4684 sample-book material needs the pack in memory
-  const needsPack = !L.packLoaded && !L._packFailed && Object.keys(S.surf || {}).some(
+  // which surf zone each wall/floor material name belongs to
+  const zoneOf = { stonetile: 'bay', baybacktile: 'bay_back', shelfwalltile: 'shelf_wall',
+                   steppiertile: 'step_return', floortile: 'floor', splashtile: 'splash' };
+  const woodOf = { walnut: 'wood-walnut', teak: 'wood-teak' };
+  // a zone pinned to a 4684 sample-book material needs the pack in memory first
+  const needsPack = L && !L.packLoaded && !L._packFailed && Object.keys(S.surf || {}).some(
     (k) => S.surf[k] && String(S.surf[k].lib || '').indexOf('lb4684-') === 0);
   if (needsPack) { L.ensurePack('../../', textureRoom); return; }
-  const zoneOf = { stonetile: 'bay', baybacktile: 'bay_back', steppiertile: 'step_return',
-                   floortile: 'floor', splashtile: 'splash', tubskirttile: 'skirt' };
-  const woodOf = { walnut: 'wood-walnut', teak: 'wood-teak' };
   room.traverse((mesh) => {
     if (!mesh.isMesh || !mesh.material || !mesh.material.name) return;
     const zone = zoneOf[mesh.material.name];
-    if (zone) { const lib = L.matchSurf(surfFor(zone)); if (lib) dressMesh(mesh, lib); return; }
+    if (zone) {
+      const surf = surfFor(zone);
+      if (!surf || surf.fin === 'paint' || surf.fin === 'acrylic') return;   // flat colour, already applied
+      if (surf.lib && L) { const lib = L.matchSurf(surf); if (lib) { dressMesh(mesh, lib); return; } }
+      applyProcSurf(mesh, surf);                                             // colour-true procedural tile/stone
+      return;
+    }
     const woodId = woodOf[mesh.material.name];
-    if (woodId) { const lib = L.byId(woodId); if (lib) dressMesh(mesh, lib); }
+    if (woodId && L) { const lib = L.byId(woodId); if (lib) dressMesh(mesh, lib); }
   });
 }
 
@@ -268,6 +398,7 @@ function P(x, y, d) { return new THREE.Vector3((x - CX) * IN, y * IN, (-d - CZ) 
 
 const room = new THREE.Group();
 room.name = 'bathroom';
+window.__room = room;   // test/debug hook: lets automated checks read rendered mesh materials
 
 // rounded-rectangle profile: rTL/rTR/rBR/rBL in world units, extruded along z
 function roundedProfile(W, Hh, rTL, rTR, rBR, rBL) {
@@ -456,7 +587,21 @@ function wall(name, mat, w, h, x, y, d, rotY, rotX) {
 
 const HP = Math.PI / 2;
 const OFF = S.wallsOff || {};
-if (!OFF.bay_back)   wall('wall_bay_back',    MAT.bayback,   BAY_X1 - X0, H, X0 + (BAY_X1 - X0) / 2, H / 2, BAY);
+// The bay/tub wall is ONE run in the shell, but it carries two material zones:
+// the shower + tub tile (bay_back) and the wall behind the floating shelves
+// (shelf_wall). Split it at the shelf boundary so each zone renders its own
+// finish — exactly the split the elevation planner draws. bayEnd matches the
+// planner's: the shelf item's x, less any start offset stored on shelf_wall.
+if (!OFF.bay_back) {
+  const shelfItem = S.items.filter((i) => i.id === 'shelf')[0];
+  const swSurf = SF.shelf_wall || {};
+  const shelfStart = swSurf.startOff != null ? swSurf.startOff : 0;
+  let bayEnd = shelfItem ? shelfItem.x - shelfStart : BAY_X1;
+  bayEnd = Math.max(X0 + 1, Math.min(BAY_X1, bayEnd));
+  wall('wall_bay_back', MAT.bayback, bayEnd - X0, H, X0 + (bayEnd - X0) / 2, H / 2, BAY);
+  if (BAY_X1 - bayEnd > 0.5)
+    wall('wall_shelf_wall', MAT.shelfwall, BAY_X1 - bayEnd, H, bayEnd + (BAY_X1 - bayEnd) / 2, H / 2, BAY);
+}
 if (!OFF.back_face)  wall('wall_back_face',   MAT.vanity,   X1 - BAY_X1, H, BAY_X1 + (X1 - BAY_X1) / 2, H / 2, 0);
 // End walls follow the dormer rake (user rule 2026-08-11): full height at the
 // back, cut to the slope at the front — so the toilet end reads angled from
@@ -1178,7 +1323,10 @@ document.getElementById('srcSub').textContent =
   }
 
   // ---- interactive material picker (Materials tab) ----------------------
-  const MAT_SURFACES = [['bay', 'Shower / tub wall'], ['splash', 'Vanity splash'], ['wall', 'Main walls'], ['floor', 'Floor'], ['slope', 'Dormer']];
+  // the real, per-mesh zones — each one edits exactly the surface you click,
+  // so a change here always shows up on that wall (and in the elevation)
+  const MAT_SURFACES = [['bay_back', 'Shower / tub wall'], ['shelf_wall', 'Shelf wall'], ['vanity', 'Vanity wall'],
+    ['splash', 'Vanity splash'], ['floor', 'Floor'], ['end_left', 'Left end wall'], ['end_right', 'Right end wall'], ['slope', 'Dormer']];
   const MAT_PATTERNS = [['stack', 'Stacked'], ['offset2', 'Running bond'], ['offset3', 'Third offset'], ['herring', 'Herringbone'], ['chevron', 'Chevron'], ['vstack', 'Vertical'], ['basket', 'Basketweave']];
   const MAT_SIZES = [['48×24', 48, 24], ['36×24', 36, 24], ['24×24', 24, 24], ['12×24', 12, 24], ['12×12', 12, 12], ['12×6', 12, 6], ['6×6', 6, 6], ['2×2', 2, 2]];
   const MAT_GROUTS = ['#f4f1ea', '#e8e3d8', '#cfcabd', '#a99f8c', '#6f6656', '#3a352c'];
@@ -1206,13 +1354,23 @@ document.getElementById('srcSub').textContent =
     });
     return out;
   }
-  let matZone = (function () { try { return sessionStorage.getItem('b-matzone') || 'bay'; } catch (e) { return 'bay'; } })();
-  function curSurf() { const s = (seedState().surf || {}); return s[matZone] || (S.surf || {})[matZone] || {}; }
+  let matZone = (function () { try { return sessionStorage.getItem('b-matzone') || 'bay_back'; } catch (e) { return 'bay_back'; } })();
+  // resolve a zone's EFFECTIVE surface the same way the meshes do — granular key,
+  // then its base run, then the built-in default — so editing a zone that has no
+  // explicit entry yet starts from what you actually see, not a blank object
+  function resolveSurf(zone) {
+    const s = (seedState().surf || {}), b = (S.surf || {});
+    return s[zone] || s[RUN_BASE[zone]] || b[zone] || b[RUN_BASE[zone]] ||
+           DEFAULT_SURF[zone] || DEFAULT_SURF[RUN_BASE[zone]] || {};
+  }
+  function curSurf() { return resolveSurf(matZone); }
   function patchSurf(patch) {
     const state = seedState();
     state.surf = Object.assign({}, state.surf);
-    state.surf[matZone] = Object.assign({}, state.surf[matZone] || (S.surf || {})[matZone] || {}, patch);
-    if (matZone === 'bay' && state.splashLinked) state.surf.splash = Object.assign({}, state.surf.bay);
+    state.surf[matZone] = Object.assign({}, resolveSurf(matZone), patch);
+    // the vanity backsplash mirrors the shower tile when linked
+    if ((matZone === 'bay' || matZone === 'bay_back') && state.splashLinked)
+      state.surf.splash = Object.assign({}, state.surf[matZone]);
     writeState(state);
     try { sessionStorage.setItem('b-tab', 'mat'); sessionStorage.setItem('b-matzone', matZone); sessionStorage.setItem('b-view', currentView || ''); } catch (e) {}
     location.reload();
@@ -1264,12 +1422,16 @@ document.getElementById('srcSub').textContent =
       if (s.id && LIB) patchSurf({ lib: s.id, color: s.color, fin: s.fin });
       else patchSurf({ color: s.color, fin: s.fin, lib: null });
       return; }
+    // pattern / size / grout describe a DRAWN tile — clearing lib drops any
+    // photographic pin so the change actually renders (a pinned photo ignores
+    // pattern, size and grout, which is what made these feel like they did nothing)
     const pc = ev.target.closest('#m-pat .mchip');
     if (pc) { const pat = pc.getAttribute('data-pat');
-      if (pat) { patchSurf({ pattern: pat, fin: 'tile' }); return; }
-      patchSurf({ tileL: +pc.getAttribute('data-w'), tileW: +pc.getAttribute('data-h'), fin: 'tile' }); return; }
+      const shp = (pat === 'hex') ? 'hex' : 'rect';
+      if (pat) { patchSurf({ pattern: pat === 'hex' ? 'stack' : pat, shape: shp, fin: 'tile', lib: null }); return; }
+      patchSurf({ tileL: +pc.getAttribute('data-w'), tileW: +pc.getAttribute('data-h'), fin: 'tile', lib: null }); return; }
     const gc = ev.target.closest('#m-grout .mgr');
-    if (gc) { patchSurf({ grout: gc.getAttribute('data-g') }); return; }
+    if (gc) { patchSurf({ grout: gc.getAttribute('data-g'), lib: null }); return; }
     if (ev.target.id === 'b-reset-surf') {
       if (!window.confirm('Reset every surface to the default palette? Applied tiles/colours will be cleared (fittings are kept).')) return;
       const def = (window.BATHROOM_BASELINE && window.BATHROOM_BASELINE.surf) || {};
@@ -1355,8 +1517,10 @@ document.getElementById('srcSub').textContent =
     const SNAP = 0.25, RUN = X1 - X0;
     let dn = null, fixDrag = null;
     // tag wall/floor meshes with the picker zone they belong to, by material name
-    const WALL_ZONE = { baybacktile: 'bay', steppiertile: 'bay', vanitywall: 'wall', endwallL: 'wall',
-      endwallR: 'wall', plaster: 'wall', splashtile: 'splash', floortile: 'floor', dormer: 'slope' };
+    // click a wall → jump to the exact granular zone that renders it
+    const WALL_ZONE = { baybacktile: 'bay_back', shelfwalltile: 'shelf_wall', steppiertile: 'step_return',
+      vanitywall: 'vanity', endwallL: 'end_left', endwallR: 'end_right', plaster: 'wall',
+      splashtile: 'splash', floortile: 'floor', dormer: 'slope' };
     room.traverse((o) => {
       if (o.isMesh && !o.userData.itemId && o.material && WALL_ZONE[o.material.name]) o.userData.zone = WALL_ZONE[o.material.name];
     });

@@ -2893,7 +2893,11 @@ class Component extends DCLogic {
           boxShadow: "inset -12px 0 26px -14px rgba(35,35,31,0.6)" + (bandEdge("bay") === "none" ? "" : ", " + bandEdge("bay")),
           cursor: "pointer", zIndex: "auto" }),
         onPick: pickSurf(SK("bay_back")),
-        labelStyle: bandLabel(Math.max(4, Math.min((tub.x + tub.w - bd.x0) * ppi + 8, (bayEnd - bd.x0) * ppi - 96)) + "px", "10px") },
+        // the tub, niche, rainhead, shelves + glass cover almost all of the shower
+        // back wall, so there is rarely exposed tile to click — make the LABEL itself
+        // an always-clickable way in, exactly like the shelf wall beside it
+        labelStyle: Object.assign({}, bandLabel(Math.max(4, Math.min((tub.x + tub.w - bd.x0) * ppi + 8, (bayEnd - bd.x0) * ppi - 96)) + "px", "10px"),
+          { pointerEvents: "auto", cursor: "pointer" }) },
       // this zone runs from the shelves through to the step — the sliver of wall showing
       // above the storage tower is part of it, not a section of its own
       { label: s.surf.shelf_wall ? "SHELF WALL" : "",
@@ -2920,7 +2924,7 @@ class Component extends DCLogic {
           backgroundPosition: tileFill(SK("vanity"), ppi).backgroundPosition,
           boxShadow: bandEdge(SK("vanity")), cursor: "pointer", zIndex: "auto" }),
         onPick: pickSurf(SK("vanity")),
-        labelStyle: bandLabel("10px", "34px") },
+        labelStyle: Object.assign({}, bandLabel("10px", "34px"), { pointerEvents: "auto", cursor: "pointer" }) },
       { label: "",
         style: { position: "absolute", left: (bump.x1 - bd.x0) * ppi - 1 + "px", width: "2px", top: 0, height: elevH + "px",
           background: s.wallsOff.step_return ? "rgba(138,90,43,0.25)" : "rgba(138,90,43,0.85)", zIndex: 19 },
