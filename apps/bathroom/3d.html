@@ -157,8 +157,24 @@ const sc = function (k, dflt) {
   return (e && e.color) ? new THREE.Color(e.color).getHex() : dflt;
 };
 
+// One wood-tone control drives every wood surface (vanity, tower, shelves) —
+// the same preset list the planner uses. WOOD_IDS are the wood items; a piece
+// may still carry its own woodOverride hex. Without this the casework was stuck
+// on a fixed walnut and the tone picker did nothing in 3D.
+const WOOD_HEX = { teak: '#b0793f', walnut: '#6b4630', mahogany: '#7a3f2b',
+  oak: '#c9b389', rosewood: '#5c3326', ebonized: '#2a2420' };
+const WOOD_IDS = { van: 1, tower: 1, shelf: 1, vshelf: 1 };
+const woodHex = WOOD_HEX[S.woodTone] || WOOD_HEX.teak;
+const _woodMats = {};
+function woodMat(hex) {
+  const key = String(hex).toLowerCase();
+  if (!_woodMats[key]) _woodMats[key] = new THREE.MeshStandardMaterial({
+    name: 'wood', color: new THREE.Color(hex).getHex(), roughness: 0.6, metalness: 0.04 });
+  return _woodMats[key];
+}
+
 const MAT = {
-  walnut:   new THREE.MeshStandardMaterial({ name: 'walnut',   color: 0x8a5325, roughness: 0.62, metalness: 0.05 }),
+  walnut:   woodMat(woodHex),
   stone:    new THREE.MeshStandardMaterial({ name: 'stonetile',color: sc('bay', 0x9aa79b), roughness: 0.55, metalness: 0.03, side: THREE.FrontSide }),
   floor:    new THREE.MeshStandardMaterial({ name: 'floortile',color: sc('floor', 0xbdb5a6), roughness: 0.7,  metalness: 0.02 }),
   plaster:  new THREE.MeshStandardMaterial({ name: 'plaster',  color: sc('wall', 0xe8e3d8), roughness: 0.92, metalness: 0.0, side: THREE.FrontSide }),
@@ -370,12 +386,20 @@ function planarUV(geometry) {
   if (!pos) return;
   geometry.computeBoundingBox();
   const bb = geometry.boundingBox, size = { x: bb.max.x - bb.min.x, y: bb.max.y - bb.min.y, z: bb.max.z - bb.min.z };
-  const axes = ['x', 'y', 'z'].sort((a, b) => size[b] - size[a]);
-  const a = axes[0], c = axes[1];
-  const ra = size[a] || 1, rc = size[c] || 1, uv = new Float32Array(pos.count * 2);
+  // U must run HORIZONTAL and V VERTICAL, matching faceSize (w = horizontal,
+  // h = vertical) and the tile grid — mapping by largest-axis instead rotated
+  // tiles 90° on any wall taller than it is wide (the bay + raked end walls).
+  let uAxis, vAxis;
+  if (size.y < size.x && size.y < size.z) {   // flat floor/counter: two horizontals
+    uAxis = 'x'; vAxis = 'z';
+  } else {                                      // wall: vertical = y, horizontal = wider of x/z
+    vAxis = 'y'; uAxis = size.x >= size.z ? 'x' : 'z';
+  }
+  const ru = size[uAxis] || 1, rv = size[vAxis] || 1, uv = new Float32Array(pos.count * 2);
+  const gu = 'get' + uAxis.toUpperCase(), gv = 'get' + vAxis.toUpperCase();
   for (let i = 0; i < pos.count; i++) {
-    uv[i * 2] = (pos['get' + a.toUpperCase()](i) - bb.min[a]) / ra;
-    uv[i * 2 + 1] = (pos['get' + c.toUpperCase()](i) - bb.min[c]) / rc;
+    uv[i * 2] = (pos[gu](i) - bb.min[uAxis]) / ru;
+    uv[i * 2 + 1] = (pos[gv](i) - bb.min[vAxis]) / rv;
   }
   geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 }
@@ -734,7 +758,11 @@ const SWATCH_SKIP = { glass: 1, splash: 1 };
 S.items.forEach(it => {
   __curItem = it.id;
   let mat = MAT_FOR[it.id] || MAT.walnut;
-  if (it.swatch) {
+  // wood casework follows the wood-tone control (or its own woodOverride), and
+  // ignores any baked-in swatch so the tone picker actually takes effect
+  if (WOOD_IDS[it.id]) {
+    mat = woodMat(it.woodOverride || woodHex);
+  } else if (it.swatch) {
     const key = 'sw' + it.swatch.replace('#', '');
     if (!MAT[key]) {
       MAT[key] = new THREE.MeshStandardMaterial({ name: (it.id || 'part') + '_finish',
@@ -945,13 +973,14 @@ __curItem = 'van';
   const wR = S.bankW, gap = S.bankGap, wL = v.w - wR - gap;
   if (wL <= 0) return;
   const zFace = -v.dep;                      // vanity front face, in planner depth
+  const vanWood = woodMat(v.woodOverride || woodHex);   // fronts match the vanity carcass
   const front = (tag, x0, w0, y0, h0, pullW) => {
-    box('drawer_' + tag, MAT.walnut, w0 - 0.5, h0 - 0.5, 0.75, x0 + w0 / 2, y0 + h0 / 2, zFace - 0.4);
+    box('drawer_' + tag, vanWood, w0 - 0.5, h0 - 0.5, 0.75, x0 + w0 / 2, y0 + h0 / 2, zFace - 0.4);
     box('pull_' + tag, MAT.brass, pullW, 0.45, 0.9, x0 + w0 / 2, y0 + h0 / 2, zFace - 1.1);
   };
   // a cupboard door: full-height leaf with a VERTICAL bar pull near the meeting stile
   const door = (tag, x0, w0, y0, h0, atRight) => {
-    box('door_' + tag, MAT.walnut, w0 - 0.5, h0 - 0.5, 0.75, x0 + w0 / 2, y0 + h0 / 2, zFace - 0.4);
+    box('door_' + tag, vanWood, w0 - 0.5, h0 - 0.5, 0.75, x0 + w0 / 2, y0 + h0 / 2, zFace - 0.4);
     const px = atRight ? x0 + w0 - 1.1 : x0 + 1.1;
     box('pull_' + tag, MAT.brass, 0.45, Math.min(9, h0 * 0.34), 0.9, px, y0 + h0 / 2, zFace - 1.1);
   };
