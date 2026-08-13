@@ -368,14 +368,29 @@ function hwMesh(g, mat, name, x, y, d, rotX, rotZ) {
   return m;
 }
 const HW3D = {
-  taphl: crossHandle, taphr: crossHandle,
-  tap: gooseneckSpout, spout: gooseneckSpout,
+  taphl: singleLever, taphr: crossHandle,
+  tap: wallSpout, spout: gooseneckSpout,
   rain: rainhead,
   mixer: diverterPlate,
   bar2: towelBar, bar3: towelBar,
   ring: towelRing,
   light: sconce, light2: sconce
 };
+// modern wall-mounted single-lever set: a squared spout on a square wall
+// plate, and a separate single lever on its own square plate (brushed brass).
+function wallSpout(it, mat, nm) {
+  const base = it.face > 0 ? BAY : 0, dir = it.face > 0 ? 1 : -1;
+  const cx = it.x + it.w / 2, cy = it.y + it.h / 2, plate = 4.6, arm = Math.max(it.dep, 7);
+  box(nm + '_plate', mat, plate, plate, 0.4, cx, cy, base - 0.2, 'soft', 0.6);        // square wall plate
+  box(nm + '_arm', mat, 2.4, Math.max(1.6, it.h), arm, cx, cy, base + dir * arm / 2, 'soft', 0.3); // rectangular spout arm out over the basin
+}
+function singleLever(it, mat, nm) {
+  const base = it.face > 0 ? BAY : 0, dir = it.face > 0 ? 1 : -1;
+  const cx = it.x + it.w / 2, cy = it.y + it.h / 2, proj = Math.max(it.dep, 2.5);
+  box(nm + '_plate', mat, 4.4, 4.4, 0.4, cx, cy, base - 0.2, 'soft', 0.6);            // square wall plate
+  hwMesh(new THREE.CylinderGeometry(1.05 * IN, 1.05 * IN, proj * 0.5 * IN, 24), mat, nm + '_esc', cx, cy, base + dir * proj * 0.25, Math.PI / 2);
+  box(nm + '_lever', mat, 1.1, Math.max(3, it.h + 2.5), 0.7, cx, cy - 2, base + dir * proj * 0.6, 'soft', 0.3); // single lever, pointing down
+}
 function crossHandle(it, mat, nm) {
   const base = it.face > 0 ? BAY : 0, proj = it.dep, cx = it.x + it.w / 2, cy = it.y + it.h / 2;
   const dz = base - proj / 2, dir = it.face > 0 ? 1 : -1;
