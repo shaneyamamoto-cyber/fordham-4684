@@ -15,7 +15,7 @@
 (function () {
   'use strict';
   window.BATHROOM_BASELINE = {
-    height: 92, kneeH: 0, slopeRun: 32, trimTone: 'gold', drawersLeft: 2, drawersRight: 3, bankW: 10.9, bankGap: 1.5,
+    height: 92, kneeH: 0, slopeRun: 32, trimTone: 'gold', drawersLeft: 2, drawersRight: 3, vanDoors: false, bankW: 10.9, bankGap: 1.5,
     wallsOff: {}, splashLinked: true,
     surf: {
       bay:    { fin:'tile',  color:'#9aa79b', tileL:48, tileW:24, shape:'rect', pattern:'offset2', grout:'#e8e3d8' },

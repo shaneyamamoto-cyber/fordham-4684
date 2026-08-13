@@ -949,8 +949,20 @@ __curItem = 'van';
     box('drawer_' + tag, MAT.walnut, w0 - 0.5, h0 - 0.5, 0.75, x0 + w0 / 2, y0 + h0 / 2, zFace - 0.4);
     box('pull_' + tag, MAT.brass, pullW, 0.45, 0.9, x0 + w0 / 2, y0 + h0 / 2, zFace - 1.1);
   };
-  const hL = v.h / nL;
-  for (let i = 0; i < nL; i++) front('L' + (i + 1), v.x, wL, v.y + i * hL, hL, Math.min(6, wL * 0.26));
+  // a cupboard door: full-height leaf with a VERTICAL bar pull near the meeting stile
+  const door = (tag, x0, w0, y0, h0, atRight) => {
+    box('door_' + tag, MAT.walnut, w0 - 0.5, h0 - 0.5, 0.75, x0 + w0 / 2, y0 + h0 / 2, zFace - 0.4);
+    const px = atRight ? x0 + w0 - 1.1 : x0 + 1.1;
+    box('pull_' + tag, MAT.brass, 0.45, Math.min(9, h0 * 0.34), 0.9, px, y0 + h0 / 2, zFace - 1.1);
+  };
+  if (S.vanDoors) {
+    const dw = wL / 2;
+    door('L1', v.x, dw, v.y, v.h, true);          // left leaf
+    door('L2', v.x + dw, dw, v.y, v.h, false);    // right leaf
+  } else {
+    const hL = v.h / nL;
+    for (let i = 0; i < nL; i++) front('L' + (i + 1), v.x, wL, v.y + i * hL, hL, Math.min(6, wL * 0.26));
+  }
   const hR = v.h / nR;
   for (let j = 0; j < nR; j++) front('R' + (j + 1), v.x + wL + gap, wR, v.y + j * hR, hR, Math.min(3.25, wR * 0.3));
 })();

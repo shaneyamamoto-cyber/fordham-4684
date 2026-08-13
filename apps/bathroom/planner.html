@@ -83,6 +83,10 @@ window.__resources = {
         </div>
       </div>
     </div>
+    <div onClick="{{ toggleVanDoors }}" style="{{ vanDoorsStyle }}">
+      <div style="{{ vanDoorsBox }}">{{ vanDoorsTick }}</div>
+      <div style="font:600 8px/1.4 'IBM Plex Mono',monospace;letter-spacing:0.09em;color:rgba(35,35,31,0.55)">LEFT VANITY BANK AS CUPBOARD DOORS</div>
+    </div>
     <div style="display:flex;gap:8px;margin-top:8px">
       <div style="flex:1.6;min-width:150px">
         <div style="font:500 9px/1 'IBM Plex Mono',monospace;letter-spacing:0.12em;color:rgba(35,35,31,0.5);margin-bottom:5px">CASING / BASE</div>
@@ -1093,7 +1097,7 @@ class Component extends DCLogic {
     return s.surf.bay ? "bay" : Object.keys(s.surf)[0];
   }
   static WORK_KEYS = ["items", "surf", "poly", "height", "kneeH", "slopeRun", "snapStep", "wallsOff", "splashLinked",
-    "drawersLeft", "drawersRight", "bankW", "bankGap", "trimTone", "woodTone", "activeSurf",
+    "drawersLeft", "drawersRight", "vanDoors", "bankW", "bankGap", "trimTone", "woodTone", "activeSurf",
     "groupNames", "groupOn", "groupLinked", "measures", "shellLocked", "labelMode"];
   // one control changes every metal fitting at once; one control changes every wood
   // surface at once — real preset styles, not a single decorative trim edge
@@ -1157,6 +1161,7 @@ class Component extends DCLogic {
     woodTone: "teak",
     drawersLeft: 2,
     drawersRight: 3,
+    vanDoors: false,
     bankW: 10.9,
     bankGap: 1.5,
     poly: SHELL.map(function (p) { return { x: p.x, d: p.d }; }),
@@ -1528,7 +1533,7 @@ class Component extends DCLogic {
   versionData() {
     const s = this.state;
     return { items: s.items, poly: s.poly, height: s.height, kneeH: s.kneeH, slopeRun: s.slopeRun,
-      trimTone: s.trimTone, drawersLeft: s.drawersLeft, drawersRight: s.drawersRight,
+      trimTone: s.trimTone, drawersLeft: s.drawersLeft, drawersRight: s.drawersRight, vanDoors: s.vanDoors,
       bankW: s.bankW, bankGap: s.bankGap, surf: s.surf, wallsOff: s.wallsOff, splashLinked: s.splashLinked,
       groupNames: s.groupNames, groupOn: s.groupOn, groupLinked: s.groupLinked };
   }
@@ -2658,8 +2663,30 @@ class Component extends DCLogic {
           width: pullW * ppi + "px", height: Math.max(2, 0.45 * ppi) + "px",
           background: "#c9a35c", borderRadius: "1px", zIndex: 23, pointerEvents: "none" } });
       };
-      const hL = v.h / nL;
-      for (let i = 0; i < nL; i++) front(v.x, wL, v.y + i * hL, hL, Math.min(6, wL * 0.26));
+      // vertical pull for a cupboard door, set just in from the meeting stile
+      const doorPull = function (x0, w0, y0, h0, atRight) {
+        vanParts.push({ style: {
+          position: "absolute", left: EX(x0 + (atRight ? w0 - 1.1 : 0.6)) + "px", top: EY(y0 + h0 * 0.62) + "px",
+          width: Math.max(2, 0.45 * ppi) + "px", height: h0 * 0.24 * ppi + "px",
+          background: "#c9a35c", borderRadius: "1px", zIndex: 23, pointerEvents: "none" } });
+      };
+      const doorPanel = function (x0, w0, y0, h0, atRight) {
+        vanParts.push({ style: {
+          position: "absolute", left: EX(x0 + 0.25) + "px", top: EY(y0 + h0 - 0.25) + "px",
+          width: (w0 - 0.5) * ppi + "px", height: (h0 - 0.5) * ppi + "px",
+          background: "rgba(255,240,220,0.10)", border: "1px solid rgba(28,16,8,0.55)",
+          borderRadius: "1px", zIndex: 22, pointerEvents: "none" } });
+        doorPull(x0, w0, y0, h0, atRight);
+      };
+      if (s.vanDoors) {
+        // the wide left run becomes a pair of full-height cupboard doors
+        const dw = wL / 2;
+        doorPanel(v.x, dw, v.y, v.h, true);            // left leaf, pull on its right
+        doorPanel(v.x + dw, dw, v.y, v.h, false);      // right leaf, pull on its left
+      } else {
+        const hL = v.h / nL;
+        for (let i = 0; i < nL; i++) front(v.x, wL, v.y + i * hL, hL, Math.min(6, wL * 0.26));
+      }
       const hR = v.h / nR;
       for (let j = 0; j < nR; j++) front(v.x + wL + gap, wR, v.y + j * hR, hR, Math.min(3.25, wR * 0.3));
     })();
@@ -4049,6 +4076,19 @@ class Component extends DCLogic {
         background: s.splashLinked ? "#4a6b4e" : "#fbfaf7",
         color: "#fbfaf7", font: "700 10px/1 'IBM Plex Mono',monospace" },
       splashLinkTick: s.splashLinked ? "✓" : "",
+      // left vanity bank: two full-width drawers, or two cupboard doors
+      vanDoorsStyle: { display: "flex", alignItems: "center", gap: "7px", marginTop: "8px", cursor: "pointer" },
+      vanDoorsBox: { width: "15px", height: "15px", flex: "0 0 15px", borderRadius: "2px",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        border: "1px solid " + (s.vanDoors ? "#4a6b4e" : "rgba(35,35,31,0.3)"),
+        background: s.vanDoors ? "#4a6b4e" : "#fbfaf7",
+        color: "#fbfaf7", font: "700 10px/1 'IBM Plex Mono',monospace" },
+      vanDoorsTick: s.vanDoors ? "✓" : "",
+      toggleVanDoors: function () {
+        self.snapshot();
+        self.setState(function (st) { return { vanDoors: !st.vanDoors,
+          flash: !st.vanDoors ? "Left vanity bank set to cupboard doors" : "Left vanity bank set to drawers" }; });
+      },
       toggleSplashLink: function () {
         self.setState(function (st) {
           const on = !st.splashLinked;
