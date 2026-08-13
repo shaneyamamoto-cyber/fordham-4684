@@ -203,7 +203,9 @@ const MAT = {
   endL:     new THREE.MeshStandardMaterial({ name: 'endwallL',  color: sc('end_left', 0xe8e3d8), roughness: 0.92, metalness: 0.0, side: THREE.FrontSide }),
   endR:     new THREE.MeshStandardMaterial({ name: 'endwallR',  color: sc('end_right', 0xe8e3d8), roughness: 0.92, metalness: 0.0, side: THREE.FrontSide }),
   splashm:  new THREE.MeshStandardMaterial({ name: 'splashtile', color: sc('splash', 0xc8cec4), roughness: 0.55, metalness: 0.03 }),
-  skirt:    new THREE.MeshStandardMaterial({ name: 'tubskirttile', color: sc('skirt', 0x9aa79b), roughness: 0.55, metalness: 0.03 }),
+  // modern white alcove tub — acrylic apron, NOT a tiled surround (name is
+  // deliberately outside the tile-dressing map so it never gets tiled)
+  skirt:    new THREE.MeshStandardMaterial({ name: 'tubacrylic', color: 0xf4f2ee, roughness: 0.3, metalness: 0.02 }),
   teak:     new THREE.MeshStandardMaterial({ name: 'teak', color: 0xb98b53, roughness: 0.5, metalness: 0.04 }),
   // painted trim — the planner spec calls the door, casing and baseboard
   // PAINTED white (#f1efe9-ish), not wood; without an explicit entry they
@@ -221,7 +223,7 @@ const DEFAULT_SURF = {
   bay:    { fin: 'tile',  color: '#9aa79b', tileL: 48, tileW: 24, shape: 'rect', pattern: 'offset2' },
   splash: { fin: 'stone', color: '#4a5442', tileL: 60, tileW: 45, shape: 'rect', pattern: 'stack' },
   floor:  { fin: 'stone', color: '#bdb5a6', tileL: 24, tileW: 24, shape: 'rect', pattern: 'offset2' },
-  skirt:  { fin: 'tile',  color: '#9aa79b', tileL: 48, tileW: 24, shape: 'rect', pattern: 'offset2' },
+  skirt:  { fin: 'acrylic', color: '#f4f2ee', tileL: 24, tileW: 24, shape: 'rect', pattern: 'stack' },
 };
 function surfFor(k) {
   return SF[k] || SF[RUN_BASE[k]] || DEFAULT_SURF[k] || DEFAULT_SURF[RUN_BASE[k]] || DEFAULT_SURF.bay;
@@ -940,7 +942,7 @@ document.getElementById('srcSub').textContent =
     return S.items.filter((it) => !GROUPED[it.id] && !it.zoneOnly && it.id !== 'wet');
   }
   const ZONES = [['bay', 'Bay / shower wall'], ['bay_back', 'Bay back'], ['splash', 'Splash'],
-    ['wall', 'Main walls'], ['floor', 'Floor'], ['slope', 'Dormer slope'], ['skirt', 'Tub skirt']];
+    ['wall', 'Main walls'], ['floor', 'Floor'], ['slope', 'Dormer slope']];
   const fin = (n) => (Math.round(Number(n) * 100) / 100) + '';
   const dimText = (it) => {
     const wd = fin(it.w) + '×' + fin(it.h) + (it.dep != null ? '×' + fin(it.dep) : '') + '″';

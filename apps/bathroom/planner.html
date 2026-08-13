@@ -1143,7 +1143,7 @@ class Component extends DCLogic {
       wall:   { fin:"paint", color:"#e8e3d8", tileL:24, tileW:12, shape:"rect", pattern:"stack" },
       floor:  { fin:"stone", color:"#bdb5a6", tileL:24, tileW:24, shape:"rect", pattern:"offset2" },
       slope:  { fin:"paint", color:"#e8e3d8", tileL:24, tileW:12, shape:"rect", pattern:"stack" },
-      skirt:  { fin:"tile",  color:"#9aa79b", tileL:48, tileW:24, shape:"rect", pattern:"offset2" }
+      skirt:  { fin:"acrylic", color:"#f4f2ee", tileL:24, tileW:24, shape:"rect", pattern:"stack" }
     },
     splashLinked: true,
     versions: [],
@@ -1325,14 +1325,12 @@ class Component extends DCLogic {
       let surfAdd = 0;
       Object.keys(DEF).forEach(function (k) {
         const cur = nsurf[k];
-        // the tub skirt is tiled out of the same box as the shower walls by default.
-        // An earlier build wrote it with the generic paint fallback; that value was never
-        // chosen by anyone, so adopt the shower tile instead of leaving the tub bare.
-        const stale = k === "skirt" && cur && cur.fin === "paint" && cur.color === "#e8e3d8"
-          && cur.tileL === 24 && cur.tileW === 12;
+        // the tub is a modern WHITE alcove tub — acrylic apron, never a tiled
+        // surround. Snap any legacy tiled/paint skirt back to white acrylic.
+        const staleSkirt = k === "skirt" && cur && cur.fin !== "acrylic";
         // a tile bigger than any real product never came from a finish — snap it back
         const bogus = cur && (cur.tileL > 96 || cur.tileW > 96 || !(cur.tileL > 0) || !(cur.tileW > 0));
-        if (cur && !stale && !bogus) return;
+        if (cur && !staleSkirt && !bogus) return;
         // the shelf wall is a brand new independent zone — seed it from whatever the
         // shower currently shows so it starts looking identical, then it's free to diverge
         if (k === "shelf_wall" && !cur) {
@@ -1340,7 +1338,8 @@ class Component extends DCLogic {
           surfAdd++;
           return;
         }
-        nsurf[k] = k === "skirt" && nsurf.bay ? Object.assign({}, nsurf.bay)
+        nsurf[k] = k === "skirt"
+          ? { fin: "acrylic", color: "#f4f2ee", tileL: 24, tileW: 24, shape: "rect", pattern: "stack" }
           : { fin: "paint", color: "#e8e3d8", tileL: 24, tileW: 12, shape: "rect", pattern: "stack" };
         surfAdd++;
       });
@@ -2183,7 +2182,7 @@ class Component extends DCLogic {
       if (c.fin === "stone") {
         return { backgroundImage: "linear-gradient(115deg, rgba(255,255,255,0.3), transparent 45%), linear-gradient(295deg, rgba(35,35,31,0.14), transparent 40%)", backgroundSize: "auto", backgroundPosition: "0 0" };
       }
-      if (c.fin === "paint") return { backgroundImage: "none", backgroundSize: "auto", backgroundPosition: "0 0" };
+      if (c.fin === "paint" || c.fin === "acrylic") return { backgroundImage: "none", backgroundSize: "auto", backgroundPosition: "0 0" };
 
       // real repeating units, drawn as SVG — a gradient cannot express a bond
       const S = "#23231f", O = 0.34, SW = 1;
