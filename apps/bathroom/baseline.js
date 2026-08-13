@@ -36,7 +36,7 @@
         bays:[{t:'door',h:26},{t:'drawer',h:8},{t:'void',h:13},{t:'drawer',h:8},{t:'void',h:13},{t:'door',h:16}]},
       {id:'van',name:'Vanity',x:66.25,w:36,y:15,h:19,dep:12,face:0,tone:'#8a5325',locked:true},
       {id:'vessel',name:'Wall basin',x:67.75,w:22,y:34.5,h:4,dep:13.8,face:0,tone:'#f7f6f2'},
-      {id:'stone',name:'Stone landing',x:91.5,w:10,y:34.25,h:1.5,dep:13.8,face:0,tone:'#e6e0d4'},
+      {id:'stone',name:'Countertop',x:91.5,w:10,y:34.25,h:1.5,dep:13.8,face:0,tone:'#e6e0d4'},
       {id:'taphl',name:'Tap handle — left',x:72.75,w:3,y:41,h:3,dep:3,face:0,shape:'round',tone:'#c9a35c'},
       {id:'tap',name:'Tap spout',x:77.25,w:2.5,y:41,h:3,dep:7,face:0,shape:'round',tone:'#c9a35c'},
       {id:'taphr',name:'Tap handle — right',x:82.75,w:3,y:41,h:3,dep:3,face:0,shape:'round',tone:'#c9a35c'},
