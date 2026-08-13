@@ -84,12 +84,23 @@ const GROUTS = LB.grouts.map(function(g){ return {id:g.id, name:g.label, c:hexTo
 (function(){
   const VEINMAP = {'blue':['none','gloss'],'off-white':['stone','satin'],'marble':['marble','gloss'],
                    'stone':['stone','matte'],'stone-black':['slate','matte'],'wood':['wood','matte']};
+  // De-duplicate: drop palette patches that are near-identical to a colour we
+  // already offer in the designed collections or earlier in the palette, so the
+  // list stays varied without a wall of the-same neutrals.
+  const seen = [];
+  COLLECTIONS.forEach(function(c){ (c.colours || []).forEach(function(k){ if(k.base) seen.push(k.base); }); });
+  const near = function(a, b){ return Math.abs(a[0]-b[0]) + Math.abs(a[1]-b[1]) + Math.abs(a[2]-b[2]) < 24; };
+  const paletteCols = [];
+  LB.colors.forEach(function(c){
+    const base = hexToRgb(c.hex);
+    if(seen.some(function(s){ return near(s, base); })) return;   // too close to something we already have
+    seen.push(base);
+    const v = VEINMAP[c.family] || ['stone','satin'];
+    paletteCols.push({id:'lb-'+c.id, name:c.label, base:base, vein:v[0], finish:v[1], family:c.family});
+  });
   COLLECTIONS.push({id:'palette', name:'Palette 4684',
-    note:'The sample book\u2019s twenty exact sRGB colour patches, driven through the parametric engine \u2014 any size, any lay pattern, any grout.',
-    colours: LB.colors.map(function(c){
-      const v = VEINMAP[c.family] || ['stone','satin'];
-      return {id:'lb-'+c.id, name:c.label, base:hexToRgb(c.hex), vein:v[0], finish:v[1], family:c.family};
-    })});
+    note:'The sample book\u2019s exact sRGB colour patches (near-duplicates removed), driven through the parametric engine \u2014 any size, any lay pattern, any grout.',
+    colours: paletteCols});
   COLLECTIONS.push({id:'book', name:'Sample book',
     note:'The 22 render-ready PBR materials from the 4684 pack \u2014 base colour, OpenGL +Y normal and packed ORM, scaled from the manifest. Lay pattern and grout are baked into the maps, so size and pattern are fixed per material.',
     lookbook:true,
@@ -116,6 +127,16 @@ function collOf(cid){
   return COLLECTIONS[1];
 }
 function sizeOf(sid){ for(let i=0;i<SIZES.length;i++) if(SIZES[i].id===sid) return SIZES[i]; return SIZES[7]; }
+// resolve a surface's tile size, honouring a user-entered custom W × H
+function resolveSize(sp){
+  if(sp && sp.size === 'custom'){
+    const w = Math.max(0.5, Math.min(120, +sp.customW || 12));
+    const h = Math.max(0.5, Math.min(120, +sp.customH || 12));
+    const tidy = function(n){ return (Math.round(n*100)/100) + ''; };
+    return {id:'custom', w:w, h:h, name:tidy(w)+' × '+tidy(h)+' custom'};
+  }
+  return sizeOf(sp ? sp.size : null);
+}
 function groutOf(gid){ for(let i=0;i<GROUTS.length;i++) if(GROUTS[i].id===gid) return GROUTS[i]; return GROUTS[1]; }
 function rgb(a){ return 'rgb('+a[0]+','+a[1]+','+a[2]+')'; }
 function shade(a,d){ return 'rgb('+cl(a[0]+d)+','+cl(a[1]+d)+','+cl(a[2]+d)+')'; }
@@ -303,7 +324,7 @@ function buildTexture(SW, SH, spec){
   const key = SW.toFixed(2)+'|'+SH.toFixed(2)+'|'+spec.colour+'|'+spec.size+'|'+spec.pattern+'|'+spec.grout;
   if(texCache[key]) return texCache[key];
 
-  const col = colourOf(spec.colour), sz = sizeOf(spec.size), fin = FINISH[col.finish];
+  const col = colourOf(spec.colour), sz = resolveSize(spec), fin = FINISH[col.finish];
   const gr = groutOf(spec.grout);
   const groutCol = gr.c ? gr.c : [cl(col.base[0]*0.78), cl(col.base[1]*0.78), cl(col.base[2]*0.78)];
   const tmin = Math.min(sz.w, sz.h);
@@ -549,9 +570,12 @@ function nearestPaletteId(rgbA){
   return best.id;
 }
 const M_PER_IN = 0.0254;
-function lbMaterial(mid, texW, texH, projected, side){
+function lbMaterial(mid, texW, texH, projected, side, sizeIn){
   const m = LBMAT[mid], tex = LB.tex[mid];
-  const px = m.rep[0]/M_PER_IN, py = m.rep[1]/M_PER_IN;   // physical repeat, inches
+  // a tiled book material can be laid at the chosen (or custom) tile size — the
+  // high-quality maps scale to it; continuous slabs keep their baked repeat
+  const px = (sizeIn && m.tile) ? sizeIn.w : m.rep[0]/M_PER_IN;   // physical repeat, inches
+  const py = (sizeIn && m.tile) ? sizeIn.h : m.rep[1]/M_PER_IN;
   const rx = projected ? 1/px : texW/px;
   const ry = projected ? 1/py : texH/py;
   const orm = lbTex(tex.orm, false, rx, ry);
@@ -567,10 +591,10 @@ function lbMaterial(mid, texW, texH, projected, side){
 }
 function surfMat(id, texW, texH, projected, side){
   const sp = SURF[id].spec;
-  const key = id+'|'+sp.colour+'|'+sp.size+'|'+sp.pattern+'|'+sp.grout+'|'+texW.toFixed(2)+'|'+texH.toFixed(2)+'|'+(projected?1:0)+'|'+(side||0);
+  const key = id+'|'+sp.colour+'|'+sp.size+'|'+(sp.customW||'')+'x'+(sp.customH||'')+'|'+sp.pattern+'|'+sp.grout+'|'+texW.toFixed(2)+'|'+texH.toFixed(2)+'|'+(projected?1:0)+'|'+(side||0);
   if(matCache[key]) return matCache[key];
   if(sp.colour.indexOf('lb#') === 0){
-    const m = lbMaterial(sp.colour.slice(3), texW, texH, projected, side);
+    const m = lbMaterial(sp.colour.slice(3), texW, texH, projected, side, resolveSize(sp));
     matCache[key] = m; return m;
   }
   const t = buildTexture(texW, texH, sp);
@@ -1488,7 +1512,7 @@ function captureState(){
   return JSON.stringify({
     v: 2,
     lock: designLocked,
-    surf: SURF_ORDER.map(function(id){ const s = SURF[id].spec; return [s.colour, s.size, s.pattern, s.grout]; }),
+    surf: SURF_ORDER.map(function(id){ const s = SURF[id].spec; return [s.colour, s.size, s.pattern, s.grout, s.customW, s.customH]; }),
     bench: {t:BENCH.type, w:BENCH.wall, c:BENCH.corner, l:BENCH.len, d:BENCH.dep, h:BENCH.h, o:BENCH.off, g:BENCH.leg},
     metal: metalId,
     jets: jetCount,
@@ -1507,7 +1531,7 @@ function applyState(json){
   try {
   SURF_ORDER.forEach(function(id, i){
     const a = st.surf[i];
-    SURF[id].spec = {colour:a[0], size:a[1], pattern:a[2], grout:a[3]};
+    SURF[id].spec = {colour:a[0], size:a[1], pattern:a[2], grout:a[3], customW:a[4], customH:a[5]};
   });
   const bs = st.bench;
   BENCH.type = bs.t; BENCH.wall = bs.w; BENCH.corner = bs.c;
@@ -1827,9 +1851,11 @@ function renderTileUI(){
     cs.appendChild(b);
   });
 
-  // the sample-book materials bake their lay pattern and grout into the maps
+  // sample-book materials bake their lay pattern + grout into the maps, but a
+  // tiled one can still be laid at any (or custom) tile SIZE, so keep Size shown
   const isBook = !!coll.lookbook;
-  $('sec-size').style.display  = isBook ? 'none' : '';
+  const bookTiled = isBook && isLB(spec.colour) && !!(LBMAT[spec.colour.slice(3)] && LBMAT[spec.colour.slice(3)].tile);
+  $('sec-size').style.display  = (isBook && !bookTiled) ? 'none' : '';
   $('sec-pat').style.display   = isBook ? 'none' : '';
   $('sec-grout').style.display = isBook ? 'none' : '';
   const meta = $('lb-meta'); meta.innerHTML = '';
@@ -1856,6 +1882,23 @@ function renderTileUI(){
   SIZES.forEach(function(s){
     zs.appendChild(chip(s.name, s.id === spec.size, function(){ spec.size = s.id; applySurface(uiSurf); renderTileUI(); }));
   });
+  zs.appendChild(chip('Custom…', spec.size === 'custom', function(){
+    spec.size = 'custom'; if(spec.customW == null) spec.customW = 12; if(spec.customH == null) spec.customH = 12;
+    applySurface(uiSurf); renderTileUI();
+  }));
+  if(spec.size === 'custom'){
+    const row = document.createElement('div'); row.className = 'minirow'; row.style.cssText = 'margin-top:6px;gap:5px;align-items:center';
+    const mk = function(k){
+      const inp = document.createElement('input'); inp.type = 'number'; inp.step = '0.25'; inp.min = '0.5'; inp.max = '120';
+      inp.value = spec[k] == null ? 12 : spec[k];
+      inp.style.cssText = 'width:60px;font:inherit;background:#141210;color:#e8e3d8;border:1px solid rgba(255,255,255,0.25);border-radius:2px;padding:3px 5px';
+      inp.addEventListener('change', function(){ spec[k] = Math.max(0.5, Math.min(120, +inp.value || 12)); applySurface(uiSurf); renderTileUI(); });
+      return inp;
+    };
+    const lab = function(t){ const s = document.createElement('span'); s.textContent = t; s.style.color = '#9a948c'; return s; };
+    row.appendChild(mk('customW')); row.appendChild(lab('×')); row.appendChild(mk('customH')); row.appendChild(lab('in'));
+    zs.appendChild(row);
+  }
   const ps = $('pat-chips'); ps.innerHTML = '';
   PATTERNS.forEach(function(p){
     ps.appendChild(chip(p.name, p.id === spec.pattern, function(){ spec.pattern = p.id; applySurface(uiSurf); renderTileUI(); }));
@@ -1874,12 +1917,12 @@ function renderTileUI(){
   });
   $('surf-note').textContent = isLB(spec.colour)
     ? SURF[uiSurf].name + ' — ' + LBMAT[spec.colour.slice(3)].label + ' (4684 sample book).'
-    : SURF[uiSurf].name + ' — ' + colourOf(spec.colour).name + ', ' + sizeOf(spec.size).name + ', ' + groutOf(spec.grout).name + ' grout.';
+    : SURF[uiSurf].name + ' — ' + colourOf(spec.colour).name + ', ' + resolveSize(spec).name + ', ' + groutOf(spec.grout).name + ' grout.';
 }
 $('apply-walls').addEventListener('click', function(){
   const s = SURF[uiSurf].spec;
   ['back','left','right'].forEach(function(id){
-    SURF[id].spec = {colour:s.colour, size:s.size, pattern:s.pattern, grout:s.grout};
+    SURF[id].spec = {colour:s.colour, size:s.size, pattern:s.pattern, grout:s.grout, customW:s.customW, customH:s.customH};
     applySurface(id);
   });
   renderTileUI();
@@ -1887,7 +1930,7 @@ $('apply-walls').addEventListener('click', function(){
 $('apply-every').addEventListener('click', function(){
   const s = SURF[uiSurf].spec;
   SURF_ORDER.forEach(function(id){
-    SURF[id].spec = {colour:s.colour, size:s.size, pattern:s.pattern, grout:s.grout};
+    SURF[id].spec = {colour:s.colour, size:s.size, pattern:s.pattern, grout:s.grout, customW:s.customW, customH:s.customH};
     applySurface(id);
   });
   renderTileUI();
@@ -2308,7 +2351,7 @@ function specSheet(){
       desc = m.label + '  [4684 sample book, ' + m.category + '/' + m.finish + ', repeat ' + m.rep[0] + 'x' + m.rep[1] + ' m]';
     } else {
       const pat = PATTERNS.filter(function(x){ return x.id === sp.pattern; })[0];
-      const sz = sizeOf(sp.size);
+      const sz = resolveSize(sp);
       desc = colourOf(sp.colour).name + '  ' + (sp.pattern === 'hex-grid' ? Math.min(sz.w,sz.h) + '" hex' : sz.name) +
              '  ' + (pat ? pat.name : sp.pattern) + '  /  ' + groutOf(sp.grout).name + ' grout';
     }
