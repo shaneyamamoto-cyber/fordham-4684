@@ -448,6 +448,9 @@ const inner = new THREE.PointLight(0xfff0dc, 0.55, 210, 2); inner.position.set(W
 const matBrass   = new THREE.MeshStandardMaterial({color:0xC39A61, metalness:0.92, roughness:0.28});
 const matBrassDk = new THREE.MeshStandardMaterial({color:0x8A6E44, metalness:0.9,  roughness:0.42});
 const matSteel   = new THREE.MeshStandardMaterial({color:0x9AA0A2, metalness:0.88, roughness:0.34});
+// black lever/handle accent (the Tenzo Signature kit) — deliberately NOT part of
+// the metal-finish set, so the levers stay black whatever finish the taps take
+const matBlack   = new THREE.MeshStandardMaterial({color:0x161616, metalness:0.35, roughness:0.5});
 
 /* ---- metal finish: one global choice, applied to every tap, head, jet,
         valve, drain grate, hinge and pull by mutating the shared materials ---- */
@@ -946,11 +949,72 @@ function buildShowerHead(g, f){
   hd.castShadow = true; g.add(hd);
 }
 function buildValve(g){
-  g.add(localPlate(3.6));
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,1.8,28), matBrass);
-  hub.rotation.z = Math.PI/2; hub.position.set(-1.4,0,0); g.add(hub);
-  const lv = new THREE.Mesh(new THREE.BoxGeometry(1.0,0.85,6.5), matBrass);
-  lv.position.set(-2.2, 1.0, 1.6); lv.rotation.x = -0.5; lv.castShadow = true; g.add(lv);
+  // Tenzo Signature thermostatic trim: a tall rounded-rectangle plate with three
+  // round controls down it — two knobs with short black lever tabs (volume /
+  // diverter) and a larger thermostatic handle with a black lever below.
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 5.2), matBrass);
+  plate.position.x = -0.25; plate.castShadow = true; g.add(plate);
+  const rows = [{ y: 3.3, r: 1.0, kind: 'tab' }, { y: 0.3, r: 1.0, kind: 'tab' }, { y: -3.1, r: 1.45, kind: 'down' }];
+  rows.forEach(function (rw) {
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(rw.r, rw.r, 1.6, 30), matBrass);
+    hub.rotation.z = Math.PI / 2; hub.position.set(-1.05, rw.y, 0); hub.castShadow = true; g.add(hub);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(rw.r * 0.62, rw.r * 0.62, 0.5, 30), matBrassDk);
+    cap.rotation.z = Math.PI / 2; cap.position.set(-1.95, rw.y, 0); g.add(cap);
+    if (rw.kind === 'down') {
+      const lv = new THREE.Mesh(new THREE.BoxGeometry(0.55, 3.6, 0.5), matBlack);
+      lv.position.set(-2.05, rw.y - 2.3, 0); lv.castShadow = true; g.add(lv);
+    } else {
+      const lv = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.62, 2.8), matBlack);
+      lv.position.set(-2.05, rw.y, 1.5); lv.castShadow = true; g.add(lv);
+    }
+  });
+}
+/* Round hand-shower on an adjustable slide bar (the Tenzo Signature kit):
+   two wall brackets, a vertical bar, an adjustable holder with a black clamp
+   lever cradling a round multi-function hand shower, a wall supply elbow and the
+   hose looping up to it. Built in local space where -x points into the room. */
+function buildBarShower(g, f) {
+  const L = f.barLen || 30, so = 2.6;                 // bar length, standoff from wall
+  [L / 2 - 2, -L / 2 + 2].forEach(function (yb) {     // top + bottom brackets
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.5, 32), matBrass);
+    pad.rotation.z = Math.PI / 2; pad.position.set(-0.25, yb, 0); g.add(pad);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, so, 20), matBrass);
+    post.rotation.z = Math.PI / 2; post.position.set(-so / 2, yb, 0); g.add(post);
+  });
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, L, 24), matBrass);
+  bar.position.set(-so, 0, 0); bar.castShadow = true; g.add(bar);
+  // adjustable holder + black clamp lever
+  const hY = L * 0.14;
+  const clamp = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 1.7, 28), matBrass);
+  clamp.rotation.z = Math.PI / 2; clamp.position.set(-so, hY, 0); g.add(clamp);
+  const clampLv = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 1.8, 16), matBlack);
+  clampLv.rotation.x = Math.PI / 2; clampLv.position.set(-so, hY, 1.5); g.add(clampLv);
+  // round hand shower cradled in the holder, angled up into the room
+  const hand = new THREE.Group();
+  hand.position.set(-so - 1.4, hY, 0); hand.rotation.z = 0.6;
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.72, 7.0, 24), matBrass);
+  handle.rotation.z = Math.PI / 2; handle.position.set(-2.4, 0, 0); handle.castShadow = true; hand.add(handle);
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.7, 24), matBrassDk);
+  collar.rotation.z = Math.PI / 2; collar.position.set(-5.8, 0, 0); hand.add(collar);
+  const face = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.15, 1.2, 44), matBrass);
+  face.rotation.z = Math.PI / 2; face.position.set(-6.8, 0, 0); face.castShadow = true; hand.add(face);
+  const spray = new THREE.Mesh(new THREE.CylinderGeometry(2.02, 2.02, 0.28, 44), matBrassDk);
+  spray.rotation.z = Math.PI / 2; spray.position.set(-7.45, 0, 0); hand.add(spray);
+  g.add(hand);
+  // wall supply elbow at the bottom + hose looping up to the hand shower
+  const eY = -L / 2 + 0.5;
+  const ePad = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.5, 32), matBrass);
+  ePad.rotation.z = Math.PI / 2; ePad.position.set(-0.25, eY, 0); g.add(ePad);
+  const elb = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 2.4, 20), matBrass);
+  elb.rotation.z = Math.PI / 2; elb.position.set(-1.4, eY, 0); g.add(elb);
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-2.6, eY, 0),
+    new THREE.Vector3(-7.0, eY - 4.5, 0),
+    new THREE.Vector3(-6.4, hY - 9, 0),
+    new THREE.Vector3(-so - 3.8, hY - 0.4, 0)
+  ]);
+  const hose = new THREE.Mesh(new THREE.TubeGeometry(curve, 44, 0.5, 12, false), matBrassDk);
+  hose.castShadow = true; g.add(hose);
 }
 function buildJet(g){
   g.add(localPlate(2.1, 0.5));
@@ -1107,16 +1171,18 @@ const rainFix = addFixture({
   extra:[{key:'headY', label:'Head height AFF', min:66, max:H-3},
          {key:'dia',   label:'Face diameter',   min:6,  max:24}]
 });
-const headFix = addFixture({
-  id:'head', name:'Shower head', host:'right', hostOptions:['right','left','back'],
-  p:{x:W/2, y:80, z:D/2}, reach:6, shape:'round', locked:true,
-  tagText:'2 · SHOWER HEAD', tagOffset:[-17,7,0], build:buildShowerHead,
-  extra:[{key:'reach', label:'Arm projection', min:3, max:20}]
-});
+// (Wall-mounted shower head deleted from this kit — rain head + hand shower only.)
 const valveFix = addFixture({
   id:'valve', name:'Control valve', host:'right', hostOptions:['right','left','back'],
   p:{x:W/2, y:48, z:D/2}, locked:true,
   tagText:'4 · VALVE', tagOffset:[-14,-9,0], build:buildValve
+});
+// Hand shower + slide bar on the TAP WALL (right), beside the valve — locked.
+const barFix = addFixture({
+  id:'bar', name:'Hand shower + bar', host:'right', hostOptions:['right','left','back'],
+  p:{x:W/2, y:48, z:D/2 + 13}, barLen:30, locked:true,
+  tagText:'3 · HAND SHOWER', tagOffset:[16,9,0], build:buildBarShower,
+  extra:[{key:'barLen', label:'Slide bar length', min:18, max:42}]
 });
 const handleFix = addFixture({
   id:'handle', name:'Door handle', host:'glass', hostOptions:['glass'],
@@ -1417,7 +1483,7 @@ function applyState(json){
   BENCH.len = bs.l; BENCH.dep = bs.d; BENCH.h = bs.h; BENCH.off = bs.o; BENCH.leg = bs.g;
   applyMetal(st.metal || 'brass');
   setDesignLock(!!st.lock);
-  if(jetCount !== st.jets) buildJets(st.jets);
+  if(jetCount !== 0) buildJets(0);   // body jets removed from this kit — never restore them
   st.fx.forEach(function(o){
     for(let k=0;k<fixtures.length;k++){
       const f = fixtures[k];
@@ -1817,7 +1883,7 @@ const BUILD_TREE = [
   {id:'finish',    name:'Metal finish', els:['metal']},
   {id:'enclosure', name:'Enclosure', els:['glass','handle']},
   {id:'seating',   name:'Seating',   els:['bench']},
-  {id:'water',     name:'Water',     els:['rain','head','jets','valve']},
+  {id:'water',     name:'Water',     els:['rain','bar','valve']},
   {id:'drainage',  name:'Drainage',  els:['drain']},
   {id:'storage',   name:'Storage',   els:['niche']}
 ];
@@ -2006,14 +2072,11 @@ const ELEMENTS = {
       locateBtn(n, f);
     }
   },
-  head: {
-    fix:'head',
-    name:'Shower head',
-    summary:function(f){ return (f.shape === 'square' ? 'Square' : 'Round') + ' \u00b7 ' + fmtIn(f.p.y); },
+  bar: {
+    fix:'bar',
+    name:'Hand shower + bar',
+    summary:function(f){ return 'Round \u00b7 ' + fmtIn(f.barLen) + ' bar'; },
     body:function(n, f){
-      n.appendChild(segRow([{id:'round',name:'Round'},{id:'square',name:'Square'}], f.shape, function(sh){
-        f.shape = sh; rebuildBody(f); renderBuildUI(); commit();
-      }));
       extraFields(n, f);
       posFields(n, f);
       locateBtn(n, f);
@@ -2264,8 +2327,7 @@ function specSheet(){
   });
   L.push('  ' + pad('Rain head face', 18) + (rainFix.shape === 'square' ? 'Square ' : 'Round ') + fmtIn(rainFix.dia) +
          ', drop to ' + fmtIn(rainFix.headY) + ' AFF');
-  L.push('  ' + pad('Shower head', 18) + (headFix.shape === 'square' ? 'Square' : 'Round') +
-         ', ' + fmtIn(headFix.reach) + ' arm projection');
+  L.push('  ' + pad('Hand shower', 18) + 'Round, on a ' + fmtIn(barFix.barLen) + ' slide bar (tap wall)');
   L.push('');
   L.push('NOTES');
   L.push('  Pan slopes to the drain; verify fall against the selected floor format before setting.');
@@ -2419,7 +2481,7 @@ if(PSTORE){
    RUN
    ============================================================ */
 buildFloor(); buildCeiling(); buildLeftWall(); buildRightWall(); buildBackWall();
-buildBench(); buildGlass(); buildJets(4); applyMetal('brass');
+buildBench(); buildGlass(); buildJets(0); applyMetal('brass');   // body jets deleted from this kit
 renderTileUI(); renderBuildUI(); renderTileSchedule(); renderFixtureRows(); rebuildFixDims(); updateSubline();
 syncLockAll(); commit(); renderHistoryUI();
 loadDesign(true).then(function(ok){
