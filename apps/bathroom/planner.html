@@ -189,12 +189,7 @@ window.__resources = {
 
     <div style="font:600 10px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;color:rgba(35,35,31,0.55);margin-bottom:10px">MATERIALS</div>
     <div style="border:1px solid rgba(35,35,31,0.14);background:#fbfaf7;padding:10px;border-radius:2px;margin-bottom:18px">
-      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px">
-        <sc-for list="{{ matChips }}" as="m" hint-placeholder-count="10">
-          <div onClick="{{ m.onPick }}" style="{{ m.style }}" title="{{ m.name }}"></div>
-        </sc-for>
-      </div>
-      <div style="{{ armedLabelStyle }}">{{ armedLabel }}</div>
+      <div style="font:400 9px/1.5 'IBM Plex Mono',monospace;color:rgba(35,35,31,0.5);margin-bottom:9px">Click a surface below to select it, then set its finish in the surface editor. (Tiles &amp; colours also live in the 3D model's Materials tab.)</div>
       <div style="position:relative;width:{{ keyW }}px;height:{{ keyH }}px;background:#f0eee8;outline:1px solid rgba(35,35,31,0.2);overflow:hidden">
         <sc-for list="{{ keyRegions }}" as="r" hint-placeholder-count="8">
           <div onClick="{{ r.onClick }}" style="{{ r.style }}"></div>
@@ -459,12 +454,6 @@ window.__resources = {
       </select>
     </div>
     <div style="{{ surfPreview }}"></div>
-    <div style="font:600 8px/1 'IBM Plex Mono',monospace;letter-spacing:0.1em;color:rgba(35,35,31,0.45);margin:12px 0 6px">QUICK MATERIALS</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px">
-      <sc-for list="{{ matChips }}" as="m" hint-placeholder-count="10">
-        <div onClick="{{ m.onPick }}" style="{{ m.style }}" title="{{ m.name }}"></div>
-      </sc-for>
-    </div>
     <div onClick="{{ toggleSplashLink }}" style="{{ splashLinkStyle }}">
       <div style="{{ splashLinkBox }}">{{ splashLinkTick }}</div>
       <div style="font:600 8px/1.4 'IBM Plex Mono',monospace;letter-spacing:0.09em;color:rgba(35,35,31,0.55)">VANITY BACKSPLASH USES THE SHOWER TILE</div>
@@ -1137,7 +1126,7 @@ class Component extends DCLogic {
     wallsOff: {},
     surf: {
       bay:    { fin:"tile",  color:"#9aa79b", tileL:48, tileW:24, shape:"rect", pattern:"offset2" },
-      shelf_wall: { fin:"tile", color:"#9aa79b", tileL:48, tileW:24, shape:"rect", pattern:"offset2" },
+      shelf_wall: { fin:"paint", color:"#e8e3d8", tileL:24, tileW:12, shape:"rect", pattern:"stack" },
       splash: { fin:"stone", color:"#4a5442", tileL:60, tileW:45, shape:"rect", pattern:"stack" },
       wall:   { fin:"paint", color:"#e8e3d8", tileL:24, tileW:12, shape:"rect", pattern:"stack" },
       floor:  { fin:"stone", color:"#bdb5a6", tileL:24, tileW:24, shape:"rect", pattern:"offset2" },
@@ -1333,7 +1322,9 @@ class Component extends DCLogic {
         // the shelf wall is a brand new independent zone — seed it from whatever the
         // shower currently shows so it starts looking identical, then it's free to diverge
         if (k === "shelf_wall" && !cur) {
-          nsurf[k] = Object.assign({}, nsurf.bay_back || nsurf.bay);
+          // the shelf wall is its OWN surface — plain painted wall by default so
+          // the shower tile does NOT run behind the floating shelves
+          nsurf[k] = { fin: "paint", color: "#e8e3d8", tileL: 24, tileW: 12, shape: "rect", pattern: "stack" };
           surfAdd++;
           return;
         }
