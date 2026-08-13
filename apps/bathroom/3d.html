@@ -548,7 +548,20 @@ function meshName(it) {
   return nm;
 }
 
+// Tag every mesh a fitting produces with its item id (box/hwMesh/wall all go
+// through room.add), so a click in the 3D scene can be mapped back to the
+// fitting and open its editor — no scrolling the list.
+let __curItem = null;
+const __roomAdd = room.add.bind(room);
+room.add = function () {
+  if (__curItem) for (let i = 0; i < arguments.length; i++) {
+    const o = arguments[i];
+    if (o) { o.userData.itemId = __curItem; if (o.traverse) o.traverse((c) => { c.userData.itemId = __curItem; }); }
+  }
+  return __roomAdd.apply(room, arguments);
+};
 S.items.forEach(it => {
+  __curItem = it.id;
   let mat = MAT_FOR[it.id] || MAT.walnut;
   if (it.swatch) {
     const key = 'sw' + it.swatch.replace('#', '');
@@ -752,6 +765,7 @@ S.items.forEach(it => {
 });
 
 // vanity drawer fronts + pulls, driven by the same numbers as the elevation
+__curItem = 'van';
 (function () {
   const v = S.items.filter(i => i.id === 'van')[0];
   if (!v) return;
@@ -772,6 +786,7 @@ S.items.forEach(it => {
 // backsplash trim reveal on the rounded panel edge — ONE continuous rounded outline,
 // not three mitred square boxes, so it follows the panel's rounded top corners instead
 // of cutting them off square. The bottom stays uncovered (it sits behind the cabinet).
+__curItem = 'splash';
 (function () {
   const sp = S.items.filter(i => i.id === 'splash')[0];
   if (!sp) return;
@@ -787,6 +802,8 @@ S.items.forEach(it => {
   m.position.copy(P(sp.x + sp.w / 2, sp.y + sp.h / 2, -0.9));
   room.add(m);
 })();
+
+__curItem = null; room.add = __roomAdd;   // stop tagging; lights/rig are not fittings
 
 const stage = document.querySelector('three-d-stage');
 const { THREE: T3 } = await stage.ready;
@@ -1223,6 +1240,37 @@ document.getElementById('srcSub').textContent =
   if (wantTab) { sessionStorage.removeItem('b-tab'); setTab(wantTab); }
   var wantSel = sessionStorage.getItem('b-select');
   if (wantSel) { sessionStorage.removeItem('b-select'); if (byId[wantSel]) { selId = wantSel; setTab('fix'); } }
+
+  // Click a fitting in the 3D scene to edit it — raycast the pointer, map the
+  // hit mesh back to its fitting (tagged via userData.itemId), open its editor.
+  (function attachScenePick() {
+    const cv = stage._renderer && stage._renderer.domElement;
+    if (!cv) return;
+    const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+    let dn = null;
+    cv.addEventListener('pointerdown', (e) => { dn = { x: e.clientX, y: e.clientY }; });
+    cv.addEventListener('pointerup', (e) => {
+      const s = dn; dn = null;
+      if (!s || Math.abs(e.clientX - s.x) > 5 || Math.abs(e.clientY - s.y) > 5) return;  // ignore drags (orbit)
+      const r = cv.getBoundingClientRect();
+      ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+      ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ray.setFromCamera(ndc, stage._camera);
+      const hits = ray.intersectObjects(room.children, true);
+      for (const h of hits) {
+        let o = h.object, id = null;
+        while (o && id == null) { if (o.userData && o.userData.itemId) id = o.userData.itemId; o = o.parent; }
+        if (id && byId[id]) {
+          selId = id; setTab('fix'); if (typeof openGroups !== 'undefined') openGroups[groupOf(id)] = true;
+          renderFix();
+          const row = document.querySelector('#pane-fix [data-id="' + id + '"]');
+          if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+          toast('Editing ' + (byId[id].name || id));
+          break;
+        }
+      }
+    });
+  })();
   renderSpec(); renderFix(); renderMat();
 })();
 
