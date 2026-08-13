@@ -79,19 +79,20 @@ const FALLBACK = window.BATHROOM_BASELINE;
 // deep-clone the baseline so editing the live design never mutates the shared
 // window.BATHROOM_BASELINE (which would corrupt the built-in default + undo)
 const CLONE = (o) => JSON.parse(JSON.stringify(o));
-// Permanent design changes (2026-08-13): the metal finish throughout is ROSE
-// GOLD, and the paired vanity sconces are removed. Applied as a migration so
-// existing saved work slots and locked versions pick the changes up on load.
-const ROSE_GOLD = '#b76e79', OLD_BRASS = '#c9a35c';
+// Permanent design changes (2026-08-13): the metal finish throughout is a warm
+// BRUSHED GOLD, and the paired vanity sconces are removed. Applied as a
+// migration so existing saved work slots and locked versions pick the changes
+// up on load — including any that a prior rose-gold pass had turned pink.
+const BRUSHED_GOLD = '#c9a35c', PINK_ROSE = '#b76e79';
 function migrateDesign(d) {
   if (d && Array.isArray(d.items)) {
     d.items = d.items.filter((i) => i && i.id !== 'light' && i.id !== 'light2');
     d.items.forEach((i) => {
-      if (i.swatch && String(i.swatch).toLowerCase() === OLD_BRASS) i.swatch = ROSE_GOLD;
-      if (i.tone && String(i.tone).toLowerCase() === OLD_BRASS) i.tone = ROSE_GOLD;
+      if (i.swatch && String(i.swatch).toLowerCase() === PINK_ROSE) i.swatch = BRUSHED_GOLD;
+      if (i.tone && String(i.tone).toLowerCase() === PINK_ROSE) i.tone = BRUSHED_GOLD;
     });
   }
-  if (d && d.trimTone === 'copper') d.trimTone = 'rose';
+  if (d && (d.trimTone === 'rose' || d.trimTone === 'copper')) d.trimTone = 'gold';
   return d;
 }
 function loadLayout() {
@@ -162,8 +163,8 @@ const MAT = {
   floor:    new THREE.MeshStandardMaterial({ name: 'floortile',color: sc('floor', 0xbdb5a6), roughness: 0.7,  metalness: 0.02 }),
   plaster:  new THREE.MeshStandardMaterial({ name: 'plaster',  color: sc('wall', 0xe8e3d8), roughness: 0.92, metalness: 0.0, side: THREE.FrontSide }),
   white:    new THREE.MeshStandardMaterial({ name: 'white',    color: 0xf7f6f2, roughness: 0.28, metalness: 0.02 }),
-  brass:    new THREE.MeshStandardMaterial({ name: 'brass',    color: 0xb76e79, roughness: 0.32, metalness: 0.38 }),
-  trim:     new THREE.MeshStandardMaterial({ name: 'trim',     color: S.trimTone === 'rose' ? 0xb76e79 : S.trimTone === 'copper' ? 0xb87a55 : 0x7d6552, roughness: 0.35, metalness: 0.38 }),
+  brass:    new THREE.MeshStandardMaterial({ name: 'brass',    color: 0xc9a35c, roughness: 0.32, metalness: 0.38 }),
+  trim:     new THREE.MeshStandardMaterial({ name: 'trim',     color: S.trimTone === 'gold' ? 0xc9a35c : S.trimTone === 'rose' ? 0xb76e79 : S.trimTone === 'copper' ? 0xb87a55 : 0x7d6552, roughness: 0.35, metalness: 0.38 }),
   glass:    new THREE.MeshPhysicalMaterial({ name: 'glass',    color: 0xcfe0e3, roughness: 0.08, metalness: 0.0, transmission: 0.35, transparent: true, opacity: 0.62, thickness: 0.02 }),
   solid:    new THREE.MeshStandardMaterial({ name: 'solidsurface', color: 0xe6e0d4, roughness: 0.4, metalness: 0.02 }),
   litvoid:  new THREE.MeshStandardMaterial({ name: 'litniche', color: 0xffd9a0, roughness: 0.5, metalness: 0.0, emissive: 0xffb765, emissiveIntensity: 0.85 }),
@@ -726,6 +727,10 @@ room.add = function () {
   }
   return __roomAdd.apply(room, arguments);
 };
+// the vanity splash is a MATERIAL ZONE, not a fixed-colour fitting: it must be
+// driven by surf.splash (the "Vanity splash" picker) so its tile/colour can
+// change, so it keeps its zone material (splashtile) instead of a swatch tint.
+const SWATCH_SKIP = { glass: 1, splash: 1 };
 S.items.forEach(it => {
   __curItem = it.id;
   let mat = MAT_FOR[it.id] || MAT.walnut;
@@ -737,7 +742,7 @@ S.items.forEach(it => {
         roughness: /c9a35c|b76e79|7d6552|b87a55/i.test(it.swatch) ? 0.32 : 0.6,
         metalness: /c9a35c|b76e79|7d6552|b87a55/i.test(it.swatch) ? 0.38 : 0.05 });
     }
-    if (it.id !== 'glass') mat = MAT[key];
+    if (!SWATCH_SKIP[it.id]) mat = MAT[key];
   }
   // Hard rule (2026-08-11): nothing pokes through the ceiling — casework
   // like the standing cabinet is clamped so its top never passes the
@@ -1090,11 +1095,11 @@ document.getElementById('srcSub').textContent =
   // renders in the right material without touching the build code. Move it
   // afterward with the edit fields.
   const ADD = [
-    { base: 'hook',   name: 'Robe hook',      item: { x: 122, w: 2.5, y: 62, h: 3, dep: 3, face: 0, shape: 'round', swatch: '#b76e79' } },
-    { base: 'towel',  name: 'Towel bar',      item: { x: 118, w: 24, y: 48, h: 2, dep: 4, face: 0, swatch: '#b76e79' } },
-    { base: 'tring',  name: 'Towel ring',     item: { x: 122, w: 7, y: 40, h: 7, dep: 4, face: 0, swatch: '#b76e79' } },
-    { base: 'grab',   name: 'Grab bar',       item: { x: 4, w: 24, y: 34, h: 1.5, dep: 2.5, face: 14.5, swatch: '#b76e79' } },
-    { base: 'tp',     name: 'Paper holder',   item: { x: 150, w: 6, y: 26, h: 3, dep: 4, face: 0, swatch: '#b76e79' } },
+    { base: 'hook',   name: 'Robe hook',      item: { x: 122, w: 2.5, y: 62, h: 3, dep: 3, face: 0, shape: 'round', swatch: '#c9a35c' } },
+    { base: 'towel',  name: 'Towel bar',      item: { x: 118, w: 24, y: 48, h: 2, dep: 4, face: 0, swatch: '#c9a35c' } },
+    { base: 'tring',  name: 'Towel ring',     item: { x: 122, w: 7, y: 40, h: 7, dep: 4, face: 0, swatch: '#c9a35c' } },
+    { base: 'grab',   name: 'Grab bar',       item: { x: 4, w: 24, y: 34, h: 1.5, dep: 2.5, face: 14.5, swatch: '#c9a35c' } },
+    { base: 'tp',     name: 'Paper holder',   item: { x: 150, w: 6, y: 26, h: 3, dep: 4, face: 0, swatch: '#c9a35c' } },
     { base: 'board',  name: 'Shelf board',    item: { x: 116, w: 24, y: 52, h: 2, dep: 8, face: 0, swatch: '#8a5325' } },
     { base: 'medcab', name: 'Medicine cabinet', item: { x: 116, w: 24, y: 44, h: 30, dep: 5, face: 0, swatch: '#f7f6f2' } },
     { base: 'basin2', name: 'Second basin',   item: { x: 118, w: 22, y: 34.5, h: 4, dep: 13.8, face: 0, swatch: '#f7f6f2' } },

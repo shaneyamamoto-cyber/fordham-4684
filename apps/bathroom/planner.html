@@ -975,8 +975,8 @@ const FITTINGS = [
   { id:"van", name:"Vanity", x:66.25, w:36, y:15, h:19, dep:12, face:0, locked:true, swatch:"#7a4a2b", ink:"#f4ece3", note:"Wall-hung mid-tone hardwood, flat slab. LOCKED RULE (2026-08-05): left edge 2\" off the cabinet-return wall (x=62.5), right edge 2\" of white wall before the door casing (x=106) — 43.5\" wide, 12\" cabinet depth, 20\" tall, underside 9\" AFF so the floor runs under it. Two full-width drawers left, three small drawers right" },
   { id:"vessel", name:"Wall basin", x:67.75, w:22, y:34.5, h:4, dep:13.8, face:0, swatch:"#f6f4ef", ink:"#2c3a30", note:"OFFSET LEFT on the cabinet — 23.6\" ceramic basin, flush to the cabinet's left end, projecting 13.8\" (proud of the 12\" cabinet). Rim 36\" AFF" },
   { id:"stone", name:"Countertop", x:91.5, w:10, y:34.25, h:1.5, dep:13.8, face:0, swatch:"#d8cdb6", ink:"#2c3a30", note:"10.9\" stone countertop, stepped up on the RIGHT. Separated from the basin by a 1.5\" open channel. 23.6 + 1.5 + 10.9 = 36\" exactly" },
-  { id:"tap", name:"Wall spout", x:76, w:8, y:42.5, h:2, dep:8, face:0, shape:"soft", swatch:"#b76e79", ink:"#2c3a30", note:"WALL-MOUNTED brushed-brass single-lever set: squared spout on a square wall plate, 4\" above the basin rim (rim at 38.5\" AFF)" },
-  { id:"taphl", name:"Mixer lever", x:88, w:3.5, y:42.5, h:2, dep:3, face:0, shape:"soft", swatch:"#b76e79", ink:"#2c3a30", note:"Single brushed-brass lever on a square wall plate, 4\" above the basin rim, beside the spout — one handle, not a pair" },
+  { id:"tap", name:"Wall spout", x:76, w:8, y:42.5, h:2, dep:8, face:0, shape:"soft", swatch:"#c9a35c", ink:"#2c3a30", note:"WALL-MOUNTED brushed-brass single-lever set: squared spout on a square wall plate, 4\" above the basin rim (rim at 38.5\" AFF)" },
+  { id:"taphl", name:"Mixer lever", x:88, w:3.5, y:42.5, h:2, dep:3, face:0, shape:"soft", swatch:"#c9a35c", ink:"#2c3a30", note:"Single brushed-brass lever on a square wall plate, 4\" above the basin rim, beside the spout — one handle, not a pair" },
   { id:"hoodlight", name:"Hooded light — over mirror", x:74.25, w:20, y:76.13, h:5, dep:5, face:0, swatch:"#b87a55", ink:"#2c3a30", note:"COPPER hooded picture light, shade angled down over the mirror, centred above it. Warm, downward-facing — in addition to the two flanking sconces, not instead of them" },
   { id:"mir", name:"Mirror", x:68.75, w:32, y:50, h:21.5, dep:2, face:0, frame:1.25, frameTone:"#b87a55", radius:13, swatch:"#eef1ee", ink:"#2c3a30", note:"STADIUM / pill shape — fully rounded left and right ends, slim copper frame. Centred on the 60\" SPLASH PANEL, not on the offset basin" },
   { id:"dcase", name:"Door casing", x:108, w:35, y:0, h:82.5, dep:0.75, face:0, swatch:"#eceae3", ink:"#2c3a30", note:"2.5\" flat casing on both legs and the head, running all the way DOWN TO THE FLOOR — the baseboard dies into it" },
@@ -984,28 +984,29 @@ const FITTINGS = [
   { id:"glass", name:"Glass panel", x:32, w:30, y:20, h:56, dep:0.5, face:0, wall:"end", d:0, swatch:"#cfe0e3", ink:"#2c3a30", note:"Frameless panel on the open long side of the tub — 30\" of the 60\" run, sitting on the 20\" rim" },
   { id:"shelf", name:"Three floating shelves", x:32, w:12, y:34, h:30, dep:18, face:14.5, shelfN:3, shelfGap:12, shelfThick:2, led:true, swatch:"#a8763f", ink:"#f4ece3", note:"Floating boards, no brackets — set the count, spacing, thickness and depth below" },
   { id:"nichesh", name:"Lit tile niche", x:6, w:30, y:40.25, h:14, dep:4, face:14.5, recess:true, swatch:"#cfd8d3", ink:"#2c3a30", note:"RECESSED 4\" INTO the tub tap wall — tile-lined back and reveals, LED strip washing each shelf. Never a projecting shelf" },
-  { id:"rain", name:"Rainhead", x:11, w:10, y:80, h:4, dep:12, face:14.5, swatch:"#b76e79", ink:"#2c3a30", note:"Brushed-brass rainhead on a ceiling-side arm, 80\" AFF on the tap wall" },
-  { id:"mixer", name:"Mixer / diverter", x:13, w:6, y:41.38, h:6, dep:3, face:14.5, swatch:"#b76e79", ink:"#2c3a30", note:"Thermostatic valve + diverter, clear of the niche on the open side of the tap wall" },
-  { id:"spout", name:"Tub spout", x:13, w:6, y:26, h:3, dep:6, face:14.5, swatch:"#b76e79", ink:"#2c3a30", note:"Wall spout 6\" above the 20\" tub rim" },
-  { id:"bar2", name:"Towel bar — tub upper", x:38.33, w:18, y:27.5, h:2, dep:4, face:14.5, wall:"slope", d:14, locked:true, swatch:"#b76e79", ink:"#2c3a30", note:"18\" brass bar on the DORMER (sloped) wall, tub side — LOCKED 2026-08-05" },
-  { id:"bar3", name:"Towel bar — tub lower", x:36.72, w:18, y:22.5, h:2, dep:4, face:14.5, wall:"slope", d:14, locked:true, swatch:"#b76e79", ink:"#2c3a30", note:"Second 18\" brass bar, DORMER (sloped) wall below the upper — LOCKED 2026-08-05" },
-  { id:"ring", name:"Hand towel ring", x:62.5, w:7, y:40.63, h:7.25, dep:4, face:0, swatch:"#b76e79", ink:"#2c3a30", note:"Brass ring on the vanity return, beside the basin" },
+  { id:"rain", name:"Rainhead", x:11, w:10, y:80, h:4, dep:12, face:14.5, swatch:"#c9a35c", ink:"#2c3a30", note:"Brushed-brass rainhead on a ceiling-side arm, 80\" AFF on the tap wall" },
+  { id:"mixer", name:"Mixer / diverter", x:13, w:6, y:41.38, h:6, dep:3, face:14.5, swatch:"#c9a35c", ink:"#2c3a30", note:"Thermostatic valve + diverter, clear of the niche on the open side of the tap wall" },
+  { id:"spout", name:"Tub spout", x:13, w:6, y:26, h:3, dep:6, face:14.5, swatch:"#c9a35c", ink:"#2c3a30", note:"Wall spout 6\" above the 20\" tub rim" },
+  { id:"bar2", name:"Towel bar — tub upper", x:38.33, w:18, y:27.5, h:2, dep:4, face:14.5, wall:"slope", d:14, locked:true, swatch:"#c9a35c", ink:"#2c3a30", note:"18\" brass bar on the DORMER (sloped) wall, tub side — LOCKED 2026-08-05" },
+  { id:"bar3", name:"Towel bar — tub lower", x:36.72, w:18, y:22.5, h:2, dep:4, face:14.5, wall:"slope", d:14, locked:true, swatch:"#c9a35c", ink:"#2c3a30", note:"Second 18\" brass bar, DORMER (sloped) wall below the upper — LOCKED 2026-08-05" },
+  { id:"ring", name:"Hand towel ring", x:62.5, w:7, y:40.63, h:7.25, dep:4, face:0, swatch:"#c9a35c", ink:"#2c3a30", note:"Brass ring on the vanity return, beside the basin" },
   { id:"wc", name:"Toilet", x:169, w:16, y:0, h:29, dep:26, face:0, wall:"end", d:26.75, flip:true, swatch:"#f7f6f2", ink:"#2c3a30", note:"Against the right end wall, shifted toward the door end — seated you look straight down the room at the shower" }
 ];
 
-// Permanent design changes (2026-08-13): rose-gold metal throughout, and the
-// paired vanity sconces removed. Applied on load so an existing saved design
-// picks the changes up (idempotent — safe to run every time).
-var ROSE_GOLD = "#b76e79", OLD_BRASS = "#c9a35c";
+// Permanent design changes (2026-08-13): warm BRUSHED GOLD metal throughout,
+// and the paired vanity sconces removed. Applied on load so an existing saved
+// design picks the changes up (idempotent) — including any that a prior
+// rose-gold pass had turned pink.
+var BRUSHED_GOLD = "#c9a35c", PINK_ROSE = "#b76e79";
 function migrateDesign(d) {
   if (d && Array.isArray(d.items)) {
     d.items = d.items.filter(function (i) { return i && i.id !== "light" && i.id !== "light2"; });
     d.items.forEach(function (i) {
-      if (i.swatch && String(i.swatch).toLowerCase() === OLD_BRASS) i.swatch = ROSE_GOLD;
-      if (i.tone && String(i.tone).toLowerCase() === OLD_BRASS) i.tone = ROSE_GOLD;
+      if (i.swatch && String(i.swatch).toLowerCase() === PINK_ROSE) i.swatch = BRUSHED_GOLD;
+      if (i.tone && String(i.tone).toLowerCase() === PINK_ROSE) i.tone = BRUSHED_GOLD;
     });
   }
-  if (d && d.trimTone === "copper") d.trimTone = "rose";
+  if (d && (d.trimTone === "rose" || d.trimTone === "copper")) d.trimTone = "gold";
   return d;
 }
 
@@ -1097,8 +1098,9 @@ class Component extends DCLogic {
   // one control changes every metal fitting at once; one control changes every wood
   // surface at once — real preset styles, not a single decorative trim edge
   static METAL_PRESETS = [
+    { v:"gold", label:"Brushed gold", hex:"#c9a35c" },
     { v:"copper", label:"Copper", hex:"#b87a55" },
-    { v:"rose", label:"Rose gold", hex:"#b76e79" },
+    { v:"rose", label:"Rose gold", hex:"#c39a93" },
     { v:"bronze", label:"Aged bronze", hex:"#7d6552" },
     { v:"nickel", label:"Brushed nickel", hex:"#c3c7c6" },
     { v:"chrome", label:"Chrome", hex:"#d6dadb" },
@@ -1151,7 +1153,7 @@ class Component extends DCLogic {
     versions: [],
     versionName: "",
     current: null,
-    trimTone: "rose",
+    trimTone: "gold",
     woodTone: "teak",
     drawersLeft: 2,
     drawersRight: 3,
@@ -2072,7 +2074,7 @@ class Component extends DCLogic {
       "4. x=" + vwx0 + "–" + vwx1 + '": the ' + (vwx1 - vwx0) + '" vanity wall (7" tiled return + ' + van.w + '" vanity + 7" tiled return), standing ' + bump.depth + '" proud of the bay to its left.',
       "   • Wall-hung walnut vanity x=" + van.x + "–" + (van.x + van.w) + '", ' + van.w + '" wide, ' + van.dep + '" deep, underside ' + van.y + '" AFF, solid counter top at ' + (van.y + van.h) + '" AFF; baseboard runs behind it. NO undermount and NO integrated basin — the counter is unbroken.',
       "   • VESSEL SINK sitting ON TOP of that counter: x=" + this.getOr("vessel").x + "–" + (this.getOr("vessel").x + this.getOr("vessel").w) + '", ' + this.getOr("vessel").w + '" long x ' + this.getOr("vessel").dep + '" front-to-back x ' + this.getOr("vessel").h + '" tall, matte white, rim at ' + (this.getOr("vessel").y + this.getOr("vessel").h) + '" AFF, centred on the counter.',
-      "   • BACKSPLASH PANEL behind the vanity: x=" + this.getOr("splash").x + "–" + (this.getOr("splash").x + this.getOr("splash").w) + '", from ' + this.getOr("splash").y + '" to ' + (this.getOr("splash").y + this.getOr("splash").h) + '" AFF, large-format stone tile with GENEROUSLY ROUNDED TOP CORNERS (' + this.getOr("splash").radius + '" radius) and a thin ' + (s.trimTone === "rose" ? "ROSE GOLD" : "AGED BRONZE") + ' metal trim following the rounded edge. The wall outside this panel is plain plaster.',
+      "   • BACKSPLASH PANEL behind the vanity: x=" + this.getOr("splash").x + "–" + (this.getOr("splash").x + this.getOr("splash").w) + '", from ' + this.getOr("splash").y + '" to ' + (this.getOr("splash").y + this.getOr("splash").h) + '" AFF, large-format stone tile with GENEROUSLY ROUNDED TOP CORNERS (' + this.getOr("splash").radius + '" radius) and a thin ' + (s.trimTone === "gold" ? "BRUSHED GOLD" : s.trimTone === "rose" ? "ROSE GOLD" : s.trimTone === "copper" ? "COPPER" : "AGED BRONZE") + ' metal trim following the rounded edge. The wall outside this panel is plain plaster.',
       "   • BASEBOARD: " + this.getOr("base").h + '" painted baseboard running the FULL length of the wall and CONTINUING UNDER the wall-hung vanity, unbroken. Where it reaches the door it DIES INTO the door casing — it does not mitre around it or stop short of it.',
       "   • DOOR CASING: " + Math.round(((this.getOr("dcase").w - this.getOr("door").w) / 2) * 100) / 100 + '" flat painted casing on both legs and across the head, standing ' + this.getOr("dcase").dep + '" proud of the wall. The legs run ALL THE WAY DOWN TO THE FLOOR — no plinth block, no gap under them, and the floor tile runs up to meet them.',
       "   • SOLID SURFACE SLAB to the RIGHT of the vessel: x=" + this.getOr("stone").x + "–" + (this.getOr("stone").x + this.getOr("stone").w) + '", ' + this.getOr("stone").w + '" x ' + this.getOr("stone").dep + '" x ' + this.getOr("stone").h + '" thick, stepped up on the counter, cream terrazzo-speckled.',
@@ -4180,7 +4182,7 @@ class Component extends DCLogic {
       },
       vanParts: vanParts,
       trimTone: s.trimTone,
-      trimLabel: s.trimTone === "rose" ? "ROSE GOLD" : s.trimTone === "copper" ? "COPPER" : "AGED BRONZE",
+      trimLabel: s.trimTone === "gold" ? "BRUSHED GOLD" : s.trimTone === "rose" ? "ROSE GOLD" : s.trimTone === "copper" ? "COPPER" : s.trimTone === "nickel" ? "BRUSHED NICKEL" : s.trimTone === "chrome" ? "CHROME" : s.trimTone === "black" ? "MATTE BLACK" : s.trimTone === "stainless" ? "STAINLESS" : "AGED BRONZE",
       trimStyle: { width: "100%", padding: "7px 9px", borderRadius: "2px", cursor: "pointer",
         border: "1px solid " + trimHex, background: trimHex, color: "#fbfaf7",
         font: "600 10px/1 'IBM Plex Mono',monospace", letterSpacing: "0.08em" },
