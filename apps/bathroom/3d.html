@@ -1241,35 +1241,91 @@ document.getElementById('srcSub').textContent =
   var wantSel = sessionStorage.getItem('b-select');
   if (wantSel) { sessionStorage.removeItem('b-select'); if (byId[wantSel]) { selId = wantSel; setTab('fix'); } }
 
-  // Click a fitting in the 3D scene to edit it — raycast the pointer, map the
-  // hit mesh back to its fitting (tagged via userData.itemId), open its editor.
+  // Click a fitting in the 3D scene to edit it, or drag it along its wall to
+  // move it (like the shower). Meshes are tagged with userData.itemId; drags
+  // raycast onto a plane through the pick point and translate the fitting's
+  // meshes live, committing to the shared work slot on release.
   (function attachScenePick() {
     const cv = stage._renderer && stage._renderer.domElement;
+    const controls = stage._controls;
     if (!cv) return;
-    const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-    let dn = null;
-    cv.addEventListener('pointerdown', (e) => { dn = { x: e.clientX, y: e.clientY }; });
-    cv.addEventListener('pointerup', (e) => {
-      const s = dn; dn = null;
-      if (!s || Math.abs(e.clientX - s.x) > 5 || Math.abs(e.clientY - s.y) > 5) return;  // ignore drags (orbit)
+    const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(), hit = new THREE.Vector3();
+    const SNAP = 0.25, RUN = X1 - X0;
+    let dn = null, fixDrag = null;
+    function setRay(cx, cy) {
       const r = cv.getBoundingClientRect();
-      ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
-      ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ndc.x = ((cx - r.left) / r.width) * 2 - 1;
+      ndc.y = -((cy - r.top) / r.height) * 2 + 1;
       ray.setFromCamera(ndc, stage._camera);
+    }
+    function pick(cx, cy) {
+      setRay(cx, cy);
       const hits = ray.intersectObjects(room.children, true);
       for (const h of hits) {
         let o = h.object, id = null;
         while (o && id == null) { if (o.userData && o.userData.itemId) id = o.userData.itemId; o = o.parent; }
-        if (id && byId[id]) {
-          selId = id; setTab('fix'); if (typeof openGroups !== 'undefined') openGroups[groupOf(id)] = true;
-          renderFix();
-          const row = document.querySelector('#pane-fix [data-id="' + id + '"]');
-          if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
-          toast('Editing ' + (byId[id].name || id));
-          break;
-        }
+        if (id && byId[id]) return { id: id, point: h.point };
       }
-    });
+      return null;
+    }
+    function meshesFor(id) { const a = []; room.traverse((o) => { if (o.userData && o.userData.itemId === id) a.push(o); }); return a; }
+    function openEditor(id) {
+      selId = id; setTab('fix'); renderFix();
+      const row = document.querySelector('#pane-fix [data-id="' + id + '"]');
+      if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+    }
+    cv.addEventListener('pointerdown', (e) => {
+      dn = { x: e.clientX, y: e.clientY, moved: false };
+      const info = pick(e.clientX, e.clientY);
+      if (!info) return;                                  // empty space → let OrbitControls pan/rotate
+      const it = byId[info.id];
+      if (!it || it.locked || it.wall === 'end' || it.wall === 'slope') { dn.pickId = info.id; return; } // click-select only
+      plane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 0, 1), info.point);
+      setRay(e.clientX, e.clientY);
+      if (!ray.ray.intersectPlane(plane, hit)) return;
+      fixDrag = { id: info.id, meshes: meshesFor(info.id), x: it.x, y: it.y,
+        offX: it.x - (hit.x / IN + CX), offY: it.y - (hit.y / IN) };
+      if (controls) controls.enabled = false;            // suppress orbit while dragging a fitting
+      e.stopPropagation(); e.preventDefault();
+      cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
+    }, true);
+    cv.addEventListener('pointermove', (e) => {
+      if (dn && (Math.abs(e.clientX - dn.x) > 4 || Math.abs(e.clientY - dn.y) > 4)) dn.moved = true;
+      if (!fixDrag) return;
+      e.stopPropagation();
+      setRay(e.clientX, e.clientY);
+      if (!ray.ray.intersectPlane(plane, hit)) return;
+      const it = byId[fixDrag.id];
+      let nx = Math.round((hit.x / IN + CX + fixDrag.offX) / SNAP) * SNAP;
+      let ny = Math.round((hit.y / IN + fixDrag.offY) / SNAP) * SNAP;
+      nx = Math.max(0, Math.min(nx, RUN - it.w));
+      ny = Math.max(0, Math.min(ny, H - it.h));
+      const dwx = (nx - fixDrag.x) * IN, dwy = (ny - fixDrag.y) * IN;
+      fixDrag.meshes.forEach((m) => { m.position.x += dwx; m.position.y += dwy; });
+      fixDrag.x = nx; fixDrag.y = ny;
+    }, true);
+    function end(e) {
+      if (fixDrag) {
+        if (e) { e.stopPropagation(); }
+        const it = byId[fixDrag.id];
+        it.x = fixDrag.x; it.y = fixDrag.y;
+        const state = seedState();
+        state.items = state.items.map((z) => z.id === fixDrag.id ? Object.assign({}, z, { x: fixDrag.x, y: fixDrag.y }) : z);
+        writeState(state);
+        selId = fixDrag.id; renderSpec(); renderFix();
+        toast('Moved ' + (it.name || fixDrag.id) + ' → x ' + fixDrag.x + '″ · y ' + fixDrag.y + '″');
+        fixDrag = null;
+        if (controls) controls.enabled = true;
+        return;
+      }
+      if (dn && !dn.moved) {
+        const id = dn.pickId || (pick(e.clientX, e.clientY) || {}).id;
+        if (id && byId[id]) { openEditor(id); toast('Editing ' + (byId[id].name || id)); }
+      }
+      dn = null;
+    }
+    cv.addEventListener('pointerup', end, true);
+    cv.addEventListener('pointercancel', () => { if (fixDrag) { fixDrag = null; if (controls) controls.enabled = true; } }, true);
   })();
   renderSpec(); renderFix(); renderMat();
 })();
