@@ -79,6 +79,21 @@ const FALLBACK = window.BATHROOM_BASELINE;
 // deep-clone the baseline so editing the live design never mutates the shared
 // window.BATHROOM_BASELINE (which would corrupt the built-in default + undo)
 const CLONE = (o) => JSON.parse(JSON.stringify(o));
+// Permanent design changes (2026-08-13): the metal finish throughout is ROSE
+// GOLD, and the paired vanity sconces are removed. Applied as a migration so
+// existing saved work slots and locked versions pick the changes up on load.
+const ROSE_GOLD = '#b76e79', OLD_BRASS = '#c9a35c';
+function migrateDesign(d) {
+  if (d && Array.isArray(d.items)) {
+    d.items = d.items.filter((i) => i && i.id !== 'light' && i.id !== 'light2');
+    d.items.forEach((i) => {
+      if (i.swatch && String(i.swatch).toLowerCase() === OLD_BRASS) i.swatch = ROSE_GOLD;
+      if (i.tone && String(i.tone).toLowerCase() === OLD_BRASS) i.tone = ROSE_GOLD;
+    });
+  }
+  if (d && d.trimTone === 'copper') d.trimTone = 'rose';
+  return d;
+}
 function loadLayout() {
   try {
     // LIVE-FIRST: the planner autosaves every edit (items, surf fills, shell)
@@ -89,20 +104,20 @@ function loadLayout() {
     if (w) {
       const d = JSON.parse(w);
       if (d && d.items && d.items.length) {
-        return { data: Object.assign(CLONE(FALLBACK), d), name: 'working design — live',
+        return { data: migrateDesign(Object.assign(CLONE(FALLBACK), d)), name: 'working design — live',
           note: 'follows the planner as you edit' };
       }
     }
     const raw = localStorage.getItem('yamazina.bathroom.versions.v1');
-    if (!raw) return { data: CLONE(FALLBACK), name: 'built-in plan', note: 'no saved version found' };
+    if (!raw) return { data: migrateDesign(CLONE(FALLBACK)), name: 'built-in plan', note: 'no saved version found' };
     const d = JSON.parse(raw);
     const vs = d.versions || [];
-    if (!vs.length) return { data: CLONE(FALLBACK), name: 'built-in plan', note: 'planner has no locked versions yet' };
+    if (!vs.length) return { data: migrateDesign(CLONE(FALLBACK)), name: 'built-in plan', note: 'planner has no locked versions yet' };
     const pick = vs.filter(v => v.name === d.current)[0] || vs.slice().sort((a, b) => b.ts - a.ts)[0];
-    return { data: Object.assign(CLONE(FALLBACK), pick.data), name: pick.name,
+    return { data: migrateDesign(Object.assign(CLONE(FALLBACK), pick.data)), name: pick.name,
       note: 'locked ' + new Date(pick.ts).toLocaleString() };
   } catch (e) {
-    return { data: CLONE(FALLBACK), name: 'built-in plan', note: 'could not read saved versions' };
+    return { data: migrateDesign(CLONE(FALLBACK)), name: 'built-in plan', note: 'could not read saved versions' };
   }
 }
 
@@ -147,7 +162,7 @@ const MAT = {
   floor:    new THREE.MeshStandardMaterial({ name: 'floortile',color: sc('floor', 0xbdb5a6), roughness: 0.7,  metalness: 0.02 }),
   plaster:  new THREE.MeshStandardMaterial({ name: 'plaster',  color: sc('wall', 0xe8e3d8), roughness: 0.92, metalness: 0.0, side: THREE.FrontSide }),
   white:    new THREE.MeshStandardMaterial({ name: 'white',    color: 0xf7f6f2, roughness: 0.28, metalness: 0.02 }),
-  brass:    new THREE.MeshStandardMaterial({ name: 'brass',    color: 0xc9a35c, roughness: 0.32, metalness: 0.38 }),
+  brass:    new THREE.MeshStandardMaterial({ name: 'brass',    color: 0xb76e79, roughness: 0.32, metalness: 0.38 }),
   trim:     new THREE.MeshStandardMaterial({ name: 'trim',     color: S.trimTone === 'rose' ? 0xb76e79 : S.trimTone === 'copper' ? 0xb87a55 : 0x7d6552, roughness: 0.35, metalness: 0.38 }),
   glass:    new THREE.MeshPhysicalMaterial({ name: 'glass',    color: 0xcfe0e3, roughness: 0.08, metalness: 0.0, transmission: 0.35, transparent: true, opacity: 0.62, thickness: 0.02 }),
   solid:    new THREE.MeshStandardMaterial({ name: 'solidsurface', color: 0xe6e0d4, roughness: 0.4, metalness: 0.02 }),
@@ -186,6 +201,11 @@ const DEFAULT_SURF = {
   // the shelf wall defaults to plain paint so the shower tile does NOT run
   // behind the floating shelves unless the user deliberately tiles it
   shelf_wall: { fin: 'paint', color: '#e8e3d8', tileL: 24, tileW: 12, shape: 'rect', pattern: 'stack' },
+  // plain walls (vanity/end walls via RUN_BASE, the dormer) default to paint —
+  // WITHOUT these, surfFor() fell through to the bay tile, so an unset wall
+  // showed green tile and edits to it appeared to do nothing
+  wall:   { fin: 'paint', color: '#e8e3d8', tileL: 24, tileW: 12, shape: 'rect', pattern: 'stack' },
+  slope:  { fin: 'paint', color: '#e8e3d8', tileL: 24, tileW: 12, shape: 'rect', pattern: 'stack' },
 };
 function surfFor(k) {
   return SF[k] || SF[RUN_BASE[k]] || DEFAULT_SURF[k] || DEFAULT_SURF[RUN_BASE[k]] || DEFAULT_SURF.bay;
@@ -339,8 +359,28 @@ function faceSize(mesh) {
   const flat = size.y / IN < 6;
   return { w: (flat ? size.x : Math.max(size.x, size.z)) / IN, h: (flat ? size.z : size.y) / IN };
 }
+// The canvas texture covers the whole face at true scale (repeat 1×1,
+// clamp-to-edge), so UVs must span 0..1 across the face. PlaneGeometry already
+// does; ShapeGeometry (raked end walls) and ExtrudeGeometry (floor) carry raw
+// world-scaled UVs that would smear a tile. Reproject planar UVs onto the two
+// largest local axes so every geometry maps the tile grid correctly.
+function planarUV(geometry) {
+  const pos = geometry.attributes && geometry.attributes.position;
+  if (!pos) return;
+  geometry.computeBoundingBox();
+  const bb = geometry.boundingBox, size = { x: bb.max.x - bb.min.x, y: bb.max.y - bb.min.y, z: bb.max.z - bb.min.z };
+  const axes = ['x', 'y', 'z'].sort((a, b) => size[b] - size[a]);
+  const a = axes[0], c = axes[1];
+  const ra = size[a] || 1, rc = size[c] || 1, uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    uv[i * 2] = (pos['get' + a.toUpperCase()](i) - bb.min[a]) / ra;
+    uv[i * 2 + 1] = (pos['get' + c.toUpperCase()](i) - bb.min[c]) / rc;
+  }
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
 function applyProcSurf(mesh, surf) {
   const fs = faceSize(mesh);
+  if (!mesh.geometry.__planarUV) { planarUV(mesh.geometry); mesh.geometry.__planarUV = true; }
   const mat = mesh.material.clone();
   mat.map = procTileTexture(surf, Math.max(4, fs.w), Math.max(4, fs.h));
   mat.color.set(0xffffff);       // colour lives in the texture now, don't double-tint
@@ -352,7 +392,8 @@ function textureRoom() {
   const L = window.MATERIAL_LIBRARY;
   // which surf zone each wall/floor material name belongs to
   const zoneOf = { stonetile: 'bay', baybacktile: 'bay_back', shelfwalltile: 'shelf_wall',
-                   steppiertile: 'step_return', floortile: 'floor', splashtile: 'splash' };
+                   steppiertile: 'step_return', floortile: 'floor', splashtile: 'splash',
+                   vanitywall: 'vanity', endwallL: 'end_left', endwallR: 'end_right', dormer: 'slope' };
   const woodOf = { walnut: 'wood-walnut', teak: 'wood-teak' };
   // a zone pinned to a 4684 sample-book material needs the pack in memory first
   const needsPack = L && !L.packLoaded && !L._packFailed && Object.keys(S.surf || {}).some(
@@ -380,7 +421,7 @@ const MAT_FOR = {
   splash: MAT.splashm, nichesh: MAT.stone,
   stone: MAT.solid,
   glass: MAT.glass,
-  bar: MAT.brass, bar2: MAT.brass, ring: MAT.brass, rain: MAT.brass, mixer: MAT.brass, spout: MAT.brass, tap: MAT.brass,
+  bar: MAT.brass, bar2: MAT.brass, bar3: MAT.brass, ring: MAT.brass, rain: MAT.brass, mixer: MAT.brass, spout: MAT.brass, tap: MAT.brass, taphl: MAT.brass,
   mir: MAT.white
 };
 
@@ -939,8 +980,6 @@ const { THREE: T3 } = await stage.ready;
 // lights, no shadows.
 {
   const practicals = [
-    { name: 'light',     color: 0xffd9a8, intensity: 6.5, dist: 1.6 },
-    { name: 'light2',    color: 0xffd9a8, intensity: 6.5, dist: 1.6 },
     { name: 'hoodlight', color: 0xffe2b8, intensity: 5.0, dist: 1.4 },
     { name: 'nichesh',   color: 0xffc890, intensity: 4.5, dist: 1.2 },
   ];
@@ -1043,7 +1082,7 @@ document.getElementById('srcSub').textContent =
     { t: 'Bathing & plumbing', ids: ['tub', 'vessel', 'wc', 'taphl', 'tap', 'taphr', 'rain', 'mixer', 'spout', 'ring'] },
     { t: 'Cabinetry', ids: ['tower', 'van', 'shelf', 'vshelf', 'stone'] },
     { t: 'Trim & glazing', ids: ['door', 'dcase', 'base', 'mir', 'splash', 'glass'] },
-    { t: 'Fittings & light', ids: ['bar2', 'bar3', 'light', 'light2', 'nichesh'] },
+    { t: 'Fittings & light', ids: ['bar2', 'bar3', 'ring', 'nichesh'] },
   ];
   const byId = {}; S.items.forEach((it) => { byId[it.id] = it; });
   // fittings you can add to this bathroom — sensible defaults on the vanity
@@ -1051,12 +1090,11 @@ document.getElementById('srcSub').textContent =
   // renders in the right material without touching the build code. Move it
   // afterward with the edit fields.
   const ADD = [
-    { base: 'hook',   name: 'Robe hook',      item: { x: 122, w: 2.5, y: 62, h: 3, dep: 3, face: 0, shape: 'round', swatch: '#c9a35c' } },
-    { base: 'towel',  name: 'Towel bar',      item: { x: 118, w: 24, y: 48, h: 2, dep: 4, face: 0, swatch: '#c9a35c' } },
-    { base: 'tring',  name: 'Towel ring',     item: { x: 122, w: 7, y: 40, h: 7, dep: 4, face: 0, swatch: '#c9a35c' } },
-    { base: 'grab',   name: 'Grab bar',       item: { x: 4, w: 24, y: 34, h: 1.5, dep: 2.5, face: 14.5, swatch: '#c9a35c' } },
-    { base: 'tp',     name: 'Paper holder',   item: { x: 150, w: 6, y: 26, h: 3, dep: 4, face: 0, swatch: '#c9a35c' } },
-    { base: 'sconce', name: 'Wall sconce',    item: { x: 122, w: 2.5, y: 52, h: 14, dep: 3.5, face: 0, shape: 'soft', swatch: '#e6d8b0' } },
+    { base: 'hook',   name: 'Robe hook',      item: { x: 122, w: 2.5, y: 62, h: 3, dep: 3, face: 0, shape: 'round', swatch: '#b76e79' } },
+    { base: 'towel',  name: 'Towel bar',      item: { x: 118, w: 24, y: 48, h: 2, dep: 4, face: 0, swatch: '#b76e79' } },
+    { base: 'tring',  name: 'Towel ring',     item: { x: 122, w: 7, y: 40, h: 7, dep: 4, face: 0, swatch: '#b76e79' } },
+    { base: 'grab',   name: 'Grab bar',       item: { x: 4, w: 24, y: 34, h: 1.5, dep: 2.5, face: 14.5, swatch: '#b76e79' } },
+    { base: 'tp',     name: 'Paper holder',   item: { x: 150, w: 6, y: 26, h: 3, dep: 4, face: 0, swatch: '#b76e79' } },
     { base: 'board',  name: 'Shelf board',    item: { x: 116, w: 24, y: 52, h: 2, dep: 8, face: 0, swatch: '#8a5325' } },
     { base: 'medcab', name: 'Medicine cabinet', item: { x: 116, w: 24, y: 44, h: 30, dep: 5, face: 0, swatch: '#f7f6f2' } },
     { base: 'basin2', name: 'Second basin',   item: { x: 118, w: 22, y: 34.5, h: 4, dep: 13.8, face: 0, swatch: '#f7f6f2' } },
