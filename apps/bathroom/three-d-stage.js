@@ -355,20 +355,39 @@
         import('three/addons/postprocessing/UnrealBloomPass.js'),
         import('three/addons/postprocessing/OutputPass.js'),
       ]).then(([ec, rp, ub, op]) => {
-        const composer = new ec.EffectComposer(renderer);
-        composer.addPass(new rp.RenderPass(scene, camera));
-        const bloom = new ub.UnrealBloomPass(
-          new THREE.Vector2(this.clientWidth || 1, this.clientHeight || 1), 0.3, 0.4, 1.6); // high threshold: only true emitters bloom, never the sunlit room
-        composer.addPass(bloom);
-        composer.addPass(new op.OutputPass());
-        composer.setPixelRatio(renderer.getPixelRatio());     // full device resolution, not CSS pixels
-        composer.setSize(this.clientWidth || 1, this.clientHeight || 1);
-        this._composer = composer;
+        // A plain EffectComposer render target has NO multisampling, so with
+        // bloom active the renderer's own antialias is bypassed and every edge
+        // goes jaggy — the whole view reads as low quality next to the direct-
+        // rendered shower. Give the composer a 4× multisampled HDR target so it
+        // is antialiased and blooms cleanly (WebGL2). If that target can't be
+        // made (e.g. software GL), fall back to a plain composer so bloom still
+        // works, then to a direct render.
+        const build = (multisample) => {
+          let target;
+          if (multisample) {
+            const db = renderer.getDrawingBufferSize(new THREE.Vector2());
+            target = new THREE.WebGLRenderTarget(Math.max(2, db.x), Math.max(2, db.y),
+              { type: THREE.HalfFloatType, samples: 4 });
+          }
+          const c = target ? new ec.EffectComposer(renderer, target) : new ec.EffectComposer(renderer);
+          c.addPass(new rp.RenderPass(scene, camera));
+          c.addPass(new ub.UnrealBloomPass(
+            new THREE.Vector2(this.clientWidth || 1, this.clientHeight || 1), 0.3, 0.4, 1.6)); // high threshold: only true emitters bloom
+          c.addPass(new op.OutputPass());
+          c.setPixelRatio(renderer.getPixelRatio());          // full device resolution, not CSS pixels
+          c.setSize(this.clientWidth || 1, this.clientHeight || 1);
+          return c;
+        };
+        try { this._composer = build(true); }
+        catch (e) { try { this._composer = build(false); } catch (e2) { this._composer = null; } }
       }).catch(() => { /* no postprocessing available — plain render */ });
       this._loop = () => {
         controls.update();
-        if (this._composer) this._composer.render();
-        else renderer.render(scene, camera);
+        if (this._composer) {
+          try { this._composer.render(); return; }
+          catch (e) { this._composer = null; }   // composer path failed at render — drop to direct
+        }
+        renderer.render(scene, camera);
       };
       // Detached while three.js was fetching? Stay idle — the
       // connectedCallback resume starts the loop and observer on
