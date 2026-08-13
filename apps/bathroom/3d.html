@@ -1387,17 +1387,58 @@ document.getElementById('srcSub').textContent =
       const row = document.querySelector('#pane-fix [data-id="' + id + '"]');
       if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
     }
+    // ---- ¼" snapping + Canva-style alignment guides (from the planner) ----
+    function snapStep() { try { const w = JSON.parse(localStorage.getItem(WORK) || 'null'); return (w && +w.snapStep) || 0.25; } catch (e) { return 0.25; } }
+    function snap1D(rawLeft, size, axis, exclude) {
+      const step = snapStep(), tol = Math.max(0.75, step * 3), targets = [];
+      S.items.forEach((o) => {
+        if (o.id === exclude || o.wall === 'end' || o.wall === 'slope' || o.zoneOnly) return;
+        const a = axis === 'x' ? o.x : o.y, b = axis === 'x' ? o.w : o.h;
+        if (a == null || b == null) return;
+        targets.push(a, a + b, a + b / 2);
+      });
+      if (axis === 'x') targets.push(0, RUN, RUN / 2, 60.5); else targets.push(0, H);
+      const mine = [rawLeft, rawLeft + size, rawLeft + size / 2], offs = [0, size, size / 2];
+      let best = null;
+      targets.forEach((t) => { mine.forEach((m, i) => { const d = Math.abs(m - t); if (d <= tol && (!best || d < best.d)) best = { d: d, pos: t - offs[i], at: t }; }); });
+      if (best) return { v: Math.round(best.pos / step) * step, at: best.at };
+      return { v: Math.round(rawLeft / step) * step, at: null };
+    }
+    function ftin(n) { const neg = n < 0; n = Math.abs(n); const f = Math.floor(n / 12), i = Math.round((n - f * 12) * 4) / 4; return (neg ? '-' : '') + (f ? f + "'-" : '') + i + '"'; }
+    // guide + readout overlay (screen-space SVG lines + a position chip)
+    const gsvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    gsvg.style.cssText = 'position:fixed;inset:0;z-index:19;pointer-events:none;display:none';
+    const gx = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    const gy = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    [gx, gy].forEach((l) => { l.setAttribute('stroke', '#e0417a'); l.setAttribute('stroke-width', '1.5'); l.setAttribute('stroke-dasharray', '5 4'); l.style.display = 'none'; gsvg.appendChild(l); });
+    document.body.appendChild(gsvg);
+    const gtip = document.createElement('div');
+    gtip.style.cssText = 'position:fixed;z-index:21;pointer-events:none;display:none;background:#141210;color:#e8e3d8;border:1px solid #c39a61;padding:5px 9px;border-radius:3px;font:600 10px/1.3 "IBM Plex Mono",monospace;letter-spacing:.04em;white-space:nowrap';
+    document.body.appendChild(gtip);
+    function screenPt(wx, wy, wz) { const v = new THREE.Vector3(wx, wy, wz).project(stage._camera); const r = cv.getBoundingClientRect(); return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height }; }
+    function showGuides(atX, atY, pz, cx2, cy2, nx, ny, it) {
+      gsvg.style.display = 'block';
+      if (atX != null) { const a = screenPt((atX - CX) * IN, 0, pz), b = screenPt((atX - CX) * IN, H * IN, pz); gx.setAttribute('x1', a.x); gx.setAttribute('y1', a.y); gx.setAttribute('x2', b.x); gx.setAttribute('y2', b.y); gx.style.display = ''; } else gx.style.display = 'none';
+      if (atY != null) { const a = screenPt((0 - CX) * IN, atY * IN, pz), b = screenPt((RUN - CX) * IN, atY * IN, pz); gy.setAttribute('x1', a.x); gy.setAttribute('y1', a.y); gy.setAttribute('x2', b.x); gy.setAttribute('y2', b.y); gy.style.display = ''; } else gy.style.display = 'none';
+      gtip.style.display = 'block'; gtip.style.left = (cx2 + 14) + 'px'; gtip.style.top = (cy2 + 14) + 'px';
+      gtip.textContent = ftin(nx) + '  ·  ' + ftin(ny) + (it ? '   (' + it.w + '×' + it.h + '″)' : '');
+    }
+    function hideGuides() { gsvg.style.display = 'none'; gx.style.display = 'none'; gy.style.display = 'none'; gtip.style.display = 'none'; }
+    const ROOMD = D1 - D0;
     cv.addEventListener('pointerdown', (e) => {
       dn = { x: e.clientX, y: e.clientY, moved: false };
       const info = pick(e.clientX, e.clientY);
       if (!info) return;                                  // empty space → let OrbitControls pan/rotate
       const it = byId[info.id];
-      if (!it || it.locked || it.wall === 'end' || it.wall === 'slope') { dn.pickId = info.id; return; } // click-select only
-      plane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 0, 1), info.point);
+      if (!it || it.locked || it.wall === 'slope') { dn.pickId = info.id; return; } // slope/locked → click-select only
+      const endw = it.wall === 'end';
+      // end-wall fittings (toilet) move along DEPTH+height on an x-plane;
+      // vanity/bay fittings move along the run+height on a z-plane
+      plane.setFromNormalAndCoplanarPoint(new THREE.Vector3(endw ? 1 : 0, 0, endw ? 0 : 1), info.point);
       setRay(e.clientX, e.clientY);
       if (!ray.ray.intersectPlane(plane, hit)) return;
-      fixDrag = { id: info.id, meshes: meshesFor(info.id), x: it.x, y: it.y,
-        offX: it.x - (hit.x / IN + CX), offY: it.y - (hit.y / IN) };
+      fixDrag = { id: info.id, meshes: meshesFor(info.id), endw: endw, planeC: endw ? info.point.x : info.point.z, x: it.x, y: it.y, d: it.d || 0,
+        offA: endw ? ((it.d || 0) - (-hit.z / IN - CZ)) : (it.x - (hit.x / IN + CX)), offY: it.y - (hit.y / IN) };
       if (controls) controls.enabled = false;            // suppress orbit while dragging a fitting
       e.stopPropagation(); e.preventDefault();
       cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
@@ -1408,25 +1449,36 @@ document.getElementById('srcSub').textContent =
       e.stopPropagation();
       setRay(e.clientX, e.clientY);
       if (!ray.ray.intersectPlane(plane, hit)) return;
-      const it = byId[fixDrag.id];
-      let nx = Math.round((hit.x / IN + CX + fixDrag.offX) / SNAP) * SNAP;
-      let ny = Math.round((hit.y / IN + fixDrag.offY) / SNAP) * SNAP;
-      nx = Math.max(0, Math.min(nx, RUN - it.w));
-      ny = Math.max(0, Math.min(ny, H - it.h));
-      const dwx = (nx - fixDrag.x) * IN, dwy = (ny - fixDrag.y) * IN;
-      fixDrag.meshes.forEach((m) => { m.position.x += dwx; m.position.y += dwy; });
-      fixDrag.x = nx; fixDrag.y = ny;
+      const it = byId[fixDrag.id], step = snapStep();
+      const sy = snap1D(hit.y / IN + fixDrag.offY, it.h, 'y', it.id);
+      let ny = Math.max(0, Math.min(sy.v, H - it.h)), dwy = (ny - fixDrag.y) * IN;
+      if (fixDrag.endw) {
+        let nd = Math.round((-hit.z / IN - CZ + fixDrag.offA) / step) * step;
+        nd = Math.max(0, Math.min(nd, ROOMD - it.w));
+        const dwz = -(nd - fixDrag.d) * IN;
+        fixDrag.meshes.forEach((m) => { m.position.z += dwz; m.position.y += dwy; });
+        fixDrag.d = nd; fixDrag.y = ny;
+        showGuides(null, sy.at, fixDrag.planeC, e.clientX, e.clientY, nd, ny, it);
+      } else {
+        const sx = snap1D(hit.x / IN + CX + fixDrag.offA, it.w, 'x', it.id);
+        let nx = Math.max(0, Math.min(sx.v, RUN - it.w)), dwx = (nx - fixDrag.x) * IN;
+        fixDrag.meshes.forEach((m) => { m.position.x += dwx; m.position.y += dwy; });
+        fixDrag.x = nx; fixDrag.y = ny;
+        showGuides(sx.at, sy.at, fixDrag.planeC, e.clientX, e.clientY, nx, ny, it);
+      }
     }, true);
     function end(e) {
       if (fixDrag) {
         if (e) { e.stopPropagation(); }
+        hideGuides();
         const it = byId[fixDrag.id];
-        it.x = fixDrag.x; it.y = fixDrag.y;
+        const patch = fixDrag.endw ? { d: fixDrag.d, y: fixDrag.y } : { x: fixDrag.x, y: fixDrag.y };
+        Object.assign(it, patch);
         const state = seedState();
-        state.items = state.items.map((z) => z.id === fixDrag.id ? Object.assign({}, z, { x: fixDrag.x, y: fixDrag.y }) : z);
+        state.items = state.items.map((z) => z.id === fixDrag.id ? Object.assign({}, z, patch) : z);
         writeState(state);
         selId = fixDrag.id; renderSpec(); renderFix();
-        toast('Moved ' + (it.name || fixDrag.id) + ' → x ' + fixDrag.x + '″ · y ' + fixDrag.y + '″');
+        toast('Moved ' + (it.name || fixDrag.id));
         fixDrag = null;
         if (controls) controls.enabled = true;
         return;
@@ -1444,7 +1496,7 @@ document.getElementById('srcSub').textContent =
       dn = null;
     }
     cv.addEventListener('pointerup', end, true);
-    cv.addEventListener('pointercancel', () => { if (fixDrag) { fixDrag = null; if (controls) controls.enabled = true; } }, true);
+    cv.addEventListener('pointercancel', () => { if (fixDrag) { fixDrag = null; hideGuides(); if (controls) controls.enabled = true; } }, true);
   })();
   renderSpec(); renderFix(); renderMat();
 })();
