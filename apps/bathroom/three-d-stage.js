@@ -332,7 +332,13 @@
         const w = this.clientWidth || 1;
         const h = this.clientHeight || 1;
         renderer.setSize(w, h);
-        if (this._composer) this._composer.setSize(w, h);
+        if (this._composer) {
+          // the composer must render at the SAME device-pixel resolution as the
+          // renderer, or bloom downsamples the whole scene to CSS pixels — half
+          // resolution on HiDPI screens, which reads as a blurry, low-quality 3D
+          this._composer.setPixelRatio(renderer.getPixelRatio());
+          this._composer.setSize(w, h);
+        }
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
       };
@@ -355,6 +361,7 @@
           new THREE.Vector2(this.clientWidth || 1, this.clientHeight || 1), 0.3, 0.4, 1.6); // high threshold: only true emitters bloom, never the sunlit room
         composer.addPass(bloom);
         composer.addPass(new op.OutputPass());
+        composer.setPixelRatio(renderer.getPixelRatio());     // full device resolution, not CSS pixels
         composer.setSize(this.clientWidth || 1, this.clientHeight || 1);
         this._composer = composer;
       }).catch(() => { /* no postprocessing available — plain render */ });
