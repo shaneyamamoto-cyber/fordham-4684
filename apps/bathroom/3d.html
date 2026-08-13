@@ -1003,6 +1003,22 @@ document.getElementById('srcSub').textContent =
   ].join('\n');
   document.head.appendChild(css);
 
+  const mcss = document.createElement('style');
+  mcss.textContent =
+    "#pane-mat .mchips{ display:flex; flex-wrap:wrap; gap:5px; }" +
+    "#pane-mat .mchip{ font:600 9px/1 'IBM Plex Mono',monospace; letter-spacing:.03em; padding:6px 8px; border:1px solid #2b3942; background:#161d22; color:#cdd5d8; border-radius:3px; cursor:pointer; }" +
+    "#pane-mat .mchip.sz{ opacity:.85; }" +
+    "#pane-mat .mchip.on{ background:#c39a61; color:#141210; border-color:#c39a61; }" +
+    "#pane-mat .mswatch{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }" +
+    "#pane-mat .msw{ display:flex; flex-direction:column; padding:0; border:1px solid #2b3942; background:#12181c; border-radius:3px; cursor:pointer; overflow:hidden; }" +
+    "#pane-mat .msw .c{ height:26px; }" +
+    "#pane-mat .msw .n{ font:500 7.5px/1.2 'IBM Plex Mono',monospace; color:#aab3b7; padding:3px 2px; text-align:center; }" +
+    "#pane-mat .msw.on{ outline:2px solid #c39a61; outline-offset:-2px; }" +
+    "#pane-mat .mgr{ width:100%; height:22px; border:1px solid #2b3942; border-radius:3px; cursor:pointer; }" +
+    "#pane-mat #m-grout{ display:grid; grid-template-columns:repeat(6,1fr); gap:5px; }" +
+    "#pane-mat .mgr.on{ outline:2px solid #c39a61; outline-offset:-1px; }";
+  document.head.appendChild(mcss);
+
   const rail = document.createElement('div');
   rail.id = 'brail';
   rail.innerHTML =
@@ -1145,8 +1161,62 @@ document.getElementById('srcSub').textContent =
     else { renderFix(); renderSpec(); }
   }
 
+  // ---- interactive material picker (Materials tab) ----------------------
+  const MAT_SURFACES = [['bay', 'Shower / tub wall'], ['splash', 'Vanity splash'], ['wall', 'Main walls'], ['floor', 'Floor'], ['slope', 'Dormer']];
+  const MAT_PATTERNS = [['stack', 'Stacked'], ['offset2', 'Running bond'], ['offset3', 'Third offset'], ['herring', 'Herringbone'], ['chevron', 'Chevron'], ['vstack', 'Vertical'], ['basket', 'Basketweave']];
+  const MAT_SIZES = [['48×24', 48, 24], ['36×24', 36, 24], ['24×24', 24, 24], ['12×24', 12, 24], ['12×12', 12, 12], ['12×6', 12, 6], ['6×6', 6, 6], ['2×2', 2, 2]];
+  const MAT_GROUTS = ['#f4f1ea', '#e8e3d8', '#cfcabd', '#a99f8c', '#6f6656', '#3a352c'];
+  function matColourName(e) {
+    const parts = e.name.split('—').map((x) => x.trim());
+    let w = e.name;
+    if (parts.length >= 2) { const t = parts[parts.length - 1]; w = /^(pbr|photographic)$/i.test(t) ? parts[0] : t; }
+    w = w.replace(/\s*\d+×\d+\s*/, ' ').replace(/\s+/g, ' ').trim();
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }
+  function matSwatches() {
+    const out = [
+      { id: null, name: 'Soft white', color: '#e8e3d8', fin: 'paint' },
+      { id: null, name: 'Warm greige', color: '#cfc7b7', fin: 'paint' },
+      { id: null, name: 'Clay', color: '#b9a892', fin: 'paint' },
+      { id: null, name: 'Sage', color: '#9aa79b', fin: 'paint' },
+      { id: null, name: 'Deep olive', color: '#4a5442', fin: 'paint' },
+      { id: null, name: 'Charcoal', color: '#3f3c37', fin: 'paint' }
+    ];
+    const seen = {};
+    (LIB || []).forEach((e) => {
+      if (e.cat !== 'tile' && e.cat !== 'stone' && e.cat !== 'wood') return;
+      if (seen[e.tone]) return; seen[e.tone] = 1;
+      out.push({ id: e.id, name: matColourName(e), color: e.tone, fin: e.cat === 'wood' ? 'wood' : e.cat === 'stone' ? 'stone' : 'tile' });
+    });
+    return out;
+  }
+  let matZone = (function () { try { return sessionStorage.getItem('b-matzone') || 'bay'; } catch (e) { return 'bay'; } })();
+  function curSurf() { const s = (seedState().surf || {}); return s[matZone] || (S.surf || {})[matZone] || {}; }
+  function patchSurf(patch) {
+    const state = seedState();
+    state.surf = Object.assign({}, state.surf);
+    state.surf[matZone] = Object.assign({}, state.surf[matZone] || (S.surf || {})[matZone] || {}, patch);
+    if (matZone === 'bay' && state.splashLinked) state.surf.splash = Object.assign({}, state.surf.bay);
+    writeState(state);
+    try { sessionStorage.setItem('b-tab', 'mat'); sessionStorage.setItem('b-matzone', matZone); sessionStorage.setItem('b-view', currentView || ''); } catch (e) {}
+    location.reload();
+  }
+
   function renderMat() {
-    let h = '<div class="grp"><p class="grp-t">Material schedule</p>' +
+    const cs = curSurf();
+    const sw = matSwatches();
+    let h = '<div class="grp"><p class="grp-t">Tile &amp; finish — click a wall in the model, or pick a surface</p>' +
+      '<div class="mchips" id="m-surf">' + MAT_SURFACES.map((s) =>
+        '<button class="mchip' + (s[0] === matZone ? ' on' : '') + '" data-z="' + s[0] + '">' + s[1] + '</button>').join('') + '</div>';
+    h += '<p class="grp-t" style="margin-top:12px">Colour / texture</p><div class="mswatch" id="m-col">' +
+      sw.map((s, i) => '<button class="msw' + ((cs.lib ? s.id === cs.lib : (!s.id && (s.color || '').toLowerCase() === (cs.color || '').toLowerCase())) ? ' on' : '') +
+        '" data-i="' + i + '" title="' + s.name + '"><span class="c" style="background:' + s.color + '"></span><span class="n">' + s.name + '</span></button>').join('') + '</div>';
+    h += '<p class="grp-t" style="margin-top:12px">Pattern &amp; size</p><div class="mchips" id="m-pat">' +
+      MAT_PATTERNS.map((p) => '<button class="mchip' + (p[0] === cs.pattern ? ' on' : '') + '" data-pat="' + p[0] + '">' + p[1] + '</button>').join('') +
+      MAT_SIZES.map((z) => '<button class="mchip sz' + (cs.tileL === z[1] && cs.tileW === z[2] ? ' on' : '') + '" data-w="' + z[1] + '" data-h="' + z[2] + '">' + z[0] + '</button>').join('') + '</div>';
+    h += '<p class="grp-t" style="margin-top:12px">Grout</p><div class="mchips" id="m-grout">' +
+      MAT_GROUTS.map((g) => '<button class="mgr' + ((cs.grout || '').toLowerCase() === g.toLowerCase() ? ' on' : '') + '" data-g="' + g + '" style="background:' + g + '"></button>').join('') + '</div></div>';
+    h += '<div class="grp"><p class="grp-t">Material schedule</p>' +
       ZONES.map((z) => { const s = (S.surf || {})[z[0]]; if (!s) return '';
         return '<div class="row"><span class="k"><span class="sw" style="background:' + (s.color || '#888') + '"></span> ' +
           z[1] + '</span><span class="v">' + matName(s) + '</span></div>'; }).join('') + '</div>';
@@ -1157,7 +1227,7 @@ document.getElementById('srcSub').textContent =
       '<p class="note">Pins the exact Look Book material on that surface, then rebuilds.</p></div>';
     h += '<div class="grp"><button class="ghost" id="b-reset-surf" style="width:100%;color:#c8837a;border-color:#5a2f2b">Reset surfaces to default palette</button>' +
       '<p class="note">Clears any applied tile/colour and restores the built-in shower green stone, olive splash, warm floor and soft-white walls. Fittings are untouched.</p></div>';
-    h += '<div class="grp"><p class="note">Per-zone colour, tile size, pattern and grout are edited in the Elevation Planner — this model follows those edits live.</p></div>';
+    h += '<div class="grp"><p class="note">Pick above, or click a wall in the model to jump to it. Changes rebuild the model and sync to the Elevation Planner + floor plan.</p></div>';
     document.getElementById('pane-mat').innerHTML = h;
     const zsel = document.getElementById('b-hp-zone');
     ZONES.forEach((z) => { const o = document.createElement('option'); o.value = z[0]; o.textContent = z[1]; zsel.appendChild(o); });
@@ -1170,6 +1240,20 @@ document.getElementById('srcSub').textContent =
     if (pick) document.getElementById('b-hp-name').textContent = pick.name || pick.id;
   }
   document.getElementById('pane-mat').addEventListener('click', (ev) => {
+    // --- interactive picker ---
+    const zc = ev.target.closest('#m-surf .mchip');
+    if (zc) { matZone = zc.getAttribute('data-z'); try { sessionStorage.setItem('b-matzone', matZone); } catch (e) {} renderMat(); return; }
+    const scw = ev.target.closest('#m-col .msw');
+    if (scw) { const s = matSwatches()[+scw.getAttribute('data-i')];
+      if (s.id && LIB) patchSurf({ lib: s.id, color: s.color, fin: s.fin });
+      else patchSurf({ color: s.color, fin: s.fin, lib: null });
+      return; }
+    const pc = ev.target.closest('#m-pat .mchip');
+    if (pc) { const pat = pc.getAttribute('data-pat');
+      if (pat) { patchSurf({ pattern: pat, fin: 'tile' }); return; }
+      patchSurf({ tileL: +pc.getAttribute('data-w'), tileW: +pc.getAttribute('data-h'), fin: 'tile' }); return; }
+    const gc = ev.target.closest('#m-grout .mgr');
+    if (gc) { patchSurf({ grout: gc.getAttribute('data-g') }); return; }
     if (ev.target.id === 'b-reset-surf') {
       if (!window.confirm('Reset every surface to the default palette? Applied tiles/colours will be cleared (fittings are kept).')) return;
       const def = (window.BATHROOM_BASELINE && window.BATHROOM_BASELINE.surf) || {};
@@ -1254,6 +1338,12 @@ document.getElementById('srcSub').textContent =
     const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(), hit = new THREE.Vector3();
     const SNAP = 0.25, RUN = X1 - X0;
     let dn = null, fixDrag = null;
+    // tag wall/floor meshes with the picker zone they belong to, by material name
+    const WALL_ZONE = { baybacktile: 'bay', steppiertile: 'bay', vanitywall: 'wall', endwallL: 'wall',
+      endwallR: 'wall', plaster: 'wall', splashtile: 'splash', floortile: 'floor', dormer: 'slope' };
+    room.traverse((o) => {
+      if (o.isMesh && !o.userData.itemId && o.material && WALL_ZONE[o.material.name]) o.userData.zone = WALL_ZONE[o.material.name];
+    });
     function setRay(cx, cy) {
       const r = cv.getBoundingClientRect();
       ndc.x = ((cx - r.left) / r.width) * 2 - 1;
@@ -1268,6 +1358,12 @@ document.getElementById('srcSub').textContent =
         while (o && id == null) { if (o.userData && o.userData.itemId) id = o.userData.itemId; o = o.parent; }
         if (id && byId[id]) return { id: id, point: h.point };
       }
+      return null;
+    }
+    function pickZone(cx, cy) {
+      setRay(cx, cy);
+      const hits = ray.intersectObjects(room.children, true);
+      for (const h of hits) { if (h.object.userData && h.object.userData.zone) return h.object.userData.zone; }
       return null;
     }
     function meshesFor(id) { const a = []; room.traverse((o) => { if (o.userData && o.userData.itemId === id) a.push(o); }); return a; }
@@ -1323,6 +1419,12 @@ document.getElementById('srcSub').textContent =
       if (dn && !dn.moved) {
         const id = dn.pickId || (pick(e.clientX, e.clientY) || {}).id;
         if (id && byId[id]) { openEditor(id); toast('Editing ' + (byId[id].name || id)); }
+        else {
+          const zone = pickZone(e.clientX, e.clientY);   // clicked a wall/floor → material picker
+          if (zone) { matZone = zone; try { sessionStorage.setItem('b-matzone', zone); } catch (er) {} setTab('mat'); renderMat();
+            const lbl = (MAT_SURFACES.filter((s) => s[0] === zone)[0] || [, zone])[1];
+            toast('Material · ' + lbl + ' — pick a tile/colour'); }
+        }
       }
       dn = null;
     }
