@@ -570,16 +570,13 @@ const HW3D = {
 // modern wall-mounted single-lever set: a squared spout on a square wall
 // plate, and a separate single lever on its own square plate (brushed brass).
 function wallSpout(it, mat, nm) {
+  // clean squared spout on a slim square wall plate: a solid arm out over the
+  // basin with a squared downturn nose — no thin blades or loose pieces
   const base = it.face > 0 ? BAY : 0, dir = it.face > 0 ? 1 : -1;
-  const cx = it.x + it.w / 2, cy = it.y + it.h / 2, arm = Math.max(it.dep, 8);
-  box(nm + '_plate', mat, 4.8, 4.8, 0.5, cx, cy, base - 0.25, 'soft', 0.9);            // rounded square wall plate
-  // flat blade spout — wide, thin, long — projecting horizontally over the basin
-  const bladeL = arm * 0.85;
-  box(nm + '_blade', mat, 2.4, 1.1, bladeL, cx, cy + 0.3, base + dir * (0.3 + bladeL / 2), 'soft', 0.45);
-  // squared downturn at the tip + a small outlet underneath
-  const tipD = base + dir * (0.3 + bladeL);
-  box(nm + '_tip', mat, 2.3, 1.9, 1.1, cx, cy - 0.4, tipD, 'soft', 0.45);
-  hwMesh(new THREE.CylinderGeometry(0.42 * IN, 0.42 * IN, 0.55 * IN, 18), mat, nm + '_outlet', cx, cy - 1.2, tipD);
+  const cx = it.x + it.w / 2, cy = it.y + it.h / 2, reach = Math.max(it.dep, 7) * 0.9;
+  box(nm + '_plate', mat, 3.4, 3.4, 0.4, cx, cy, base - 0.2, 'soft', 0.8);
+  box(nm + '_arm', mat, 1.6, 1.6, reach, cx, cy + 0.3, base + dir * (0.2 + reach / 2), 'soft', 0.55);
+  box(nm + '_nose', mat, 1.6, 2.6, 1.6, cx, cy - 0.7, base + dir * (0.2 + reach), 'soft', 0.55);
 }
 function singleLever(it, mat, nm) {
   const base = it.face > 0 ? BAY : 0, dir = it.face > 0 ? 1 : -1;
@@ -603,14 +600,20 @@ function crossHandle(it, mat, nm) {
   hwMesh(new THREE.SphereGeometry(armT * 0.9, 16, 12), mat, nm + '_cap', cx, cy, armZ + dir * armT);
 }
 function gooseneckSpout(it, mat, nm) {
-  // straight, not curved — a bent-elbow gooseneck read as a trunk at this scale
-  const base = it.face > 0 ? BAY : 0, proj = it.dep, cx = it.x + it.w / 2, dir = it.face > 0 ? 1 : -1;
-  const dz = base - proj / 2;
-  const topY = it.y + it.h, r = Math.min(it.w, 3) / 2 * IN;
-  hwMesh(new THREE.CylinderGeometry(r * 1.5, r * 1.5, proj * 0.28 * IN, 24), mat, nm + '_escutcheon', cx, topY - 0.4, dz, Math.PI / 2);
-  const dropH = it.h * 0.82;
-  hwMesh(new THREE.CylinderGeometry(r * 0.55, r * 0.55, dropH * IN, 20), mat, nm + '_pipe', cx, topY - dropH / 2 - 0.4, dz + dir * proj * 0.12);
-  hwMesh(new THREE.SphereGeometry(r * 0.62, 16, 12), mat, nm + '_tip', cx, topY - dropH - 0.4, dz + dir * proj * 0.12);
+  // clean curved tub spout: a round wall flange and a smooth tube arcing out
+  // over the rim and turning down, one continuous piece
+  const base = it.face > 0 ? BAY : 0, dir = it.face > 0 ? 1 : -1;
+  const cx = it.x + it.w / 2, yc = it.y + it.h / 2, proj = Math.max(it.dep, 5), r = 0.72 * IN;
+  hwMesh(new THREE.CylinderGeometry(1.5 * IN, 1.5 * IN, 0.5 * IN, 28), mat, nm + '_flange', cx, yc + 0.6, base - dir * 0.1, Math.PI / 2);
+  const curve = new THREE.CatmullRomCurve3([
+    P(cx, yc + 0.6, base + dir * 0.5),
+    P(cx, yc + 0.4, base + dir * proj * 0.7),
+    P(cx, yc - 1.8, base + dir * proj * 0.9),
+    P(cx, yc - 3.4, base + dir * proj * 0.82)
+  ]);
+  const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 44, r, 16, false), mat);
+  tube.name = nm + '_spout'; tube.castShadow = true; tube.receiveShadow = true;
+  room.add(tube);
 }
 function rainhead(it, mat, nm) {
   const base = it.face > 0 ? BAY : 0, proj = it.dep, cx = it.x + it.w / 2, cy = it.y + it.h / 2, dir = it.face > 0 ? 1 : -1;
@@ -817,7 +820,11 @@ room.add = function () {
 // the vanity splash is a MATERIAL ZONE, not a fixed-colour fitting: it must be
 // driven by surf.splash (the "Vanity splash" picker) so its tile/colour can
 // change, so it keeps its zone material (splashtile) instead of a swatch tint.
-const SWATCH_SKIP = { glass: 1, splash: 1 };
+// glass/splash render from their own materials; the metal fittings all take the
+// one brushed-gold material (MAT.brass) so a stray per-item swatch can't leave
+// the tap/spout a different shade from the rest of the set
+const SWATCH_SKIP = { glass: 1, splash: 1,
+  tap: 1, taphl: 1, taphr: 1, spout: 1, mixer: 1, rain: 1, bar: 1, bar2: 1, bar3: 1, ring: 1, handbar: 1 };
 S.items.forEach(it => {
   __curItem = it.id;
   let mat = MAT_FOR[it.id] || MAT.walnut;
