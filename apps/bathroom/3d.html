@@ -463,6 +463,14 @@ function textureRoom() {
       applyProcSurf(mesh, surf);                                             // colour-true procedural tile/stone
       return;
     }
+    // wood casework: dress with a photographic grain, tinted to the chosen wood
+    // tone (or the mesh's per-item override) so it reads as real timber, not a
+    // flat plastic colour
+    if (mesh.material.name === 'wood' && L) {
+      const grain = L.byId('wood-blond') || L.byId('wood-golden') || L.byId('wood-walnut');
+      if (grain) dressMesh(mesh, Object.assign({}, grain, { tint: '#' + mesh.material.color.getHexString() }));
+      return;
+    }
     const woodId = woodOf[mesh.material.name];
     if (woodId && L) { const lib = L.byId(woodId); if (lib) dressMesh(mesh, lib); }
   });
