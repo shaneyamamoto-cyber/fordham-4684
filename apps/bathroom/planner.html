@@ -4002,10 +4002,18 @@ class Component extends DCLogic {
             outline: on ? "2px solid #8a5a2b" : "1px solid rgba(35,35,31,0.2)",
             outlineOffset: on ? "1px" : "0" }, tileFill(m, 1.1)),
           onPick: function () {
+            // Apply the tile to the ACTIVE surface right away (so a click does
+            // something), and arm it so you can also click other surfaces to fill.
+            self.snapshot();
             self.setState(function (st) {
-              const off = st.armedMat === mi;
-              return { armedMat: off ? null : mi,
-                flash: off ? "" : m.name + " — click a surface to fill it" };
+              const key = st.activeSurf || "bay";
+              const n = Object.assign({}, st.surf);
+              if (!n[key]) n[key] = Object.assign({}, n[Component.RUN_BASE[key] || key] || n.bay);
+              n[key] = { fin: m.fin, color: m.color, tileL: m.tileL, tileW: m.tileW,
+                shape: m.shape, pattern: m.pattern, lib: m.lib || null };
+              if (key === "bay_back" && st.splashLinked) n.splash = Object.assign({}, n[key]);
+              return { surf: n, armedMat: mi,
+                flash: m.name + " → " + String(key).replace(/_/g, " ").toUpperCase() + " · click another surface to fill it too" };
             });
           }
         };
