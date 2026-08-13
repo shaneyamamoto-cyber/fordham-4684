@@ -699,16 +699,17 @@ S.items.forEach(it => {
       } else {
         box(nm + '_' + bb.t + (bi + 1), mat, it.w - 1, bh - 0.6, 0.8,
           it.x + it.w / 2, cy + bh / 2, base0 - it.dep - 0.4);
-        // cupboard doors get a VERTICAL pull near the opening edge; drawers keep a
-        // horizontal pull centred on the front — matches the elevation convention
+        // cupboard doors read as a tall panel with a long VERTICAL bar pull near
+        // the opening edge; drawers read as a band with a wide HORIZONTAL bar pull
+        const zPull = base0 - it.dep - 1.2;
         if (bb.t === 'door') {
-          const pullLen = Math.min(5, bh * 0.32);
-          box(nm + '_pull' + (bi + 1), MAT.brass, 0.5, pullLen, 0.9,
-            it.x + it.w - 1.9, cy + bh / 2, base0 - it.dep - 1.1);
+          const pullLen = Math.max(5, Math.min(bh - 3, bh * 0.55));
+          box(nm + '_pull' + (bi + 1), MAT.brass, 0.7, pullLen, 1.1, it.x + it.w - 2, cy + bh / 2, zPull);
+          // hinge-side seam so a double/single cupboard door reads as a door
+          box(nm + '_seam' + (bi + 1), MAT.walnut, 0.2, bh - 1.2, 0.85, it.x + 1.2, cy + bh / 2, base0 - it.dep - 0.45);
         } else {
-          const pw = Math.min(6, it.w * 0.34);
-          box(nm + '_pull' + (bi + 1), MAT.brass, pw, 0.5, 0.9,
-            it.x + it.w / 2, cy + bh / 2, base0 - it.dep - 1.1);
+          const pw = Math.max(6, Math.min(it.w - 3, it.w * 0.5));
+          box(nm + '_pull' + (bi + 1), MAT.brass, pw, 0.7, 1.1, it.x + it.w / 2, cy + bh / 2, zPull);
         }
       }
       cy += bh;
@@ -1503,6 +1504,19 @@ document.getElementById('srcSub').textContent =
 
 </script>
 <script src="../../platform/core/ai-prompt.js"></script>
-<script>AIPrompt("bathroom", { anchor: "right:16px;bottom:62px;" });  // sit above the stage's Download OBJ/GLB toolbar</script>
+<script>
+AIPrompt("bathroom");
+// Dock the AI Render Prompt button INSIDE the top info card (next to LOAD
+// PLAN / EXPORT) so it never collides with the bottom toolbar/back/view bar.
+requestAnimationFrame(function () {
+  var fab = document.querySelector('.aip-fab'), hud = document.getElementById('hud');
+  if (fab && hud) {
+    fab.style.cssText = "margin-top:10px;width:100%;padding:8px 10px;border:1px solid #8a5a2b;" +
+      "background:#8a5a2b;color:#fbfaf7;cursor:pointer;font:600 9px/1 'IBM Plex Mono',monospace;" +
+      "letter-spacing:0.1em;border-radius:2px;pointer-events:auto;";
+    hud.appendChild(fab);
+  }
+});
+</script>
 </body>
 </html>
