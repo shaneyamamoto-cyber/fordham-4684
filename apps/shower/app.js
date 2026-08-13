@@ -636,9 +636,40 @@ function buildFloor(){
   plane(gFloor, W, D, surfMat('floor', W, D), [W/2, 0, D/2], [-Math.PI/2, 0, 0]);
   buildDrain();
 }
+/* Dropped "floating" ceiling: the tiled field drops ~3" below the structural
+   slab, held off the walls by a perimeter reveal. A brass valance lines the
+   reveal and a warm LED strip rings the whole ceiling, washing light up the
+   cove — the classic floating-ceiling glow. */
+const CEIL_DROP = 3, CEIL_REVEAL = 5;   // drop depth (2–4") and perimeter cove width
 function buildCeiling(){
   clearGroup(gCeil);
+  const drop = CEIL_DROP, reveal = CEIL_REVEAL;
+  const iw = W - 2 * reveal, id = D - 2 * reveal, topGap = 0.8, slabT = drop;
+  // structural ceiling — only the perimeter reveal shows it, lit by the cove
   plane(gCeil, W, D, surfMat('ceiling', W, D), [W/2, H, D/2], [Math.PI/2, 0, 0]);
+  // the dropped tiled field, floating below with the reveal gap all around
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(iw, slabT, id), surfMat('ceiling', iw, id));
+  slab.position.set(W/2, H - topGap - slabT / 2, D/2);
+  slab.castShadow = true; slab.receiveShadow = true; gCeil.add(slab);
+  // brass valance framing the reveal (a thin lip around the dropped field)
+  const vy = H - topGap - slabT, vt = 0.6;
+  [[iw + 2 * vt, vt, (W)/2, reveal - vt/2], [iw + 2 * vt, vt, (W)/2, D - reveal + vt/2],
+   [vt, id, reveal - vt/2, D/2], [vt, id, W - reveal + vt/2, D/2]].forEach(function(s, i){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], slabT, s[1]), matBrass);
+    m.position.set(s[2], H - topGap - slabT/2, s[3]); gCeil.add(m);
+  });
+  // warm LED cove strip ringing the ceiling, tucked in the reveal facing up
+  const ledMat = new THREE.MeshStandardMaterial({color:0xfff2da, emissive:0xffd9a2, emissiveIntensity:1.9, roughness:0.5, metalness:0});
+  const ledY = H - 1.0, lt = 0.6, ex0 = reveal - 0.4, ex1 = W - reveal + 0.4, ez0 = reveal - 0.4, ez1 = D - reveal + 0.4;
+  [[ex1 - ex0, lt, (ex0 + ex1)/2, ez0], [ex1 - ex0, lt, (ex0 + ex1)/2, ez1],
+   [lt, ez1 - ez0, ex0, (ez0 + ez1)/2], [lt, ez1 - ez0, ex1, (ez0 + ez1)/2]].forEach(function(s){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], 0.5, s[1]), ledMat);
+    m.position.set(s[2], ledY, s[3]); gCeil.add(m);
+  });
+  // real light from the cove so the ring reads as illumination, not just a bright line
+  [[reveal, reveal], [W - reveal, reveal], [reveal, D - reveal], [W - reveal, D - reveal]].forEach(function(p){
+    const pl = new THREE.PointLight(0xffe7c2, 0.42, 46, 2); pl.position.set(p[0], H - 2.5, p[1]); gCeil.add(pl);
+  });
 }
 /* Every wall is a shape with holes, so a niche cuts a real opening in
    whichever wall hosts it. Shape coords are (run, height) in inches;
