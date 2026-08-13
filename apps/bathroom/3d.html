@@ -995,10 +995,13 @@ document.getElementById('srcSub').textContent =
   document.body.appendChild(rail);
   document.getElementById('b-sub').textContent =
     Math.round(X1 - X0) + '″ run · ' + Math.round(D1 - D0) + '″ deep · ' + H + '″ ceiling';
-  rail.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => {
-    rail.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === b));
-    ['spec', 'fix', 'mat'].forEach((p) => document.getElementById('pane-' + p).classList.toggle('on', p === b.dataset.p));
-  }));
+  function setTab(p) {
+    rail.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x.dataset.p === p));
+    ['spec', 'fix', 'mat'].forEach((q) => document.getElementById('pane-' + q).classList.toggle('on', q === p));
+  }
+  function activeTab() { const on = rail.querySelector('.tabs button.on'); return on ? on.dataset.p : 'spec'; }
+  function keepTab() { try { sessionStorage.setItem('b-tab', activeTab()); } catch (e) {} }
+  rail.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.p)));
 
   function renderSpec() {
     let h = '<div class="grp"><p class="grp-t">Envelope</p>' +
@@ -1119,7 +1122,7 @@ document.getElementById('srcSub').textContent =
     state.items = state.items.map((x) => x.id === id ? Object.assign({}, x, patch) : x);
     writeState(state);
     Object.assign(byId[id], patch);
-    if (reload) { sessionStorage.setItem('b-view', currentView || ''); location.reload(); }
+    if (reload) { sessionStorage.setItem('b-view', currentView || ''); if (id) sessionStorage.setItem('b-select', id); location.reload(); }
     else { renderFix(); renderSpec(); }
   }
 
@@ -1213,12 +1216,13 @@ document.getElementById('srcSub').textContent =
     toastT = setTimeout(() => { toastEl.style.opacity = '0'; }, 2200);
   }
 
+  // keep the active tab across the rebuild-reload so editing a fitting or a
+  // material doesn't dump you back on the Spec tab
+  window.addEventListener('beforeunload', keepTab);
+  var wantTab = sessionStorage.getItem('b-tab');
+  if (wantTab) { sessionStorage.removeItem('b-tab'); setTab(wantTab); }
   var wantSel = sessionStorage.getItem('b-select');
-  if (wantSel) { sessionStorage.removeItem('b-select'); if (byId[wantSel]) {
-    selId = wantSel;
-    rail.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x.dataset.p === 'fix'));
-    ['spec', 'fix', 'mat'].forEach((pp) => document.getElementById('pane-' + pp).classList.toggle('on', pp === 'fix'));
-  } }
+  if (wantSel) { sessionStorage.removeItem('b-select'); if (byId[wantSel]) { selId = wantSel; setTab('fix'); } }
   renderSpec(); renderFix(); renderMat();
 })();
 
