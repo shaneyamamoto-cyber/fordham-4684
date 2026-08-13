@@ -369,10 +369,31 @@
   <p class="dv-next">Try next: "go with <a class="dv-oid" href="#1c">1c</a> and <a class="dv-oid" href="#1o">1o</a>" · "show more mirror shapes" · "keep everything locked, just swap the tap to <a class="dv-oid" href="#1i">1i</a>"</p>
 </section>
 
+<script src="../../platform/core/store.js"></script>
+<script src="./baseline.js"></script>
+<script src="./fixture-map.js"></script>
 <script>
 (function(){
   if (window.PlatformStore) window.PlatformStore('bathroom');
   var KEY = 'yamazina.bathroom.fixtures.v1';
+  var WORK = 'yamazina.bathroom.work.v1';
+  // apply a chosen option's parametric patch INTO the shared design, so the
+  // planner + 3D + floor plan all render it and manual edits aren't clobbered
+  function applyToDesign(cat, optId) {
+    var FM = window.BATHROOM_FIXMAP; if (!FM || !FM.targets[cat]) return;
+    var d; try { d = JSON.parse(localStorage.getItem(WORK) || 'null'); } catch (e) { d = null; }
+    if (!d || !d.items || !d.items.length) {                 // seed from the canonical baseline
+      d = window.BATHROOM_BASELINE ? JSON.parse(JSON.stringify(window.BATHROOM_BASELINE)) : null;
+      if (!d) return;
+    }
+    var changed = false;
+    FM.targets[cat].forEach(function (id) {
+      var patch = FM.map[id] && FM.map[id][optId]; if (!patch) return;
+      d.items = d.items.map(function (it) { return it.id === id ? Object.assign({}, it, patch, { fxOpt: optId }) : it; });
+      changed = true;
+    });
+    if (changed) { try { localStorage.setItem(WORK, JSON.stringify(d)); } catch (e) {} }
+  }
   function loadSaved(){ try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
   function saveState(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
 
@@ -418,7 +439,8 @@
       chosen.classList.add('chosen');
       renderSlot(cat, chosen);
       state[cat] = sel.value;
-      saveState();       // persist → the 3D model + render package read this
+      saveState();               // remember the chosen combination
+      applyToDesign(cat, sel.value);   // push the geometry into the shared design (planner + 3D + plan)
       flash();
     });
 

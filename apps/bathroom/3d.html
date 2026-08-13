@@ -76,6 +76,9 @@ const IN = 0.0254;
 // any view is lossless.
 const FALLBACK = window.BATHROOM_BASELINE;
 
+// deep-clone the baseline so editing the live design never mutates the shared
+// window.BATHROOM_BASELINE (which would corrupt the built-in default + undo)
+const CLONE = (o) => JSON.parse(JSON.stringify(o));
 function loadLayout() {
   try {
     // LIVE-FIRST: the planner autosaves every edit (items, surf fills, shell)
@@ -86,20 +89,20 @@ function loadLayout() {
     if (w) {
       const d = JSON.parse(w);
       if (d && d.items && d.items.length) {
-        return { data: Object.assign({}, FALLBACK, d), name: 'working design — live',
+        return { data: Object.assign(CLONE(FALLBACK), d), name: 'working design — live',
           note: 'follows the planner as you edit' };
       }
     }
     const raw = localStorage.getItem('yamazina.bathroom.versions.v1');
-    if (!raw) return { data: FALLBACK, name: 'built-in plan', note: 'no saved version found' };
+    if (!raw) return { data: CLONE(FALLBACK), name: 'built-in plan', note: 'no saved version found' };
     const d = JSON.parse(raw);
     const vs = d.versions || [];
-    if (!vs.length) return { data: FALLBACK, name: 'built-in plan', note: 'planner has no locked versions yet' };
+    if (!vs.length) return { data: CLONE(FALLBACK), name: 'built-in plan', note: 'planner has no locked versions yet' };
     const pick = vs.filter(v => v.name === d.current)[0] || vs.slice().sort((a, b) => b.ts - a.ts)[0];
-    return { data: Object.assign({}, FALLBACK, pick.data), name: pick.name,
+    return { data: Object.assign(CLONE(FALLBACK), pick.data), name: pick.name,
       note: 'locked ' + new Date(pick.ts).toLocaleString() };
   } catch (e) {
-    return { data: FALLBACK, name: 'built-in plan', note: 'could not read saved versions' };
+    return { data: CLONE(FALLBACK), name: 'built-in plan', note: 'could not read saved versions' };
   }
 }
 
@@ -125,56 +128,9 @@ window.addEventListener('storage', (ev) => {
 const L = loadLayout();
 const S = L.data;
 
-// ---- Fixture Options overlay -------------------------------------------
-// The Fixture Options picker saves a combination to this key; reflect the
-// choice on the model so picking e.g. a round mirror or a wall-hung toilet
-// actually changes the 3D. Applied as a render-time overlay (parametric:
-// size / shape / profile per option), not written back to the design.
-const FX = (function () { try { return JSON.parse(localStorage.getItem('yamazina.bathroom.fixtures.v1') || '{}') || {}; } catch (e) { return {}; } })();
-const FX_TARGETS = { Mirror: ['mir'], Toilet: ['wc'], Showerhead: ['rain'], Tap: ['tap'], Lighting: ['light', 'light2'] };
-const FIX_MAP = {
-  mir: {
-    '1d': { frame: 1.25, radius: 10.75 },                        // pill / stadium
-    '1e': { frame: 1.25, radius: 4 },                            // rounded rectangle
-    '1f': { frame: 0, radius: 16 },                              // arched top
-    '1g': { frame: 0, shape: 'round', w: 26, h: 26, radius: 13 },// round
-    '1v': { frame: 0, radius: 2 },                               // backlit rectangle
-    '1w': { frame: 0.9, radius: 6 },                             // octagon (approx)
-    '1x': { frame: 0, shape: 'round', w: 22, h: 22, radius: 11 },// round pair (approx)
-    '1y': { frame: 0, radius: 0 }                                // frameless beveled
-  },
-  wc: {
-    '1a': { w: 15, dep: 28 }, '1b': { w: 15.5, dep: 27 }, '1c': { w: 16.5, dep: 27, shape: 'square' },
-    '1q': { h: 22, dep: 21, y: 15 },                             // wall-hung, concealed tank (floats)
-    '1r': { w: 18, h: 31, dep: 28 },                             // two-piece traditional
-    '1s': { w: 15, dep: 24 }, '1t': { h: 52 },                   // corner compact / high tank
-    '1u': { w: 15, dep: 25 }
-  },
-  rain: {
-    '1k': {}, '1l': { y: 78, dep: 14 }, '1m': { w: 4, dep: 6, y: 72 },
-    '1aj': { w: 12, dep: 12, shape: 'square' }, '1ai': { h: 40, w: 6 }, '1ah': { w: 8, h: 10, dep: 3 }
-  },
-  tap: {
-    '1ad': { w: 4, dep: 8 }, '1ae': { h: 8, dep: 9 }, '1af': { h: 8, dep: 9 }, '1aa': { h: 5, dep: 6 }
-  },
-  light: {
-    '1am': { w: 8, h: 8, shape: 'round' }, '1ao': { w: 5, h: 5, shape: 'round' },
-    '1ak': { w: 4, h: 7 }, '1n': { w: 3, h: 8, shape: 'round' }
-  }
-};
-FIX_MAP.light2 = FIX_MAP.light;
-(function () {
-  const patchById = {};
-  Object.keys(FX_TARGETS).forEach(function (cat) {
-    const opt = FX[cat]; if (!opt) return;
-    FX_TARGETS[cat].forEach(function (id) {
-      const m = FIX_MAP[id]; if (m && m[opt]) patchById[id] = Object.assign({ fxOpt: opt }, m[opt]);
-    });
-  });
-  if (Object.keys(patchById).length && S.items) {
-    S.items = S.items.map(function (it) { return patchById[it.id] ? Object.assign({}, it, patchById[it.id]) : it; });
-  }
-})();
+// Fixture Options are applied INTO the shared design by the Fixture Options
+// picker (see fixtures.html + fixture-map.js), so every view renders the same
+// thing and manual edits are never clobbered by a per-load overlay.
 document.getElementById('srcName').textContent = L.name;
 
 const SF = S.surf || {};
@@ -380,16 +336,23 @@ const HW3D = {
 // plate, and a separate single lever on its own square plate (brushed brass).
 function wallSpout(it, mat, nm) {
   const base = it.face > 0 ? BAY : 0, dir = it.face > 0 ? 1 : -1;
-  const cx = it.x + it.w / 2, cy = it.y + it.h / 2, plate = 4.6, arm = Math.max(it.dep, 7);
-  box(nm + '_plate', mat, plate, plate, 0.4, cx, cy, base - 0.2, 'soft', 0.6);        // square wall plate
-  box(nm + '_arm', mat, 2.4, Math.max(1.6, it.h), arm, cx, cy, base + dir * arm / 2, 'soft', 0.3); // rectangular spout arm out over the basin
+  const cx = it.x + it.w / 2, cy = it.y + it.h / 2, arm = Math.max(it.dep, 8);
+  box(nm + '_plate', mat, 4.8, 4.8, 0.5, cx, cy, base - 0.25, 'soft', 0.9);            // rounded square wall plate
+  // flat blade spout — wide, thin, long — projecting horizontally over the basin
+  const bladeL = arm * 0.85;
+  box(nm + '_blade', mat, 2.4, 1.1, bladeL, cx, cy + 0.3, base + dir * (0.3 + bladeL / 2), 'soft', 0.45);
+  // squared downturn at the tip + a small outlet underneath
+  const tipD = base + dir * (0.3 + bladeL);
+  box(nm + '_tip', mat, 2.3, 1.9, 1.1, cx, cy - 0.4, tipD, 'soft', 0.45);
+  hwMesh(new THREE.CylinderGeometry(0.42 * IN, 0.42 * IN, 0.55 * IN, 18), mat, nm + '_outlet', cx, cy - 1.2, tipD);
 }
 function singleLever(it, mat, nm) {
   const base = it.face > 0 ? BAY : 0, dir = it.face > 0 ? 1 : -1;
-  const cx = it.x + it.w / 2, cy = it.y + it.h / 2, proj = Math.max(it.dep, 2.5);
-  box(nm + '_plate', mat, 4.4, 4.4, 0.4, cx, cy, base - 0.2, 'soft', 0.6);            // square wall plate
-  hwMesh(new THREE.CylinderGeometry(1.05 * IN, 1.05 * IN, proj * 0.5 * IN, 24), mat, nm + '_esc', cx, cy, base + dir * proj * 0.25, Math.PI / 2);
-  box(nm + '_lever', mat, 1.1, Math.max(3, it.h + 2.5), 0.7, cx, cy - 2, base + dir * proj * 0.6, 'soft', 0.3); // single lever, pointing down
+  const cx = it.x + it.w / 2, cy = it.y + it.h / 2, proj = Math.max(it.dep, 2.6);
+  box(nm + '_plate', mat, 4.6, 4.6, 0.5, cx, cy, base - 0.25, 'soft', 0.9);            // rounded square wall plate
+  hwMesh(new THREE.CylinderGeometry(1.15 * IN, 1.15 * IN, proj * 0.55 * IN, 26), mat, nm + '_esc', cx, cy, base + dir * proj * 0.28, Math.PI / 2); // round escutcheon
+  // rounded oval lever, canted down from the escutcheon
+  box(nm + '_lever', mat, 1.4, 4.2, 0.8, cx, cy - 2.1, base + dir * proj * 0.62, 'soft', 0.65);
 }
 function crossHandle(it, mat, nm) {
   const base = it.face > 0 ? BAY : 0, proj = it.dep, cx = it.x + it.w / 2, cy = it.y + it.h / 2;
@@ -1164,9 +1127,46 @@ document.getElementById('srcSub').textContent =
       kneeH: S.kneeH, slopeRun: S.slopeRun, wallsOff: S.wallsOff, splashLinked: S.splashLinked,
       trimTone: S.trimTone, drawersLeft: S.drawersLeft, drawersRight: S.drawersRight, bankW: S.bankW, bankGap: S.bankGap };
   }
+  // ---- undo / redo (survives the rebuild-reload via sessionStorage) -------
+  const UNDO = 'b-undo', REDO = 'b-redo', UCAP = 40;
+  function readStack(k) { try { return JSON.parse(sessionStorage.getItem(k) || '[]'); } catch (e) { return []; } }
+  function writeStack(k, a) { try { sessionStorage.setItem(k, JSON.stringify(a.slice(-UCAP))); } catch (e) {} }
   function writeState(state) {
-    try { localStorage.setItem(WORK, JSON.stringify(state)); } catch (e) { /* quota */ }
+    try {
+      // snapshot the pre-edit design for undo — fall back to the baseline the
+      // very first time (no work slot yet) so the first edit is undoable too
+      const prev = localStorage.getItem(WORK) || (window.BATHROOM_BASELINE ? JSON.stringify(window.BATHROOM_BASELINE) : null);
+      if (prev) { const u = readStack(UNDO); u.push(prev); writeStack(UNDO, u); }
+      sessionStorage.removeItem(REDO);                  // a fresh edit invalidates redo
+      localStorage.setItem(WORK, JSON.stringify(state));
+    } catch (e) { /* quota */ }
   }
+  function undo() {
+    const u = readStack(UNDO); if (!u.length) { toast('Nothing to undo'); return; }
+    const cur = localStorage.getItem(WORK);
+    const prev = u.pop(); writeStack(UNDO, u);
+    if (cur) { const r = readStack(REDO); r.push(cur); writeStack(REDO, r); }
+    try { localStorage.setItem(WORK, prev); } catch (e) {}
+    sessionStorage.setItem('b-view', currentView || ''); sessionStorage.setItem('b-tab', activeTab());
+    location.reload();
+  }
+  function redo() {
+    const r = readStack(REDO); if (!r.length) { toast('Nothing to redo'); return; }
+    const cur = localStorage.getItem(WORK);
+    const next = r.pop(); writeStack(REDO, r);
+    if (cur) { const u = readStack(UNDO); u.push(cur); writeStack(UNDO, u); }
+    try { localStorage.setItem(WORK, next); } catch (e) {}
+    sessionStorage.setItem('b-view', currentView || ''); sessionStorage.setItem('b-tab', activeTab());
+    location.reload();
+  }
+  document.addEventListener('keydown', (e) => {
+    const mod = e.metaKey || e.ctrlKey; if (!mod) return;
+    const k = (e.key || '').toLowerCase();
+    const t = e.target, inField = t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA');
+    if (inField) return;                                // let fields handle their own text undo
+    if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+    else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redo(); }
+  });
   function applyEdit(id, patch, reload) {
     const state = seedState();
     state.items = state.items.map((x) => x.id === id ? Object.assign({}, x, patch) : x);
