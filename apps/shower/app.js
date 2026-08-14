@@ -660,39 +660,51 @@ function buildFloor(){
   plane(gFloor, W, D, surfMat('floor', W, D), [W/2, 0, D/2], [-Math.PI/2, 0, 0]);
   buildDrain();
 }
-/* Dropped "floating" ceiling: the tiled field drops ~3" below the structural
-   slab, held off the walls by a perimeter reveal. A brass valance lines the
-   reveal and a warm LED strip rings the whole ceiling, washing light up the
-   cove — the classic floating-ceiling glow. */
-const CEIL_DROP = 3, CEIL_REVEAL = 5;   // drop depth (2–4") and perimeter cove width
+/* Dropped "floating" ceiling: the tiled field drops below the structural slab,
+   held off the walls by a perimeter reveal. A brass valance lines the reveal
+   and an LED strip rings the whole ceiling, washing light up the cove — the
+   classic floating-ceiling glow. Configurable via COVE (Build ▸ Ceiling). The
+   dropped field takes the CEILING tile finish (Tile ▸ Ceiling). */
+const LED_COLOURS = [
+  { id:'warm',    name:'Warm 2700K',    emit:0xffd39a, lite:0xffdca6 },
+  { id:'soft',    name:'Soft 3000K',    emit:0xffe6c2, lite:0xffe7c2 },
+  { id:'neutral', name:'Neutral 3500K', emit:0xfff2da, lite:0xfff2e0 },
+  { id:'cool',    name:'Cool 4000K',    emit:0xe8eeff, lite:0xdfe8ff }
+];
+const COVE = { on:true, drop:3, reveal:5, led:'warm', bright:1 };
+function ledOf(id){ for(let i=0;i<LED_COLOURS.length;i++) if(LED_COLOURS[i].id===id) return LED_COLOURS[i]; return LED_COLOURS[0]; }
 function buildCeiling(){
   clearGroup(gCeil);
-  const drop = CEIL_DROP, reveal = CEIL_REVEAL;
-  const iw = W - 2 * reveal, id = D - 2 * reveal, topGap = 0.8, slabT = drop;
-  // structural ceiling — only the perimeter reveal shows it, lit by the cove
+  // structural slab (shows through the perimeter reveal, lit by the cove)
   plane(gCeil, W, D, surfMat('ceiling', W, D), [W/2, H, D/2], [Math.PI/2, 0, 0]);
-  // the dropped tiled field, floating below with the reveal gap all around
+  if(!COVE.on){ return; }
+  const drop = Math.max(2, Math.min(4, COVE.drop)), reveal = Math.max(3, Math.min(10, COVE.reveal));
+  const led = ledOf(COVE.led), bright = Math.max(0.2, Math.min(2, COVE.bright));
+  const iw = W - 2 * reveal, id = D - 2 * reveal, topGap = 0.8, slabT = drop;
+  const slabY = H - topGap - slabT / 2;
+  // the dropped tiled field (takes the Ceiling tile finish), floating below
   const slab = new THREE.Mesh(new THREE.BoxGeometry(iw, slabT, id), surfMat('ceiling', iw, id));
-  slab.position.set(W/2, H - topGap - slabT / 2, D/2);
+  slab.position.set(W/2, slabY, D/2);
   slab.castShadow = true; slab.receiveShadow = true; gCeil.add(slab);
-  // brass valance framing the reveal (a thin lip around the dropped field)
-  const vy = H - topGap - slabT, vt = 0.6;
-  [[iw + 2 * vt, vt, (W)/2, reveal - vt/2], [iw + 2 * vt, vt, (W)/2, D - reveal + vt/2],
-   [vt, id, reveal - vt/2, D/2], [vt, id, W - reveal + vt/2, D/2]].forEach(function(s, i){
-    const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], slabT, s[1]), matBrass);
-    m.position.set(s[2], H - topGap - slabT/2, s[3]); gCeil.add(m);
+  // brass valance framing the reveal (a defined lip around the dropped field)
+  const vt = 0.9;
+  [[iw + 2 * vt, W/2, reveal - vt/2], [iw + 2 * vt, W/2, D - reveal + vt/2]].forEach(function(s){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], slabT + 0.4, vt), matBrass); m.position.set(s[1], slabY, s[2]); gCeil.add(m);
   });
-  // warm LED cove strip ringing the ceiling, tucked in the reveal facing up
-  const ledMat = new THREE.MeshStandardMaterial({color:0xfff2da, emissive:0xffd9a2, emissiveIntensity:1.9, roughness:0.5, metalness:0});
-  const ledY = H - 1.0, lt = 0.6, ex0 = reveal - 0.4, ex1 = W - reveal + 0.4, ez0 = reveal - 0.4, ez1 = D - reveal + 0.4;
-  [[ex1 - ex0, lt, (ex0 + ex1)/2, ez0], [ex1 - ex0, lt, (ex0 + ex1)/2, ez1],
-   [lt, ez1 - ez0, ex0, (ez0 + ez1)/2], [lt, ez1 - ez0, ex1, (ez0 + ez1)/2]].forEach(function(s){
-    const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], 0.5, s[1]), ledMat);
-    m.position.set(s[2], ledY, s[3]); gCeil.add(m);
+  [[id, reveal - vt/2], [id, W - reveal + vt/2]].forEach(function(s){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(vt, slabT + 0.4, s[0]), matBrass); m.position.set(s[1], slabY, D/2); gCeil.add(m);
   });
-  // real light from the cove so the ring reads as illumination, not just a bright line
-  [[reveal, reveal], [W - reveal, reveal], [reveal, D - reveal], [W - reveal, D - reveal]].forEach(function(p){
-    const pl = new THREE.PointLight(0xffe7c2, 0.42, 46, 2); pl.position.set(p[0], H - 2.5, p[1]); gCeil.add(pl);
+  // LED cove strip ringing the ceiling, tucked in the reveal facing up
+  const ledMat = new THREE.MeshStandardMaterial({ color:led.emit, emissive:led.emit,
+    emissiveIntensity:2.2 * bright, roughness:0.5, metalness:0 });
+  const ledY = H - 0.9, ex0 = reveal - 0.5, ex1 = W - reveal + 0.5, ez0 = reveal - 0.5, ez1 = D - reveal + 0.5;
+  [[ex1 - ex0, 0.7, (ex0 + ex1)/2, ez0], [ex1 - ex0, 0.7, (ex0 + ex1)/2, ez1],
+   [0.7, ez1 - ez0, ex0, (ez0 + ez1)/2], [0.7, ez1 - ez0, ex1, (ez0 + ez1)/2]].forEach(function(s){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], 0.6, s[1]), ledMat); m.position.set(s[2], ledY, s[3]); gCeil.add(m);
+  });
+  // real light from the cove so the ring reads as illumination
+  [[reveal, reveal], [W - reveal, reveal], [reveal, D - reveal], [W - reveal, D - reveal], [W/2, reveal], [W/2, D - reveal]].forEach(function(p){
+    const pl = new THREE.PointLight(led.lite, 0.5 * bright, 52, 2); pl.position.set(p[0], H - 2.2, p[1]); gCeil.add(pl);
   });
 }
 /* Every wall is a shape with holes, so a niche cuts a real opening in
@@ -1380,7 +1392,8 @@ const VIEWS = {
   bench:{r:146, theta:1.5707, phi:1.5000, t:[W/2,34,D/2]},
   plumb:{r:146, theta:-1.5707,phi:1.4800, t:[W/2,50,D/2]},
   back: {r:150, theta:Math.PI,phi:1.4800, t:[W/2,44,D/2]},
-  plan: {r:118, theta:0.0,    phi:0.045,  t:[W/2,20,D/2]}
+  plan: {r:118, theta:0.0,    phi:0.045,  t:[W/2,20,D/2]},
+  ceiling: {r:120, theta:0.55, phi:2.42, t:[W/2,74,D/2]}   // look UP at the drop ceiling + LED cove
 };
 function setView(name){
   const v = VIEWS[name]; if(!v) return;
@@ -1514,6 +1527,7 @@ function captureState(){
     lock: designLocked,
     surf: SURF_ORDER.map(function(id){ const s = SURF[id].spec; return [s.colour, s.size, s.pattern, s.grout, s.customW, s.customH]; }),
     bench: {t:BENCH.type, w:BENCH.wall, c:BENCH.corner, l:BENCH.len, d:BENCH.dep, h:BENCH.h, o:BENCH.off, g:BENCH.leg},
+    cove: {on:COVE.on, drop:COVE.drop, reveal:COVE.reveal, led:COVE.led, bright:COVE.bright},
     metal: metalId,
     jets: jetCount,
     fx: fixtures.map(function(f){
@@ -1536,6 +1550,10 @@ function applyState(json){
   const bs = st.bench;
   BENCH.type = bs.t; BENCH.wall = bs.w; BENCH.corner = bs.c;
   BENCH.len = bs.l; BENCH.dep = bs.d; BENCH.h = bs.h; BENCH.off = bs.o; BENCH.leg = bs.g;
+  if(st.cove){ COVE.on = st.cove.on !== false; if(st.cove.drop) COVE.drop = st.cove.drop;
+    if(st.cove.reveal) COVE.reveal = st.cove.reveal; if(st.cove.led) COVE.led = st.cove.led;
+    if(st.cove.bright != null) COVE.bright = st.cove.bright; }
+  buildCeiling();
   applyMetal(st.metal || 'brass');
   setDesignLock(!!st.lock);
   if(jetCount !== 0) buildJets(0);   // body jets removed from this kit — never restore them
@@ -1956,12 +1974,13 @@ function benchPresetMatch(){
 const BUILD_TREE = [
   {id:'finish',    name:'Metal finish', els:['metal']},
   {id:'enclosure', name:'Enclosure', els:['glass','handle']},
+  {id:'ceiling',   name:'Ceiling',   els:['cove']},
   {id:'seating',   name:'Seating',   els:['bench']},
   {id:'water',     name:'Water',     els:['rain','bar','valve']},
   {id:'drainage',  name:'Drainage',  els:['drain']},
   {id:'storage',   name:'Storage',   els:['niche']}
 ];
-const treeOpen = {finish:true, enclosure:false, seating:true, water:true, drainage:false, storage:false};
+const treeOpen = {finish:true, enclosure:false, ceiling:false, seating:true, water:true, drainage:false, storage:false};
 const elOpen = {};
 
 function fixById(id){
@@ -2080,6 +2099,30 @@ const ELEMENTS = {
       extraFields(n, f, ['len']);
       posFields(n, f);
       locateBtn(n, f);
+    }
+  },
+  cove: {
+    name:'Drop ceiling + LED cove',
+    summary:function(){ return COVE.on ? (fmtIn(COVE.drop) + ' drop · ' + ledOf(COVE.led).name) : 'Off'; },
+    body:function(n){
+      n.appendChild(segRow([{id:'on',name:'On'},{id:'off',name:'Off'}], COVE.on ? 'on' : 'off', function(v){
+        COVE.on = (v === 'on'); buildCeiling(); renderBuildUI(); commit();
+      }));
+      if(!COVE.on){ n.appendChild(noteEl('Flush structural ceiling — no dropped soffit or cove light.')); return; }
+      const sub = function(t){ const p = document.createElement('p'); p.className = 'card-sub'; p.textContent = t; n.appendChild(p); };
+      sub('Drop depth');
+      n.appendChild(segRow([{id:2,name:'2″'},{id:3,name:'3″'},{id:4,name:'4″'}], COVE.drop, function(v){
+        COVE.drop = +v; buildCeiling(); renderBuildUI(); commit();
+      }));
+      sub('LED colour');
+      n.appendChild(segRow(LED_COLOURS.map(function(l){ return {id:l.id, name:l.name}; }), COVE.led, function(v){
+        COVE.led = v; buildCeiling(); renderBuildUI(); commit();
+      }));
+      sub('Brightness');
+      n.appendChild(segRow([{id:0.5,name:'Low'},{id:1,name:'Med'},{id:1.6,name:'High'}], COVE.bright, function(v){
+        COVE.bright = +v; buildCeiling(); renderBuildUI(); commit();
+      }));
+      n.appendChild(noteEl('The dropped panel takes the CEILING tile finish — set it under Tile ▸ Ceiling. Valance is brushed metal.'));
     }
   },
   bench: {
