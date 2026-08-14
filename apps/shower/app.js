@@ -700,29 +700,31 @@ function buildCeiling(){
   const slab = new THREE.Mesh(new THREE.BoxGeometry(iw, slabT, id), surfMat('ceiling', iw, id));
   slab.position.set(W/2, slabY, D/2);
   slab.castShadow = true; slab.receiveShadow = true; gCeil.add(slab);
-  // brass valance: a tall lip at the panel edge, rising from the slab up to the
-  // structural ceiling, so it CONCEALS the strip behind it (the light reads as a
-  // recessed cove glow, not a visible line at the edge)
-  const vt = 0.9, lipH = drop + topGap, lipY = H - lipH / 2;
-  [[iw + 2 * vt, W/2, reveal - vt/2], [iw + 2 * vt, W/2, D - reveal + vt/2]].forEach(function(s){
-    const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], lipH, vt), matBrass); m.position.set(s[1], lipY, s[2]); gCeil.add(m);
+  // FRONT fascia (the concealing surface): a downstand lip in the ceiling finish
+  // hanging from the frame edge. This is what hides the strip — from the room you
+  // see the fascia and a warm line of light escaping the reveal, never the LED.
+  const underside = H - topGap - slabT;
+  const fasciaH = Math.min(2.6, slabT + 1.0), fT = 0.8, fy = underside - fasciaH / 2 + 0.2;
+  const fMat = surfMat('ceiling', iw, fasciaH);
+  [[iw + 2 * fT, W/2, reveal - fT/2], [iw + 2 * fT, W/2, D - reveal + fT/2]].forEach(function(s){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], fasciaH, fT), fMat); m.position.set(s[1], fy, s[2]); gCeil.add(m);
   });
-  [[id, reveal - vt/2], [id, W - reveal + vt/2]].forEach(function(s){
-    const m = new THREE.Mesh(new THREE.BoxGeometry(vt, lipH, s[0]), matBrass); m.position.set(s[1], lipY, D/2); gCeil.add(m);
+  [[id, reveal - fT/2], [id, W - reveal + fT/2]].forEach(function(s){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(fT, fasciaH, s[0]), fMat); m.position.set(s[1], fy, D/2); gCeil.add(m);
   });
-  // LED strip RECESSED into the reveal channel on the wall side, tucked up near
-  // the structural ceiling behind the valance lip and facing up — you see the
-  // warm wash on the ceiling, not the strip
+  // HIDDEN LED on the inside of the frame, behind the fascia, facing up — set
+  // back toward the wall so the fascia occludes it; the light washes up the
+  // structural slab and grazes the wall (warm by default)
   const ledMat = new THREE.MeshStandardMaterial({ color:led.emit, emissive:led.emit,
-    emissiveIntensity:2.4 * bright, roughness:0.5, metalness:0 });
-  const ledY = H - 1.0, LI = Math.max(1.0, reveal * 0.4);   // inset from each wall
-  [[W - 2 * LI, 0.6, W/2, LI], [W - 2 * LI, 0.6, W/2, D - LI],
-   [0.6, D - 2 * LI, LI, D/2], [0.6, D - 2 * LI, W - LI, D/2]].forEach(function(s){
+    emissiveIntensity:2.6 * bright, roughness:0.5, metalness:0 });
+  const ledY = underside - 0.4, LIN = Math.max(1.0, reveal * 0.5);   // inset from each wall
+  [[W - 2 * LIN, 0.5, W/2, LIN], [W - 2 * LIN, 0.5, W/2, D - LIN],
+   [0.5, D - 2 * LIN, LIN, D/2], [0.5, D - 2 * LIN, W - LIN, D/2]].forEach(function(s){
     const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], 0.5, s[1]), ledMat); m.position.set(s[2], ledY, s[3]); gCeil.add(m);
   });
-  // warm wash from the recessed channel so the cove reads as real light
-  [[LI, LI], [W - LI, LI], [LI, D - LI], [W - LI, D - LI], [W/2, LI], [W/2, D - LI]].forEach(function(p){
-    const pl = new THREE.PointLight(led.lite, 0.5 * bright, 50, 2); pl.position.set(p[0], H - 1.6, p[1]); gCeil.add(pl);
+  // warm wash escaping the reveal (up the structural slab + down the wall)
+  [[LIN, LIN], [W - LIN, LIN], [LIN, D - LIN], [W - LIN, D - LIN], [W/2, LIN], [W/2, D - LIN]].forEach(function(p){
+    const pl = new THREE.PointLight(led.lite, 0.55 * bright, 48, 2); pl.position.set(p[0], underside + 0.6, p[1]); gCeil.add(pl);
   });
 }
 /* Every wall is a shape with holes, so a niche cuts a real opening in
