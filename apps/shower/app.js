@@ -453,7 +453,7 @@ const MAXANISO = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.
 })();
 
 const camera = new THREE.PerspectiveCamera(38, window.innerWidth/window.innerHeight, 0.5, 2500);
-scene.add(new THREE.AmbientLight(0xffffff, 0.30));
+const amb = new THREE.AmbientLight(0xffffff, 0.30); scene.add(amb);
 const hemi = new THREE.HemisphereLight(0xcfe0ea, 0x4b433c, 0.62); scene.add(hemi);
 const key = new THREE.DirectionalLight(0xfff4e6, 1.05);
 key.position.set(W/2 + 130, 190, D + 150);
@@ -465,6 +465,20 @@ key.shadow.bias = -0.0012; key.shadow.radius = 3;
 key.target.position.set(W/2, 30, D/2); scene.add(key); scene.add(key.target);
 const fillL = new THREE.DirectionalLight(0xbcd4e2, 0.34); fillL.position.set(-120, 90, -60); scene.add(fillL);
 const inner = new THREE.PointLight(0xfff0dc, 0.55, 210, 2); inner.position.set(W/2, H-12, D/2); scene.add(inner);
+// Ambient dimmer: one control scales the whole room rig (ambient/sky/key/fill/
+// inner) so you can drop the scene to a mood level and let the cove read. The
+// LED cove is driven separately (COVE.bright), so dimming the room leaves the
+// warm strip glowing.
+const LIGHT_BASE = { amb:0.30, hemi:0.62, key:1.05, fill:0.34, inner:0.55 };
+let DIM = 1;
+function applyDim(v){
+  DIM = Math.max(0.1, Math.min(1, v));
+  amb.intensity   = LIGHT_BASE.amb   * DIM;
+  hemi.intensity  = LIGHT_BASE.hemi  * DIM;
+  key.intensity   = LIGHT_BASE.key   * (0.35 + 0.65 * DIM);   // keep a little modelling key even when dim
+  fillL.intensity = LIGHT_BASE.fill  * DIM;
+  inner.intensity = LIGHT_BASE.inner * DIM;
+}
 
 const matBrass   = new THREE.MeshStandardMaterial({color:0xC39A61, metalness:0.92, roughness:0.28});
 const matBrassDk = new THREE.MeshStandardMaterial({color:0x8A6E44, metalness:0.9,  roughness:0.42});
@@ -671,7 +685,7 @@ const LED_COLOURS = [
   { id:'neutral', name:'Neutral 3500K', emit:0xfff2da, lite:0xfff2e0 },
   { id:'cool',    name:'Cool 4000K',    emit:0xe8eeff, lite:0xdfe8ff }
 ];
-const COVE = { on:true, drop:3, reveal:5, led:'warm', bright:1 };
+const COVE = { on:true, drop:3, reveal:3, led:'warm', bright:1 };   // reveal 3" — panel runs close to the walls
 function ledOf(id){ for(let i=0;i<LED_COLOURS.length;i++) if(LED_COLOURS[i].id===id) return LED_COLOURS[i]; return LED_COLOURS[0]; }
 function buildCeiling(){
   clearGroup(gCeil);
@@ -686,25 +700,29 @@ function buildCeiling(){
   const slab = new THREE.Mesh(new THREE.BoxGeometry(iw, slabT, id), surfMat('ceiling', iw, id));
   slab.position.set(W/2, slabY, D/2);
   slab.castShadow = true; slab.receiveShadow = true; gCeil.add(slab);
-  // brass valance framing the reveal (a defined lip around the dropped field)
-  const vt = 0.9;
+  // brass valance: a tall lip at the panel edge, rising from the slab up to the
+  // structural ceiling, so it CONCEALS the strip behind it (the light reads as a
+  // recessed cove glow, not a visible line at the edge)
+  const vt = 0.9, lipH = drop + topGap, lipY = H - lipH / 2;
   [[iw + 2 * vt, W/2, reveal - vt/2], [iw + 2 * vt, W/2, D - reveal + vt/2]].forEach(function(s){
-    const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], slabT + 0.4, vt), matBrass); m.position.set(s[1], slabY, s[2]); gCeil.add(m);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], lipH, vt), matBrass); m.position.set(s[1], lipY, s[2]); gCeil.add(m);
   });
   [[id, reveal - vt/2], [id, W - reveal + vt/2]].forEach(function(s){
-    const m = new THREE.Mesh(new THREE.BoxGeometry(vt, slabT + 0.4, s[0]), matBrass); m.position.set(s[1], slabY, D/2); gCeil.add(m);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(vt, lipH, s[0]), matBrass); m.position.set(s[1], lipY, D/2); gCeil.add(m);
   });
-  // LED cove strip ringing the ceiling, tucked in the reveal facing up
+  // LED strip RECESSED into the reveal channel on the wall side, tucked up near
+  // the structural ceiling behind the valance lip and facing up — you see the
+  // warm wash on the ceiling, not the strip
   const ledMat = new THREE.MeshStandardMaterial({ color:led.emit, emissive:led.emit,
-    emissiveIntensity:2.2 * bright, roughness:0.5, metalness:0 });
-  const ledY = H - 0.9, ex0 = reveal - 0.5, ex1 = W - reveal + 0.5, ez0 = reveal - 0.5, ez1 = D - reveal + 0.5;
-  [[ex1 - ex0, 0.7, (ex0 + ex1)/2, ez0], [ex1 - ex0, 0.7, (ex0 + ex1)/2, ez1],
-   [0.7, ez1 - ez0, ex0, (ez0 + ez1)/2], [0.7, ez1 - ez0, ex1, (ez0 + ez1)/2]].forEach(function(s){
-    const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], 0.6, s[1]), ledMat); m.position.set(s[2], ledY, s[3]); gCeil.add(m);
+    emissiveIntensity:2.4 * bright, roughness:0.5, metalness:0 });
+  const ledY = H - 1.0, LI = Math.max(1.0, reveal * 0.4);   // inset from each wall
+  [[W - 2 * LI, 0.6, W/2, LI], [W - 2 * LI, 0.6, W/2, D - LI],
+   [0.6, D - 2 * LI, LI, D/2], [0.6, D - 2 * LI, W - LI, D/2]].forEach(function(s){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], 0.5, s[1]), ledMat); m.position.set(s[2], ledY, s[3]); gCeil.add(m);
   });
-  // real light from the cove so the ring reads as illumination
-  [[reveal, reveal], [W - reveal, reveal], [reveal, D - reveal], [W - reveal, D - reveal], [W/2, reveal], [W/2, D - reveal]].forEach(function(p){
-    const pl = new THREE.PointLight(led.lite, 0.5 * bright, 52, 2); pl.position.set(p[0], H - 2.2, p[1]); gCeil.add(pl);
+  // warm wash from the recessed channel so the cove reads as real light
+  [[LI, LI], [W - LI, LI], [LI, D - LI], [W - LI, D - LI], [W/2, LI], [W/2, D - LI]].forEach(function(p){
+    const pl = new THREE.PointLight(led.lite, 0.5 * bright, 50, 2); pl.position.set(p[0], H - 1.6, p[1]); gCeil.add(pl);
   });
 }
 /* Every wall is a shape with holes, so a niche cuts a real opening in
@@ -1528,6 +1546,7 @@ function captureState(){
     surf: SURF_ORDER.map(function(id){ const s = SURF[id].spec; return [s.colour, s.size, s.pattern, s.grout, s.customW, s.customH]; }),
     bench: {t:BENCH.type, w:BENCH.wall, c:BENCH.corner, l:BENCH.len, d:BENCH.dep, h:BENCH.h, o:BENCH.off, g:BENCH.leg},
     cove: {on:COVE.on, drop:COVE.drop, reveal:COVE.reveal, led:COVE.led, bright:COVE.bright},
+    dim: DIM,
     metal: metalId,
     jets: jetCount,
     fx: fixtures.map(function(f){
@@ -1553,6 +1572,7 @@ function applyState(json){
   if(st.cove){ COVE.on = st.cove.on !== false; if(st.cove.drop) COVE.drop = st.cove.drop;
     if(st.cove.reveal) COVE.reveal = st.cove.reveal; if(st.cove.led) COVE.led = st.cove.led;
     if(st.cove.bright != null) COVE.bright = st.cove.bright; }
+  applyDim(st.dim != null ? st.dim : 1);
   buildCeiling();
   applyMetal(st.metal || 'brass');
   setDesignLock(!!st.lock);
@@ -1974,7 +1994,7 @@ function benchPresetMatch(){
 const BUILD_TREE = [
   {id:'finish',    name:'Metal finish', els:['metal']},
   {id:'enclosure', name:'Enclosure', els:['glass','handle']},
-  {id:'ceiling',   name:'Ceiling',   els:['cove']},
+  {id:'ceiling',   name:'Ceiling & light', els:['cove','ambient']},
   {id:'seating',   name:'Seating',   els:['bench']},
   {id:'water',     name:'Water',     els:['rain','bar','valve']},
   {id:'drainage',  name:'Drainage',  els:['drain']},
@@ -2123,6 +2143,16 @@ const ELEMENTS = {
         COVE.bright = +v; buildCeiling(); renderBuildUI(); commit();
       }));
       n.appendChild(noteEl('The dropped panel takes the CEILING tile finish — set it under Tile ▸ Ceiling. Valance is brushed metal.'));
+    }
+  },
+  ambient: {
+    name:'Room light (ambient dim)',
+    summary:function(){ const p = Math.round(DIM * 100); return p >= 100 ? 'Full' : p + '%'; },
+    body:function(n){
+      n.appendChild(segRow([{id:1,name:'Full'},{id:0.7,name:'Soft'},{id:0.45,name:'Dim'},{id:0.25,name:'Night'}], DIM, function(v){
+        applyDim(+v); renderBuildUI(); commit();
+      }));
+      n.appendChild(noteEl('Dims the whole room rig to a mood level — the warm LED cove keeps glowing, so Night reads as cove-only lighting.'));
     }
   },
   bench: {
