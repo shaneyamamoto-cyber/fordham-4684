@@ -1,0 +1,186 @@
+{
+  "$schema": "fordham4684.design-agent/1.0",
+  "name": "Fordham 4684 Design Agent — Knowledge Base",
+  "purpose": "Structured, machine-readable knowledge distilled from building the Fordham 4684 room planners (upstairs bathroom, downstairs shower, sauna). Feeds a design agent that produces geometry-accurate room designs and structure-locked photoreal renders. Units: inches unless noted.",
+
+  "principles": [
+    "Geometry is ground truth. Placement of walls, cabinets, drains, plumbing rough-ins and glass is deterministic and never invented by a generative model.",
+    "Renders are applied ON TOP of locked geometry (a fixed camera snapshot or a site photo), never free text-to-image. Diffusion may add light/reflection/caustics only, never move or resize anything.",
+    "Every surface is an independently editable ZONE (each wall run, floor, splash, ceiling, bench, niche). A material change must show on exactly the surface picked and translate identically in 2D and 3D.",
+    "Two material paths: (a) PROCEDURAL — colour-true, any colour/size/pattern/grout, editable live; (b) PHOTOGRAPHIC PBR (Look Book) — highest fidelity, fixed baked pattern but scalable to any tile size. Default surfaces to procedural for editability; pin PBR for hero realism.",
+    "One finish family across a room: a single metal finish drives every tap/head/bar/ring; one wood tone drives all casework. Never let a per-item swatch drift a fitting off the room finish.",
+    "State is the single source of truth and persists (localStorage work-slot + versions). 2D planner, 3D model and floor plan all read the same state."
+  ],
+
+  "rooms": {
+    "bathroom": {
+      "label": "Upstairs bathroom",
+      "shellIn": { "run": 169, "depthToDormer": 71, "ceiling": 92, "dormerSlopeRun": 32, "kneeH": 0 },
+      "footprintPolyXD": [[0,14.5],[60.5,14.5],[60.5,0],[169,0],[169,-56.5],[0,-56.5]],
+      "faces": { "0": "vanity wall", "14.5": "tub/tap (bay) wall" },
+      "zones": {
+        "bay":        { "fin": "tile",  "color": "#9aa79b", "tileL": 48, "tileW": 24, "pattern": "offset2", "label": "shower/tub wall" },
+        "shelf_wall": { "fin": "paint", "color": "#e8e3d8", "label": "wall behind floating shelves — split from bay" },
+        "vanity":     { "fin": "paint", "color": "#e8e3d8", "label": "vanity wall" },
+        "splash":     { "fin": "stone", "color": "#4a5442", "tileL": 60, "tileW": 45, "pattern": "stack", "label": "vanity splash" },
+        "floor":      { "fin": "stone", "color": "#bdb5a6", "tileL": 24, "tileW": 24, "pattern": "offset2" },
+        "slope":      { "fin": "paint", "color": "#e8e3d8", "label": "dormer" },
+        "end_left":   { "fin": "paint", "color": "#e8e3d8" },
+        "end_right":  { "fin": "paint", "color": "#e8e3d8" }
+      },
+      "finishes": { "metal": "brushed-gold #c9a35c", "wood": "teak" },
+      "fixtures": [
+        { "id": "tub", "size": [32,20,60], "x": 0, "face": 14.5, "rimAff": 20, "locked": true, "type": "alcove tub, white acrylic" },
+        { "id": "van", "size": [36,19,12], "x": 66.25, "face": 0, "undersideAff": 9, "locked": true, "type": "wall-hung vanity", "options": ["drawers 2L/3R", "left bank as cupboard doors"] },
+        { "id": "tower", "size": [16,84,14.5], "x": 44.5, "face": 14.5, "type": "storage tower" },
+        { "id": "vessel", "size": [22,4,13.8], "x": 67.75, "type": "wall basin" },
+        { "id": "stone", "size": [10,1.5,13.8], "x": 91.5, "type": "countertop" },
+        { "id": "mir", "size": [32,21.5], "x": 68.75, "type": "stadium mirror" },
+        { "id": "splash", "size": [46,66], "x": 61.25, "type": "splash panel" },
+        { "id": "shelf", "x": 32, "face": 14.5, "type": "three floating shelves" },
+        { "id": "nichesh", "size": [30,14], "x": 6, "face": 14.5, "recessIn": 4, "type": "lit tile niche" },
+        { "id": "wc", "size": [16,29,26], "type": "toilet, right end wall" },
+        { "id": "rain", "size": [10,4,12], "x": 11, "face": 14.5, "metal": true },
+        { "id": "mixer", "x": 13, "face": 14.5, "metal": true },
+        { "id": "spout", "x": 13, "face": 14.5, "metal": true, "type": "tub spout, curved" },
+        { "id": "handbar", "x": 24, "face": 14.5, "metal": true, "type": "hand shower on slide bar" },
+        { "id": "ring", "type": "towel ring", "metal": true },
+        { "id": "bar2", "id2": "bar3", "wall": "slope", "type": "towel bars on dormer", "metal": true }
+      ],
+      "removed": ["sconces (light, light2)"]
+    },
+
+    "shower": {
+      "label": "Downstairs shower room",
+      "enclosureIn": { "W": 51.5, "D": 48, "H": 96 },
+      "glass": { "topAff": 78, "fixedPanel": 22, "door": 27.5, "doorGap": 1.5 },
+      "curbIn": { "H": 4, "W": 4.5 },
+      "fixtures": [
+        { "id": "rain", "mount": "ceiling post straight down", "faceDia": 12, "dropAff": 90, "locked": true, "note": "NOT a wall arm" },
+        { "id": "valve", "wall": "right (tap)", "aff": 48, "type": "thermostatic, rounded plate, 3 controls, BLACK levers, gold body" },
+        { "id": "bar", "wall": "right (tap)", "type": "round hand shower on adjustable slide bar; brackets, holder w/ black clamp lever, supply elbow + hose", "locked": true },
+        { "id": "handle", "wall": "glass door" },
+        { "id": "drain", "type": "round 4in" },
+        { "id": "niche", "size": [26,15], "aff": 50, "wall": "back" }
+      ],
+      "removed": ["wall-mounted shower head", "body jets"],
+      "cove": {
+        "type": "concealed pelmet drop ceiling",
+        "dropIn": 3, "dropRange": [2,4], "revealIn": 3,
+        "construction": "dropped tiled frame; front fascia in ceiling finish hangs from the frame's inner edge; LED sits on the inside of the frame BEHIND the fascia, set back toward the wall, facing up; only the warm glow escaping the reveal is visible, never the strip.",
+        "led": { "colours": ["warm 2700K","soft 3000K","neutral 3500K","cool 4000K"], "default": "warm", "brightness": ["low","med","high"] },
+        "views": "a 'Ceiling' camera preset looks up at it"
+      },
+      "ambientDim": { "levels": {"full":1.0,"soft":0.7,"dim":0.45,"night":0.25}, "note": "scales the room rig (ambient/sky/key/fill/inner); the cove LED stays lit so Night = cove-only mood" },
+      "bench": { "type": "corner", "corner": "back-left", "legIn": 24, "seatAff": 18.5 },
+      "surfaces": { "floor": "Limestone Alba 2in hex", "walls": "12x24 running bond", "metal": "brushed gold" }
+    },
+
+    "sauna": {
+      "label": "Sauna",
+      "shellFt": { "rawWidth": "10ft4in", "rawDepth": "6ft4in", "backWall": "9ft6in", "frontWall": "7ft10in", "ceiling": "sloped — flat at back, ramps down to front" },
+      "finishedInterior": "raw minus wall lining both sides",
+      "benches": {
+        "footBench": { "seatAff": 32, "widthIn": 20, "widthOptions": [18,20,22,24] },
+        "topBench": { "seatAff": 50, "depthIn": 24, "note": "18in above the foot bench" },
+        "style": "closed-front (default)"
+      },
+      "fixtures": [
+        { "id": "heater", "type": "HUUM rock heater (cage + stones, glow)" },
+        { "id": "door", "size": [24,72], "leftMarginIn": 6, "glassWoodMarginIn": 5 },
+        { "id": "windows", "widthRangeIn": [12,60], "type": "slidable" },
+        { "id": "glassBlockWall", "type": "feature wall grid, selectable mullion wood" }
+      ],
+      "material": "cedar T&G ~5in boards; interior floor deck 4.25in; exterior rear deck + stair"
+    }
+  },
+
+  "fixtureCatalog": {
+    "_note": "Generic mounting rules for common wet-room fixtures. face: 0 or a wall id; aff = above finished floor.",
+    "rainhead": { "mounts": ["ceiling post (down)", "wall arm"], "faceDia": [8,12], "affTypical": [80,90] },
+    "wall_spout": { "type": "squared spout on square plate", "affTypical": 42.5, "reachIn": [7,9] },
+    "single_lever": { "type": "lever on round escutcheon on square plate" },
+    "thermostatic_valve": { "type": "rounded plate, 1-3 controls", "affTypical": 48, "accents": ["black levers optional"] },
+    "tub_spout": { "type": "smooth curved gooseneck on round flange", "affTypical": 26 },
+    "hand_shower_bar": { "parts": ["2 wall brackets","vertical slide bar","adjustable holder w/ clamp lever","round or square head","wall supply elbow","hose loop"], "barLenIn": [18,42] },
+    "towel_bar": { "lenIn": [18,24] },
+    "towel_ring": {},
+    "drain": { "types": ["round 4in","round 6in","square 5in","trench"] },
+    "niche": { "openingIn": [[10,44],[5,34]], "recessIn": [2,5] },
+    "vanity": { "depthIn": 12, "undersideAff": 9, "fronts": ["drawers","cupboard doors"] }
+  },
+
+  "materialSystem": {
+    "metalFinishes": [
+      { "id": "gold",   "name": "Brushed gold", "hex": "#c9a35c" },
+      { "id": "copper", "name": "Copper",        "hex": "#b87a55" },
+      { "id": "rose",   "name": "Rose gold",     "hex": "#c39a93", "warning": "reads pink at small scale / low light — confirm before use" },
+      { "id": "bronze", "name": "Aged bronze",   "hex": "#7d6552" },
+      { "id": "nickel", "name": "Brushed nickel","hex": "#c2c4c0" },
+      { "id": "chrome", "name": "Polished chrome","hex": "#e6eaec" },
+      { "id": "black",  "name": "Matte black",   "hex": "#2c2c2d" }
+    ],
+    "leverAccent": { "black": "#161616", "note": "independent of the metal finish so black levers stay black on a gold set" },
+    "woodTones": [
+      { "id": "teak", "hex": "#b0793f" }, { "id": "walnut", "hex": "#6b4630" },
+      { "id": "mahogany", "hex": "#7a3f2b" }, { "id": "oak", "hex": "#c9b389" },
+      { "id": "rosewood", "hex": "#5c3326" }, { "id": "ebonized", "hex": "#2a2420" }
+    ],
+    "tilePatterns": ["stack","offset2 (running bond 1/2)","offset3 (1/3)","vstack","herring","chevron","basket","hex","penny/round"],
+    "tileSizesIn": ["2x2","8x8","12x12","16x16","24x24","2x8","4x16","12x24","24x48","8x48 plank","48x96 slab","custom WxH"],
+    "finishTypes": ["tile","stone","paint","wood","paper/acrylic"],
+    "grout": { "controls": ["colour","width"], "default": "tone-on-tone or a named grout hex" },
+    "libraryTexturesPBR": {
+      "_source": "platform/materials/manifest.js (window.MATERIAL_LIBRARY)",
+      "tiles": ["running-greenstone/ivory/sand/charcoal/olive/ochre/oxblood/slateblue/terracotta (48x24)","stack-greenstone (12x12)","large-mineral (36x24)","brick-mineral","chevron-greenstone/mineral","subway-marble","third-offset (24x4 plank)","hex-travertine (6in)","penny-travertine/marble"],
+      "stone": ["travertine-floor","floor-stone"],
+      "wood": ["wood-golden","wood-blond","wood-walnut","wood-teak","cedar"],
+      "maps": "base colour + OpenGL +Y normal + packed ORM (occlusion/roughness/metalness); spanW/spanH = physical inches per repeat"
+    },
+    "collections": ["Stone","Deco (zellige/terracotta)","Sauna (cedar/slate)","Palette 4684 (exact patches, dedup'd)","Sample book (PBR, scalable to any tile size)"]
+  },
+
+  "lightingRules": {
+    "coveConcealed": "Hidden pelmet: LED on the inside of the ceiling frame, a FRONT fascia in the ceiling finish conceals it; you see the wash, not the strip. Warm default. Wash can be up-slab (uplight) or down-the-wall (grazing).",
+    "ambientDimmer": "One control scales the whole room rig; keep ~35% key for modelling even at the dimmest so it never goes flat-black; feature/emissive lights (cove, niche) stay lit for mood.",
+    "practicals": "Small point lights parked at real emitters (niche, cove, picture light) so they read as sources; high bloom threshold so only true emitters bloom, never the lit room."
+  },
+
+  "renderFidelity": {
+    "_note": "Hard-won technical gotchas — a design agent driving a 3D viewport must honor these or the render reads low-quality.",
+    "antialias": "If a bloom EffectComposer is used, its render target bypasses the renderer's MSAA — every edge goes jaggy. Use a multisampled (samples:4) HalfFloat render target, or render direct. Also setPixelRatio on the composer or it renders at half-res on HiDPI.",
+    "tileUV": "Reproject planar UVs so U runs horizontal and V vertical (by orientation, NOT by largest axis) or tiles rotate 90 degrees on any wall taller than it is wide, and on raked/extruded geometry.",
+    "tileDepth": "Procedural tiles need a companion bump map (grout recessed, tiles proud) + finish sheen + subtle veining + anisotropy + envMapIntensity, or they read flat/CG.",
+    "wood": "Casework must carry a photographic grain tinted to the wood tone; a flat colour reads as plastic.",
+    "metalConsistency": "Force all metal fittings to the one finish material; a stray per-item swatch leaves a tap/spout a different shade.",
+    "cameraFraming": "Ceiling/cove features are invisible from default down-looking presets — add an up-looking camera preset so the user can see them.",
+    "liveSync": "When a 2D edit reloads the 3D, persist the orbit camera and restore it, or the view snaps back and feels broken."
+  },
+
+  "stateSchema": {
+    "_note": "The shape the apps persist (localStorage work-slot). A design-state JSON the agent emits should follow this.",
+    "surfaceZone": { "fin": "tile|stone|paint|wood|acrylic", "color": "#hex", "tileL": "in", "tileW": "in", "shape": "rect|hex|round", "pattern": "id", "grout": "#hex or id", "lib": "MATERIAL_LIBRARY id or null (pin a PBR texture)", "customW": "in?", "customH": "in?" },
+    "fixtureItem": { "id": "string", "name": "string", "x": "in", "y": "in (aff)", "w": "in", "h": "in", "dep": "in", "face": "0|14.5|wall", "wall": "end|slope|null", "swatch": "#hex?", "woodOverride": "#hex?", "locked": "bool", "bays": "carcass layout?" },
+    "designState": { "shell/poly": "…", "height": "in", "surf": "{zoneId: surfaceZone}", "items": "[fixtureItem]", "trimTone": "metal id", "woodTone": "wood id", "cove": "{on,drop,reveal,led,bright}", "dim": "0..1", "versions": "[]" }
+  },
+
+  "renderPipeline": {
+    "groundTruth": "Deterministic 3D stage = locked coords + procedural materializer + camera presets + look book + spec sheet (this project already provides it).",
+    "structureLocked": "Take a locked camera snapshot (depth/normal/line render if available) as a ControlNet/structure guide; a diffusion model adds photoreal lighting/reflection/caustics only. NEVER unconstrained text-to-image.",
+    "inpainting": "For torn-apart rooms: upload a site photo of studs/subfloor, lasso a region (enclosure/backsplash/floor), apply a finish while masking structural walls + plumbing rough-ins as untouched.",
+    "exports": ["+ AI RENDER PROMPT (text)", "EXPORT VIEW + SPEC (screenshot + spec)", "SPEC SHEET / restore string", "OBJ/GLB geometry", "design.json"],
+    "specSheet": "square footage, tile quantities, grout colour/width, paint codes, metal + wood finishes — order-ready."
+  },
+
+  "antiPatterns": [
+    "Text-to-image a whole room (drains move, cabinets morph, walls distort).",
+    "One shared photo texture tinted white so the chosen colour never shows.",
+    "matchSurf snapping to a tiny texture pool so colour/size/pattern edits do nothing.",
+    "Baking pattern/grout into a material so tile size can't change.",
+    "Flat colour wood / flat colour tiles (no bump, no grain) reading as CG.",
+    "Per-item metal swatches drifting fittings off the room finish.",
+    "Rose gold used where it reads as hot pink.",
+    "Building a feature (drop ceiling) with no camera angle that shows it.",
+    "Composer without MSAA/pixel-ratio -> the whole render looks pixelated."
+  ]
+}
