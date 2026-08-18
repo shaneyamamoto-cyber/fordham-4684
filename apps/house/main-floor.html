@@ -136,8 +136,11 @@ W([19,0],[19,19], WALL_T, false, [ OD(15,17.667) ]);
 W([32,0],[32,19], WALL_T, false, []);
 // Stairs | Kitchen
 W([37,0],[37,18], WALL_T, false, []);
-// Kitchen/Living south -> hall
-W([25,18],[52,18], WALL_T, false, []);
+// Kitchen/Living south -> hall  (office entrance D9)
+W([25,18],[52,18], WALL_T, false, [ OD(21.5,24.17) ]);
+// OFFICE (near laundry) partitions
+W([44,10],[52,10], WALL_T, false, []);   // office north (kitchen | office)
+W([44,10],[44,18], WALL_T, false, []);   // office west
 // Foyer walls
 W([25,18],[25,24], WALL_T, false, []);
 W([34,18],[34,24], WALL_T, false, [ OD(0,0) ]); // (no-op placeholder removed below)
@@ -155,12 +158,13 @@ WALLS.forEach(w=>{ w.ops=w.ops.filter(o=>!(o.s===0&&o.e===0)); });
 
 /* ROOMS (for floor tint + labels): x0,z0,x1,z1,name,color */
 const ROOMS = [
-  [0,0,19,24,"MEETING / OFFICE",0xd9d2c4],
+  [0,0,19,24,"MEETING ROOM",0xd9d2c4],
   [19,0,32,24,"LIVING",0xd3d6cf],
   [32,0,37,24,"STAIRS",0xcdd2c8],
   [37,0,52,24,"KITCHEN",0xd9d2c4],
+  [44,10,52,18,"OFFICE",0xd0ddd8],
   [52,0,63.5,4,"VANITY",0xd0ddd8],
-  [52,4,57,10,"WC",0xcfe0da],
+  [52,4,57,10,"TOILET",0xcfe0da],
   [57,4,63.5,10,"SHOWER",0xcfe0da],
   [52,10,63.5,16,"LAUNDRY",0xcfe0da],
   [52,16,63.5,49.5,"GARAGE",0xcccfc9],
@@ -168,12 +172,8 @@ const ROOMS = [
 const PORCH = [17,24,52,33];
 
 /* FURNITURE massing: x0,z0,x1,z1,h(ft),round? */
+// scan fixtures/furniture only
 const FURN = [
-  [2.5,4,11,7,2.4,0],        // desk
-  [0.4,10.5,2,16.5,5.5,0],   // bookshelf
-  [13.5,11,17.5,16.5,2.6,0], // sofa (office)
-  [21,2,30,4.6,2.6,0],       // living sofa
-  [23.5,7,28,10,1.4,0],      // coffee table
   [38,0.4,51.5,2,3,0],       // kitchen counter
   [40,5,49,9,3,0],           // island
   [56.3,0.4,62.6,2,2.9,0],   // vanity
@@ -181,6 +181,7 @@ const FURN = [
   [55.5,11,57.5,13.5,3,1],   // washer
   [58,11,60,13.5,3,1],       // dryer
   [52.5,32,57,36.5,7,0],     // closet
+  [45,15.5,50.5,17.4,2.5,0], // office desk (near laundry)
 ];
 const FURN_WC = [54.4,7, 1.2,1.7]; // ellipse cx,cz,rx,rz
 
@@ -274,11 +275,11 @@ function frameMesh(ow,oh,isDoor){
 
 /* ---- floors ---- */
 function buildFloors(){
-  ROOMS.forEach(r=>{
+  ROOMS.forEach((r,i)=>{
     const [x0,z0,x1,z1,,col]=r;
     const g=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,z1-z0),
       new THREE.MeshStandardMaterial({color:col,roughness:.85}));
-    g.rotation.x=-Math.PI/2; g.position.set((x0+x1)/2,0.02,(z0+z1)/2); g.receiveShadow=true;
+    g.rotation.x=-Math.PI/2; g.position.set((x0+x1)/2,0.02+i*0.004,(z0+z1)/2); g.receiveShadow=true;
     gFloor.add(g);
   });
   // porch slab (slightly lower)
@@ -323,12 +324,6 @@ function buildFurn(){
   const wc=new THREE.Mesh(new THREE.CylinderGeometry(FURN_WC[2],FURN_WC[2]*0.8,1.4,18),matFixt);
   wc.scale.z=FURN_WC[3]/FURN_WC[2]; wc.position.set(FURN_WC[0],0.72,FURN_WC[1]); wc.castShadow=true;
   gFurn.add(wc);
-  // car massing in garage (2)
-  [[54,22],[59.5,22]].forEach(c=>{
-    const car=new THREE.Mesh(new THREE.BoxGeometry(4,3.6,13),
-      new THREE.MeshStandardMaterial({color:0x5a6470,roughness:.5,metalness:.2}));
-    car.position.set(c[0],1.8,c[1]); gFurn.add(car);
-  });
 }
 
 /* ---- grid + text labels ---- */
