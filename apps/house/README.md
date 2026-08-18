@@ -1,8 +1,8 @@
 # Main Floor — grid map + 3D model (AR / AI base map)
 
-Scale-accurate model of the Fordham 4684 **main floor**, measured from the permit
-scan by black-wall pixel detection at **22.6 px/ft** (verified against the 12'-11"
-living-room width, 23'-0" living depth, and 18'-11" meeting-room depth).
+Scale-accurate model of the Fordham 4684 **main floor**, measured from the revised
+permit scan by black-wall pixel detection at **23.5 px/ft** (verified against the
+9'-6" meeting-room width, 12'-11" living-room width, and 23'-0" living depth).
 
 Everything below is generated from one source of truth: **`floor-data.js`**
 (rooms + walls + openings, in feet, origin at the NW corner, x = east, z = south).
@@ -27,8 +27,9 @@ geometry*. Apply materials, lighting and staging on top of it — never let a
 generative pass move or resize a wall, opening or room. Regenerate the exports
 from `main-floor.html` after any edit to `floor-data.js`.
 
-## Rooms (feet, from the scan)
-Meeting 10.3×18.5 · Living 12.9×23.5 · Kitchen 18.1×23.5 · Stairs 4.3×17.5 ·
-Bath hall / Vanity / Toilet / Shower · Laundry 11.3×4.0 · **Office 11.3×8.0
-(below the laundry)** · Garage 11.3×25.0 (+closet) · Foyer 8.9×7.5 (projects into
-the porch) · Covered porch 35.3×9.5.
+## Rooms (feet, from the revised scan)
+Meeting 9.4×19.2 · Living 12.9×23.0 · Pantry 4.2×5.5 · Stairs 4.2×14.0 ·
+Kitchen/Dining 17.5×23.0 · Hall closet / Hall · Vanity 5.5×3.5 · Toilet 3.1×4.5 ·
+Shower 4.3×4.5 · Laundry 7.4×3.8 · **Office 10.9×14.0 (below the laundry, with
+closets)** · Garage 10.9×9.2 · Foyer 6.7×7.0 (projects into the porch) ·
+Covered porch 34.6×8.7.
