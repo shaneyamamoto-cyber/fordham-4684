@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fordham 4684 — Main Floor 3D Shell</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{ --bg:#0e141b; --panel:#141d27; --line:#26333f; --ink:#e7edf3; --soft:#93a1b0;
+    --accent:#4aa8c4; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+  #app{position:fixed;inset:0}
+  canvas{display:block}
+  .hud{position:fixed;z-index:10}
+  #title{top:14px;left:16px;pointer-events:none}
+  #title h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.02em}
+  #title p{margin:2px 0 0;font-size:11.5px;color:var(--soft)}
+  #views{top:12px;right:14px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:60vw}
+  #views button, .ctl button{font:inherit;font-size:12px;color:var(--ink);background:var(--panel);
+    border:1px solid var(--line);border-radius:7px;padding:6px 11px;cursor:pointer}
+  #views button:hover,.ctl button:hover{border-color:var(--accent)}
+  #views button.on{background:var(--accent);border-color:var(--accent);color:#04222b;font-weight:600}
+  #panel{bottom:14px;left:16px;background:var(--panel);border:1px solid var(--line);
+    border-radius:11px;padding:13px 15px;min-width:230px}
+  #panel h2{margin:0 0 9px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--soft)}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0;font-size:12.5px}
+  .row input[type=range]{flex:1;accent-color:var(--accent)}
+  .row .val{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600;min-width:44px;text-align:right}
+  .toggles{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .toggles button{font-size:11.5px;padding:5px 9px;border-radius:7px;background:#0f1822;
+    border:1px solid var(--line);color:var(--soft);cursor:pointer}
+  .toggles button.on{color:var(--ink);border-color:var(--accent);background:#12212b}
+  #hint{bottom:16px;right:16px;font-size:11px;color:var(--soft);text-align:right;pointer-events:none}
+  #legend{bottom:118px;left:16px;font-size:11px;color:var(--soft)}
+  #legend span{display:inline-flex;align-items:center;gap:5px;margin-right:12px}
+  #legend i{width:11px;height:11px;border-radius:2px;display:inline-block}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div class="hud" id="title">
+  <h1>Main Floor — 3D Shell</h1>
+  <p>Fordham 4684 · built to scale from the marked-up plan</p>
+</div>
+
+<div class="hud" id="views">
+  <button data-v="iso" class="on">Iso</button>
+  <button data-v="top">Top</button>
+  <button data-v="front">Front (S)</button>
+  <button data-v="bath">Bath wing</button>
+  <button data-v="living">Living</button>
+</div>
+
+<div class="hud" id="panel">
+  <h2>Shell controls</h2>
+  <div class="row"><label>Ceiling height</label>
+    <input id="ceil" type="range" min="7" max="12" step="0.5" value="8">
+    <span class="val" id="ceilVal">8'-0"</span></div>
+  <div class="toggles" id="toggles">
+    <button data-t="furniture" class="on">Furniture</button>
+    <button data-t="roof">Ceiling</button>
+    <button data-t="windows" class="on">Glass</button>
+    <button data-t="labels" class="on">Labels</button>
+    <button data-t="grid" class="on">Grid</button>
+  </div>
+</div>
+
+<div class="hud" id="legend">
+  <span><i style="background:#c9bfa8"></i>Walls</span>
+  <span><i style="background:#7fb8d6"></i>Windows</span>
+  <span><i style="background:#8a939d"></i>Fixtures</span>
+</div>
+<div class="hud" id="hint">drag: orbit · scroll: zoom · right-drag: pan</div>
+
+<script src="../../platform/vendor/three.min.js"></script>
+<script>
+/* =====================================================================
+   PLAN DATA  (feet; x = east, z = south, y = up)  origin NW corner
+   ===================================================================== */
+let CEIL = 8;                 // default 8' ceilings
+const WALL_T = 0.5;           // wall thickness (ft)
+const EXT_T  = 0.66;          // exterior wall thickness
+
+// window sizes -> [width, height]; sill computed from head 6.8'
+function win(head, w, h){ return {w:w, h:h, y0:Math.max(0.2, head-h), y1:head}; }
+// doors: head 6.67' (6'8")
+const DOORH = 6.667, GARH = 7.5;
+
+/* Each wall: a=[x,z] b=[x,z], t thickness, ext?, and openings by LOCAL distance from a.
+   opening: {s,e,y0,y1,kind:'win'|'door'|'open'} */
+const WALLS = [];
+function W(a,b,t,ext,ops){ WALLS.push({a,b,t,ext:!!ext,ops:ops||[]}); }
+
+// helper to make a window opening centered span [s,e] with given height, head at H
+function OW(s,e,h,H){ H=H||6.8; return {s,e,y0:Math.max(0.2,H-h),y1:H,kind:'win'}; }
+function OD(s,e,h){ return {s,e,y0:0,y1:h||DOORH,kind:'door'}; }
+
+/* ---- EXTERIOR ---- */
+// North wall  (0,0)->(63.5,0)   windows W1..W5
+W([0,0],[63.5,0], EXT_T, true, [
+  OW(6,11,3),      // W1 5x3
+  OW(21,26,6),     // W2 5x6
+  OW(27,32,6),     // W3 5x6
+  OW(39.5,43.5,3), // W4 4x3
+  OW(45.5,51.5,6), // W5 6x6
+]);
+// East wall (63.5,0)->(63.5,49.5)
+W([63.5,0],[63.5,49.5], EXT_T, true, []);
+// Garage south (63.5,49.5)->(52,49.5)  D6 overhead
+W([63.5,49.5],[52,49.5], EXT_T, true, [ {s:0.5,e:11.5-0.5,y0:0,y1:GARH,kind:'door'} ]);
+// Garage/porch west outer (52,49.5)->(52,33)
+W([52,49.5],[52,33], EXT_T, true, []);
+// Porch south edge is OPEN (no wall) — handled by porch roof+columns
+// West wall (0,0)->(0,24)   W6 5x6
+W([0,0],[0,24], EXT_T, true, [ OW(6,11,6) ]);
+// Main-body south wall (0,24)->(52,24): D8 ext, front entry D1, W7,W8
+W([0,24],[52,24], EXT_T, true, [
+  OD(2,5,6.5),           // D8 meeting ext (eng beam) 3x6'6
+  OW(20,25,6),           // W7 living
+  {s:27,e:33,y0:0,y1:DOORH,kind:'door'}, // D1 front double 6'
+  OW(38,43,6),           // W8 kitchen
+]);
+// Bath-wing / garage share east already covered by East wall.
+
+/* ---- INTERIOR PARTITIONS ---- */
+// x=52 spine (main body | wing+garage): D3 house->garage, D4 hall->laundry
+W([52,0],[52,49.5], WALL_T, false, [
+  OD(13,15.667),   // D4 laundry
+  OD(20,23),       // D3 garage
+]);
+// Meeting | Living  (D2)
+W([19,0],[19,19], WALL_T, false, [ OD(15,17.667) ]);
+// Living | Stairs
+W([32,0],[32,19], WALL_T, false, []);
+// Stairs | Kitchen
+W([37,0],[37,18], WALL_T, false, []);
+// Kitchen/Living south -> hall
+W([25,18],[52,18], WALL_T, false, []);
+// Foyer walls
+W([25,18],[25,24], WALL_T, false, []);
+W([34,18],[34,24], WALL_T, false, [ OD(0,0) ]); // (no-op placeholder removed below)
+// Meeting south partial
+W([19,19],[25,19], WALL_T, false, []);
+// Bath wing internal
+W([52,4],[63.5,4], WALL_T, false, [ OD(2,4.667) ]);   // vanity/hall -> wet (D5 bathroom)
+W([52,10],[63.5,10], WALL_T, false, []);              // wet | laundry
+W([57,4],[57,10], WALL_T, false, []);                 // toilet | shower
+W([56,0],[56,4], WALL_T, false, []);                  // vanity | hall
+W([52,16],[63.5,16], WALL_T, false, []);              // laundry | garage
+
+// remove placeholder opening on foyer E wall
+WALLS.forEach(w=>{ w.ops=w.ops.filter(o=>!(o.s===0&&o.e===0)); });
+
+/* ROOMS (for floor tint + labels): x0,z0,x1,z1,name,color */
+const ROOMS = [
+  [0,0,19,24,"MEETING / OFFICE",0xd9d2c4],
+  [19,0,32,24,"LIVING",0xd3d6cf],
+  [32,0,37,24,"STAIRS",0xcdd2c8],
+  [37,0,52,24,"KITCHEN",0xd9d2c4],
+  [52,0,63.5,4,"VANITY",0xd0ddd8],
+  [52,4,57,10,"WC",0xcfe0da],
+  [57,4,63.5,10,"SHOWER",0xcfe0da],
+  [52,10,63.5,16,"LAUNDRY",0xcfe0da],
+  [52,16,63.5,49.5,"GARAGE",0xcccfc9],
+];
+const PORCH = [17,24,52,33];
+
+/* FURNITURE massing: x0,z0,x1,z1,h(ft),round? */
+const FURN = [
+  [2.5,4,11,7,2.4,0],        // desk
+  [0.4,10.5,2,16.5,5.5,0],   // bookshelf
+  [13.5,11,17.5,16.5,2.6,0], // sofa (office)
+  [21,2,30,4.6,2.6,0],       // living sofa
+  [23.5,7,28,10,1.4,0],      // coffee table
+  [38,0.4,51.5,2,3,0],       // kitchen counter
+  [40,5,49,9,3,0],           // island
+  [56.3,0.4,62.6,2,2.9,0],   // vanity
+  [57.6,4.5,63.1,9.5,0.4,0], // shower base
+  [55.5,11,57.5,13.5,3,1],   // washer
+  [58,11,60,13.5,3,1],       // dryer
+  [52.5,32,57,36.5,7,0],     // closet
+];
+const FURN_WC = [54.4,7, 1.2,1.7]; // ellipse cx,cz,rx,rz
+
+/* =====================================================================
+   THREE SETUP
+   ===================================================================== */
+const app=document.getElementById('app');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+if('outputColorSpace' in renderer) renderer.outputColorSpace=THREE.SRGBColorSpace;
+app.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0e141b);
+const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.5,2000);
+
+// lights
+scene.add(new THREE.HemisphereLight(0xdfe8f2,0x2a2620,0.85));
+const sun=new THREE.DirectionalLight(0xfff2dc,1.15);
+sun.position.set(-40,70,30); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+const sc=sun.shadow.camera; sc.left=-70;sc.right=70;sc.top=70;sc.bottom=-70;sc.near=1;sc.far=260;
+scene.add(sun);
+const fill=new THREE.DirectionalLight(0xbcd2e6,0.35); fill.position.set(50,40,-30); scene.add(fill);
+
+// materials
+const matWall=new THREE.MeshStandardMaterial({color:0xcabfa6,roughness:.92,metalness:0,side:THREE.DoubleSide});
+const matExt =new THREE.MeshStandardMaterial({color:0xbfb39a,roughness:.95,metalness:0,side:THREE.DoubleSide});
+const matFloor=new THREE.MeshStandardMaterial({color:0xb89b78,roughness:.85});
+const matGlass=new THREE.MeshPhysicalMaterial({color:0x9fd0e6,roughness:.06,metalness:0,
+  transmission:.85,transparent:true,opacity:.5,thickness:.3,ior:1.4,side:THREE.DoubleSide});
+const matFrame=new THREE.MeshStandardMaterial({color:0x3f4750,roughness:.5,metalness:.3});
+const matFurn=new THREE.MeshStandardMaterial({color:0x8a939d,roughness:.7});
+const matFixt=new THREE.MeshStandardMaterial({color:0xeef2f4,roughness:.4});
+const matPorch=new THREE.MeshStandardMaterial({color:0x9c8f78,roughness:.9});
+const matRoof=new THREE.MeshStandardMaterial({color:0xd8d2c6,roughness:.95,side:THREE.DoubleSide,transparent:true,opacity:.85});
+
+/* groups so we can rebuild on ceiling change / toggle */
+const gWalls=new THREE.Group(), gGlass=new THREE.Group(), gFrame=new THREE.Group(),
+      gRoof=new THREE.Group(), gFurn=new THREE.Group(), gFloor=new THREE.Group(),
+      gGrid=new THREE.Group(), gLabels=new THREE.Group();
+scene.add(gWalls,gGlass,gFrame,gRoof,gFurn,gFloor,gGrid,gLabels);
+
+/* ---- wall builder (Shape with holes, extruded) ---- */
+function buildWall(w){
+  const [ax,az]=w.a,[bx,bz]=w.b;
+  const dx=bx-ax,dz=bz-az,len=Math.hypot(dx,dz),ang=Math.atan2(dz,dx);
+  const h=CEIL;
+  const shape=new THREE.Shape();
+  shape.moveTo(0,0);shape.lineTo(len,0);shape.lineTo(len,h);shape.lineTo(0,h);shape.lineTo(0,0);
+  w.ops.forEach(o=>{
+    const y1=Math.min(o.y1,h-0.05);
+    const p=new THREE.Path();
+    p.moveTo(o.s,o.y0);p.lineTo(o.e,o.y0);p.lineTo(o.e,y1);p.lineTo(o.s,y1);p.lineTo(o.s,o.y0);
+    shape.holes.push(p);
+  });
+  const geo=new THREE.ExtrudeGeometry(shape,{depth:w.t,bevelEnabled:false,curveSegments:1});
+  geo.translate(0,0,-w.t/2);
+  const m=new THREE.Mesh(geo, w.ext?matExt:matWall);
+  m.rotation.y=-ang; m.position.set(ax,0,az); m.castShadow=true; m.receiveShadow=true;
+  gWalls.add(m);
+  // glazing + frames in openings
+  w.ops.forEach(o=>{
+    const y1=Math.min(o.y1,h-0.05);
+    const cs=(o.s+o.e)/2, ch=(o.y0+y1)/2, ow=o.e-o.s, oh=y1-o.y0;
+    if(o.kind==='win'){
+      const g=new THREE.Mesh(new THREE.BoxGeometry(ow,oh,0.08),matGlass);
+      place(g,ax,az,ang,cs,ch); gGlass.add(g);
+    }
+    // frame (all openings)
+    const fr=frameMesh(ow,oh,o.kind==='door');
+    place(fr,ax,az,ang,cs,ch); gFrame.add(fr);
+  });
+}
+function place(mesh,ax,az,ang,localX,localY){
+  // position a mesh at local (localX along wall, localY up) on wall line
+  mesh.position.set(ax+Math.cos(ang)*localX, localY, az+Math.sin(ang)*localX);
+  mesh.rotation.y=-ang;
+}
+function frameMesh(ow,oh,isDoor){
+  const g=new THREE.Group(); const t=0.18, d=WALL_T+0.12;
+  const bar=(w,h,x,y)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),matFrame);b.position.set(x,y,0);g.add(b);};
+  bar(ow+t, t, 0, oh/2);            // head
+  bar(t, oh, -ow/2, 0);             // left jamb
+  bar(t, oh,  ow/2, 0);             // right jamb
+  if(!isDoor) bar(ow+t, t, 0, -oh/2); // sill for windows
+  return g;
+}
+
+/* ---- floors ---- */
+function buildFloors(){
+  ROOMS.forEach(r=>{
+    const [x0,z0,x1,z1,,col]=r;
+    const g=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,z1-z0),
+      new THREE.MeshStandardMaterial({color:col,roughness:.85}));
+    g.rotation.x=-Math.PI/2; g.position.set((x0+x1)/2,0.02,(z0+z1)/2); g.receiveShadow=true;
+    gFloor.add(g);
+  });
+  // porch slab (slightly lower)
+  const p=new THREE.Mesh(new THREE.PlaneGeometry(PORCH[2]-PORCH[0],PORCH[3]-PORCH[1]),matPorch);
+  p.rotation.x=-Math.PI/2; p.position.set((PORCH[0]+PORCH[2])/2,-0.35,(PORCH[1]+PORCH[3])/2); p.receiveShadow=true;
+  gFloor.add(p);
+}
+
+/* ---- porch roof + columns (always shown as part of shell) ---- */
+function buildPorch(){
+  const w=PORCH[2]-PORCH[0], d=PORCH[3]-PORCH[1];
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(w+1,0.4,d+0.5),matRoof);
+  roof.position.set((PORCH[0]+PORCH[2])/2,CEIL,(PORCH[1]+PORCH[3])/2);
+  gRoof.add(roof);
+  [[PORCH[0],PORCH[3]],[PORCH[2],PORCH[3]],[(PORCH[0]+PORCH[2])/2,PORCH[3]]].forEach(c=>{
+    const col=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,CEIL,16),matPorch);
+    col.position.set(c[0],CEIL/2,c[1]); col.castShadow=true; gRoof.add(col);
+  });
+}
+
+/* ---- ceiling planes per conditioned room ---- */
+function buildCeiling(){
+  ROOMS.forEach(r=>{
+    const [x0,z0,x1,z1]=r;
+    const c=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,z1-z0),matRoof);
+    c.rotation.x=Math.PI/2; c.position.set((x0+x1)/2,CEIL,(z0+z1)/2);
+    gRoof.add(c);
+  });
+}
+
+/* ---- furniture ---- */
+function buildFurn(){
+  FURN.forEach(f=>{
+    const [x0,z0,x1,z1,h,rnd]=f;
+    let m;
+    if(rnd){ m=new THREE.Mesh(new THREE.CylinderGeometry((x1-x0)/2,(x1-x0)/2,h,20),matFurn);}
+    else   { m=new THREE.Mesh(new THREE.BoxGeometry(x1-x0,h,z1-z0),matFurn);}
+    m.position.set((x0+x1)/2,h/2+0.02,(z0+z1)/2); m.castShadow=true; m.receiveShadow=true;
+    gFurn.add(m);
+  });
+  // WC
+  const wc=new THREE.Mesh(new THREE.CylinderGeometry(FURN_WC[2],FURN_WC[2]*0.8,1.4,18),matFixt);
+  wc.scale.z=FURN_WC[3]/FURN_WC[2]; wc.position.set(FURN_WC[0],0.72,FURN_WC[1]); wc.castShadow=true;
+  gFurn.add(wc);
+  // car massing in garage (2)
+  [[54,22],[59.5,22]].forEach(c=>{
+    const car=new THREE.Mesh(new THREE.BoxGeometry(4,3.6,13),
+      new THREE.MeshStandardMaterial({color:0x5a6470,roughness:.5,metalness:.2}));
+    car.position.set(c[0],1.8,c[1]); gFurn.add(car);
+  });
+}
+
+/* ---- grid + text labels ---- */
+function buildGrid(){
+  const g=new THREE.GridHelper(120,120,0x2a3a49,0x1b2733);
+  g.position.set(31.75,0,24.75); gGrid.add(g);
+}
+function makeLabel(text,x,z,size){
+  const cv=document.createElement('canvas');const s=256;cv.width=s*2;cv.height=s/2;
+  const ctx=cv.getContext('2d');ctx.fillStyle='rgba(10,16,22,0.55)';
+  ctx.fillRect(0,0,cv.width,cv.height);ctx.font='bold 70px system-ui';ctx.fillStyle='#eaf1f6';
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,cv.width/2,cv.height/2);
+  const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace||undefined;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  sp.scale.set(size||9,(size||9)/4,1);sp.position.set(x,CEIL+2.2,z);gLabels.add(sp);
+}
+function buildLabels(){
+  ROOMS.forEach(r=>makeLabel(r[4],(r[0]+r[2])/2,(r[1]+r[3])/2, r[4].length>8?11:7));
+  makeLabel("PORCH",(PORCH[0]+PORCH[2])/2,(PORCH[1]+PORCH[3])/2,8);
+}
+
+/* ---- build/rebuild everything that depends on CEIL ---- */
+function clear(g){while(g.children.length)g.remove(g.children[0]);}
+function rebuild(){
+  clear(gWalls);clear(gGlass);clear(gFrame);clear(gRoof);
+  WALLS.forEach(buildWall);
+  buildPorch();
+  if(state.roof) buildCeiling();
+  gGlass.visible=state.windows;
+  positionLabels();
+}
+function positionLabels(){ gLabels.children.forEach(sp=>sp.position.y=CEIL+2.2); }
+
+/* static build */
+buildFloors(); buildFurn(); buildGrid(); buildLabels();
+const state={furniture:true,roof:false,windows:true,labels:true,grid:true};
+rebuild();
+
+/* =====================================================================
+   CAMERA / ORBIT
+   ===================================================================== */
+const target=new THREE.Vector3(31.75,4,20);
+const sph={r:95,theta:0.9,phi:1.05};
+function applyCam(){
+  const sp=Math.sin(sph.phi),cp=Math.cos(sph.phi);
+  camera.position.set(target.x+sph.r*sp*Math.sin(sph.theta),
+                      target.y+sph.r*cp,
+                      target.z+sph.r*sp*Math.cos(sph.theta));
+  camera.lookAt(target);
+}
+const VIEWS={
+  iso:   {r:95,theta:0.9, phi:1.02,t:[31.75,4,20]},
+  top:   {r:105,theta:0.0001,phi:0.0001,t:[31.75,0,22]},
+  front: {r:88,theta:0.0, phi:1.4,  t:[31.75,5,24]},
+  bath:  {r:34,theta:1.15,phi:0.95, t:[57,4,8]},
+  living:{r:40,theta:1.7, phi:1.1,  t:[25,4,12]},
+};
+function goView(v){const V=VIEWS[v];if(!V)return;sph.r=V.r;sph.theta=V.theta;sph.phi=V.phi;
+  target.set(V.t[0],V.t[1],V.t[2]);applyCam();
+  document.querySelectorAll('#views button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));}
+applyCam();
+
+// orbit input
+let drag=null;
+renderer.domElement.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,btn:e.button};});
+addEventListener('pointerup',()=>drag=null);
+addEventListener('pointermove',e=>{
+  if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
+  if(drag.btn===2){ // pan
+    const p=0.05*sph.r/95*1;
+    const right=new THREE.Vector3().subVectors(camera.position,target).cross(camera.up).normalize();
+    const up=camera.up.clone();
+    target.addScaledVector(right,-dx*p*0.15).addScaledVector(up,dy*p*0.15);
+  }else{
+    sph.theta-=dx*0.006; sph.phi=Math.max(0.02,Math.min(1.55,sph.phi-dy*0.006));
+  }
+  applyCam();
+});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();
+  sph.r=Math.max(14,Math.min(220,sph.r*(1+Math.sign(e.deltaY)*0.08)));applyCam();},{passive:false});
+
+/* =====================================================================
+   UI
+   ===================================================================== */
+document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>goView(b.dataset.v));
+const ceil=document.getElementById('ceil'),ceilVal=document.getElementById('ceilVal');
+function fmtFt(v){const ft=Math.floor(v),inch=Math.round((v-ft)*12);return `${ft}'-${inch}"`;}
+ceil.oninput=()=>{CEIL=parseFloat(ceil.value);ceilVal.textContent=fmtFt(CEIL);
+  clear(gFurn);buildFurn();gFurn.visible=state.furniture;rebuild();};
+document.querySelectorAll('#toggles button').forEach(b=>b.onclick=()=>{
+  const t=b.dataset.t;state[t]=!state[t];b.classList.toggle('on',state[t]);
+  if(t==='furniture')gFurn.visible=state.furniture;
+  if(t==='windows'){gGlass.visible=state.windows;}
+  if(t==='labels')gLabels.visible=state.labels;
+  if(t==='grid')gGrid.visible=state.grid;
+  if(t==='roof')rebuild();
+});
+
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);});
+
+(function loop(){requestAnimationFrame(loop);renderer.render(scene,camera);})();
+</script>
+</body>
+</html>
