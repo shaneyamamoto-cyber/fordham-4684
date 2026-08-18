@@ -1,0 +1,103 @@
+<meta charset="utf-8">
+<title>Fordham 4684 — Main Floor Grid Map</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{--ground:#eef1f4;--panel:#fff;--ink:#141a21;--soft:#586472;--faint:#e4e9f0;--mid:#c3ccd7;
+    --wall:#000;--win:#1667d6;--door:#7a828c;--accent:#1667d6;
+    --room:#f6f3ec;--circ:#eef1f3;--bath:#e9f1ee;--util:#eef4f0;--garage:#eef0ec;--porch:#e7e1d2;}
+  @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--ground:#0c1219;--panel:#111a24;--ink:#e9eef4;--soft:#94a2b1;
+    --faint:#18242f;--mid:#2a3a49;--wall:#eef2f6;--win:#5aa2ff;--door:#8794a1;--accent:#5aa2ff;
+    --room:#16202a;--circ:#141d27;--bath:#132420;--util:#13211c;--garage:#141b22;--porch:#241f16;}}
+  :root[data-theme="dark"]{--ground:#0c1219;--panel:#111a24;--ink:#e9eef4;--soft:#94a2b1;--faint:#18242f;--mid:#2a3a49;
+    --wall:#eef2f6;--win:#5aa2ff;--door:#8794a1;--accent:#5aa2ff;--room:#16202a;--circ:#141d27;--bath:#132420;--util:#13211c;--garage:#141b22;--porch:#241f16;}
+  *{box-sizing:border-box} body{margin:0;background:var(--ground);color:var(--ink);font-family:"IBM Plex Mono",monospace;}
+  .wrap{max-width:1150px;margin:0 auto;padding:22px 16px 50px;}
+  h1{font-family:"Saira Semi Condensed",sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.03em;font-size:22px;margin:0 0 2px;}
+  p.sub{margin:0 0 14px;color:var(--soft);font-size:13px;max-width:80ch;font-family:system-ui,sans-serif;}
+  .sheet{background:var(--panel);border:1.5px solid var(--wall);padding:8px;}
+  svg{display:block;width:100%;height:auto;} .k{font-size:12px;color:var(--soft);margin-top:12px;}
+</style>
+<div class="wrap">
+  <h1>Fordham 4684 · Main Floor — Grid Map</h1>
+  <p class="sub">Scale-accurate reference map generated from the measured geometry (permit scan @ 22.6 px/ft).
+     1-ft grid, bold every 5 ft; origin (0,0) at the NW corner; north up. Feet and metres both shown —
+     this is the coordinate map behind the 3D model and the AR/AI plan export.</p>
+  <div class="sheet"><svg id="m" role="img" aria-label="Main floor grid map"></svg></div>
+  <div class="k">■ walls (black) &nbsp; <span style="color:var(--win)">▬ windows</span> &nbsp; ⌒ door swing &nbsp; · &nbsp; 1 ft = 0.305 m</div>
+</div>
+<script src="floor-data.js"></script>
+<script>
+const F=window.FLOOR, M=F.FT_M, S=15, OX=60, OY=50;
+const Wft=F.bounds.x1, Hft=F.bounds.z1;
+const X=f=>OX+f*S, Y=f=>OY+f*S, L=f=>f*S;
+const NS="http://www.w3.org/2000/svg", svg=document.getElementById("m");
+svg.setAttribute("viewBox",`0 0 ${OX+Wft*S+120} ${OY+Hft*S+90}`);
+function add(t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e;}
+function txt(x,y,s,o){o=o||{};const e=add("text",{x,y,"font-family":o.f||"'IBM Plex Mono',monospace","font-size":o.s||11,
+  fill:o.c||"var(--ink)","text-anchor":o.a||"middle","font-weight":o.w||400});e.setAttribute("dominant-baseline","middle");e.textContent=s;return e;}
+const COL={room:"var(--room)",circ:"var(--circ)",stair:"var(--circ)",bath:"var(--bath)",util:"var(--util)",garage:"var(--garage)",closet:"var(--circ)",porch:"var(--porch)"};
+
+/* grid */
+for(let f=0;f<=Math.ceil(Wft);f++)add("line",{x1:X(f),y1:Y(0),x2:X(f),y2:Y(Hft),stroke:f%5?"var(--faint)":"var(--mid)","stroke-width":f%5?.5:1});
+for(let f=0;f<=Math.ceil(Hft);f++)add("line",{x1:X(0),y1:Y(f),x2:X(Wft),y2:Y(f),stroke:f%5?"var(--faint)":"var(--mid)","stroke-width":f%5?.5:1});
+for(let f=0;f<=Math.ceil(Wft);f+=5)txt(X(f),Y(0)-13,f,{s:9,c:"var(--soft)"});
+for(let f=0;f<=Math.ceil(Hft);f+=5)txt(X(0)-15,Y(f),f,{s:9,c:"var(--soft)"});
+
+/* rooms */
+F.ROOMS.forEach(r=>{const[x0,z0,x1,z1,name,use]=r;
+  add("rect",{x:X(x0),y:Y(z0),width:L(x1-x0),height:L(z1-z0),fill:COL[use]||"var(--room)"});
+});
+const LOFF={"FOYER":[0,-2.4],"COVERED PORCH":[-6,3],"GARAGE":[0,6]};
+F.ROOMS.forEach(r=>{const[x0,z0,x1,z1,name,use]=r; if(use==='closet')return;
+  const off=LOFF[name]||[0,0];
+  const cx=(x0+x1)/2+off[0],cz=(z0+z1)/2+off[1], wf=(x1-x0),df=(z1-z0);
+  txt(X(cx),Y(cz),name,{f:"'Saira Semi Condensed',sans-serif",s:name.length>9?11:13,w:600});
+  txt(X(cx),Y(cz)+13,`${wf.toFixed(1)}'×${df.toFixed(1)}'`,{s:8,c:"var(--soft)"});
+});
+// closet label small
+F.ROOMS.filter(r=>r[5]==='closet').forEach(r=>txt(X((r[0]+r[2])/2),Y((r[1]+r[3])/2),"CLOSET",{s:8,c:"var(--soft)"}));
+
+/* walls + openings */
+let dn=1, wn=1;
+F.WALLS.forEach(w=>{
+  const[ax,az]=w.a,[bx,bz]=w.b, vert=Math.abs(bx-ax)<.01;
+  add("line",{x1:X(ax),y1:Y(az),x2:X(bx),y2:Y(bz),stroke:"var(--wall)","stroke-width":w.ext?4:2.2,"stroke-linecap":"square"});
+  const ux=(bx-ax), uz=(bz-az), len=Math.hypot(ux,uz), nx=ux/len, nz=uz/len;
+  w.ops.forEach(o=>{
+    const sx=ax+nx*o.s, sz=az+nz*o.s, ex=ax+nx*o.e, ez=az+nz*o.e, mx=(sx+ex)/2, mz=(sz+ez)/2;
+    add("line",{x1:X(sx),y1:Y(sz),x2:X(ex),y2:Y(ez),stroke:"var(--panel)","stroke-width":6}); // cut
+    if(o.kind==='win'){ add("line",{x1:X(sx),y1:Y(sz),x2:X(ex),y2:Y(ez),stroke:"var(--win)","stroke-width":3});
+      const tag="W"+(wn++); const lx=vert?X(mx)-16:X(mx), ly=vert?Y(mz):Y(mz)-13;
+      add("rect",{x:lx-11,y:ly-7,width:22,height:14,rx:3,fill:"var(--win)"}); txt(lx,ly,tag,{s:9,c:"#fff",w:600});
+    } else { // door / garage: swing arc
+      const c="var(--"+(o.kind==='garage'?'door':'door')+")";
+      // perpendicular inward
+      const px=-nz, pz=nx, r=Math.min(o.e-o.s,3.2);
+      add("path",{d:`M ${X(sx)} ${Y(sz)} A ${L(r)} ${L(r)} 0 0 1 ${X(sx+px*r)} ${Y(sz+pz*r)}`,fill:"none",stroke:c,"stroke-width":1,"stroke-dasharray":"3 3"});
+      add("line",{x1:X(sx),y1:Y(sz),x2:X(sx+px*r),y2:Y(sz+pz*r),stroke:c,"stroke-width":1.4});
+      const tag=(o.kind==='garage'?"G":"D")+(dn++); const lx=vert?X(mx)-15:X(mx), ly=vert?Y(mz):Y(mz)+12;
+      add("rect",{x:lx-10,y:ly-7,width:20,height:14,rx:3,fill:c}); txt(lx,ly,tag,{s:8.5,c:"var(--panel)",w:600});
+    }
+  });
+});
+
+/* overall dims */
+function dimH(x0,x1,y,l){add("line",{x1:X(x0),y1:Y(y),x2:X(x1),y2:Y(y),stroke:"var(--soft)","stroke-width":1});
+  [x0,x1].forEach(x=>add("line",{x1:X(x),y1:Y(y)-4,x2:X(x),y2:Y(y)+4,stroke:"var(--soft)","stroke-width":1}));
+  txt((X(x0)+X(x1))/2,Y(y)-8,l,{s:10,c:"var(--soft)",w:600});}
+function dimV(y0,y1,x,l){add("line",{x1:X(x),y1:Y(y0),x2:X(x),y2:Y(y1),stroke:"var(--soft)","stroke-width":1});
+  [y0,y1].forEach(y=>add("line",{x1:X(x)-4,y1:Y(y),x2:X(x)+4,y2:Y(y),stroke:"var(--soft)","stroke-width":1}));
+  const e=txt(X(x)+10,(Y(y0)+Y(y1))/2,l,{s:10,c:"var(--soft)",w:600});e.setAttribute("transform",`rotate(-90 ${X(x)+10} ${(Y(y0)+Y(y1))/2})`);}
+dimH(0,45.6,-2.6,`45'-7"  (13.9 m)`);
+dimV(0,46,Wft+1.5,`46'-0"  (14.0 m)`);
+
+/* north + scale */
+const nx=X(Wft)+70,ny=Y(1.5);add("circle",{cx:nx,cy:ny,r:15,fill:"none",stroke:"var(--soft)"});
+add("path",{d:`M ${nx} ${ny-12} L ${nx+4.5} ${ny+4} L ${nx} ${ny} L ${nx-4.5} ${ny+4} Z`,fill:"var(--accent)"});
+txt(nx,ny-19,"N",{s:12,w:700,c:"var(--accent)"});
+const sbx=X(0),sby=Y(Hft)+30;add("line",{x1:sbx,y1:sby,x2:sbx+L(10),y2:sby,stroke:"var(--ink)","stroke-width":2});
+for(let f=0;f<=10;f+=5)add("line",{x1:sbx+L(f),y1:sby-4,x2:sbx+L(f),y2:sby+4,stroke:"var(--ink)","stroke-width":1.3});
+txt(sbx+L(5),sby+13,"0    5    10 ft  (3.05 m)",{s:9,c:"var(--soft)"});
+</script>
