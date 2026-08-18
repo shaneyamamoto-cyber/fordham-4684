@@ -1,0 +1,70 @@
+{
+  "room": "Upstairs bathroom — Fordham 4684",
+  "units": "inches",
+  "source": "apps/bathroom/baseline.js (canonical)",
+  "coordinateSystem": {
+    "x": "0 at the left (tub) end, increases to 169 along the length of the room",
+    "depth_d": "0 at the vanity-wall plane; +14.5 toward the tub bay bump-out; -56.5 at the far wall. Total room depth = 71.",
+    "y": "height above finished floor (AFF), 0 at floor",
+    "faces": { "0": "vanity wall plane (d=0)", "14.5": "tub/tap 'bay' back wall (d=14.5)", "end": "an end wall (x=0 or x=169)", "slope": "the sloped dormer wall" }
+  },
+
+  "shell": {
+    "lengthX": 169,
+    "depthTotal": 71,
+    "ceilingHeight": 92,
+    "dormer": { "kneeHeight": 0, "slopeRun": 32, "note": "front wall rakes back over a 32in run to the ceiling; end walls cut to the rake" },
+    "footprintPolygon_xd": [[0,14.5],[60.5,14.5],[60.5,0],[169,0],[169,-56.5],[0,-56.5]],
+    "shape": "L-shaped: main room 169 x 56.5 (d 0..-56.5) plus a tub bay 60.5 x 14.5 (d 0..14.5) at the left end",
+    "walls": [
+      { "id": "bay_back", "from": [0,14.5], "to": [60.5,14.5], "lengthIn": 60.5, "role": "tub / tap wall (shower zone behind glass)" },
+      { "id": "step_return", "from": [60.5,14.5], "to": [60.5,0], "lengthIn": 14.5, "role": "return between bay and vanity wall" },
+      { "id": "vanity_wall", "from": [60.5,0], "to": [169,0], "lengthIn": 108.5, "role": "vanity + mirror + door wall" },
+      { "id": "end_right", "from": [169,0], "to": [169,-56.5], "lengthIn": 56.5, "role": "right end wall (toilet)" },
+      { "id": "far_wall", "from": [169,-56.5], "to": [0,-56.5], "lengthIn": 169, "role": "far wall" },
+      { "id": "end_left", "from": [0,-56.5], "to": [0,14.5], "lengthIn": 71, "role": "left end wall (tub end)" }
+    ]
+  },
+
+  "fixtures": [
+    { "id": "tub", "name": "Tub (alcove, white acrylic)", "wall": "left end / bay", "xRange": [0,32], "widthIn": 32, "heightAff": [0,20], "rimAff": 20, "depthIn": 60, "face": 14.5, "locked": true },
+    { "id": "wet", "name": "Shower zone (envelope over the tub)", "xRange": [0,32], "widthIn": 32, "heightAff": [0,96], "depthIn": 60, "face": 14.5, "note": "drawing envelope, not a solid" },
+    { "id": "glass", "name": "Glass panel", "wall": "end", "xAt": 32, "widthIn": 30, "heightAff": [20,76], "thicknessIn": 0.5, "note": "frameless panel on the open long side of the tub, sits on the 20in rim" },
+    { "id": "shelf", "name": "Three floating shelves", "xRange": [32,44], "widthIn": 12, "heightAff": [34,64], "depthIn": 18, "face": 14.5, "count": 3, "gapIn": 12, "thickIn": 2, "led": true },
+    { "id": "nichesh", "name": "Lit tile niche", "xRange": [6,36], "widthIn": 30, "heightAff": [40.25,54.25], "recessIn": 4, "face": 14.5 },
+    { "id": "rain", "name": "Rainhead", "xRange": [11,21], "widthIn": 10, "centerAff": 82, "projectionIn": 12, "face": 14.5, "metal": true },
+    { "id": "mixer", "name": "Mixer / diverter", "xRange": [13,19], "widthIn": 6, "centerAff": 44.38, "face": 14.5, "metal": true },
+    { "id": "spout", "name": "Tub spout (curved)", "xRange": [13,19], "widthIn": 6, "centerAff": 27.5, "face": 14.5, "metal": true },
+    { "id": "handbar", "name": "Hand shower on slide bar", "xRange": [24,27], "widthIn": 3, "heightAff": [20,62], "projectionIn": 4, "face": 14.5, "metal": true, "locked": true },
+    { "id": "bar2", "name": "Towel bar — tub upper", "wall": "slope", "xRange": [38.33,56.33], "widthIn": 18, "centerAff": 28.5, "depthAlongRoom": 14, "metal": true },
+    { "id": "bar3", "name": "Towel bar — tub lower", "wall": "slope", "xRange": [36.72,54.72], "widthIn": 18, "centerAff": 23.5, "depthAlongRoom": 14, "metal": true },
+    { "id": "tower", "name": "Storage tower (walnut)", "xRange": [44.5,60.5], "widthIn": 16, "heightAff": [0,84], "depthIn": 14.5, "face": 14.5, "bays": "door 26, drawer 8, void 13, drawer 8, void 13, door 16 (in AFF from bottom)" },
+
+    { "id": "splash", "name": "Splash panel (stone)", "xRange": [61.25,107.25], "widthIn": 46, "heightAff": [19.25,85.25], "cornerRadiusIn": 12, "thicknessIn": 0.5, "face": 0 },
+    { "id": "van", "name": "Vanity (wall-hung, walnut)", "xRange": [66.25,102.25], "widthIn": 36, "heightAff": [15,34], "undersideAff": 9, "depthIn": 12, "face": 0, "locked": true, "fronts": "2 large drawers left + 3 small right (or left bank as cupboard doors)" },
+    { "id": "vessel", "name": "Wall basin", "xRange": [67.75,89.75], "widthIn": 22, "rimAff": 38.5, "heightAff": [34.5,38.5], "projectionIn": 13.8, "face": 0 },
+    { "id": "stone", "name": "Countertop (stepped, right)", "xRange": [91.5,101.5], "widthIn": 10, "heightAff": [34.25,35.75], "depthIn": 13.8, "face": 0 },
+    { "id": "tap", "name": "Wall spout (vanity)", "xRange": [76,84], "widthIn": 8, "centerAff": 43.5, "reachIn": 8, "face": 0, "metal": true },
+    { "id": "taphl", "name": "Mixer lever (vanity)", "xRange": [88,91.5], "widthIn": 3.5, "centerAff": 43.5, "face": 0, "metal": true },
+    { "id": "mir", "name": "Mirror (stadium)", "xRange": [68.75,100.75], "widthIn": 32, "heightAff": [50,71.5], "frameIn": 1.25, "face": 0 },
+    { "id": "vshelf", "name": "Vanity wall shelf", "xRange": [92.5,102.5], "widthIn": 10, "centerAff": 42, "depthIn": 5, "face": 0 },
+    { "id": "ring", "name": "Hand towel ring", "xRange": [62.5,69.5], "widthIn": 7, "centerAff": 44.25, "face": 0, "metal": true },
+    { "id": "dcase", "name": "Door casing", "xRange": [108,143], "widthIn": 35, "heightAff": [0,82.5], "face": 0 },
+    { "id": "door", "name": "Door — 30in RO", "xRange": [110.5,140.5], "widthIn": 30, "heightAff": [0,80], "face": 0 },
+    { "id": "wc", "name": "Toilet", "wall": "end (right, x=169)", "widthIn": 16, "heightAff": [0,29], "depthIn": 26, "positionAlongDepth_d": 26.75, "note": "against the right end wall, toward the door end" },
+    { "id": "base", "name": "Baseboard", "xRange": [0,169], "heightAff": [0,4], "face": 0 }
+  ],
+
+  "finishes": {
+    "metal": "brushed gold #c9a35c (all fittings)",
+    "wood": "teak (casework)",
+    "surfaces": {
+      "shower_tub_wall": { "fin": "tile", "color": "#9aa79b", "tileIn": [48,24], "pattern": "running bond" },
+      "vanity_splash": { "fin": "stone", "color": "#4a5442", "tileIn": [60,45], "pattern": "stack" },
+      "walls": { "fin": "paint", "color": "#e8e3d8" },
+      "floor": { "fin": "stone", "color": "#bdb5a6", "tileIn": [24,24], "pattern": "offset" }
+    }
+  },
+
+  "keyHeightsAff": { "tubRim": 20, "vanityUnderside": 9, "basinRim": 38.5, "counter": 34.25, "mirrorBottom": 50, "mirrorTop": 71.5, "rainheadCenter": 82, "ceiling": 92 }
+}
