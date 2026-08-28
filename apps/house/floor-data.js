@@ -1,92 +1,133 @@
 /* ============================================================================
-   Fordham 4684 — MAIN FLOOR canonical geometry  (v2, updated plan)
-   Measured from the user's revised permit scan by black-wall pixel detection at
-   23.5 px/ft (verified vs meeting 9'6" wide, living 12'11" wide & 23'-0" deep).
-   Origin = NW corner. x = east, z = south, y = up. Units: FEET. 1 ft = 0.3048 m.
-   Drives the 2D grid map, the 3D model, and the AR/AI export (GLB/OBJ/JSON).
+   Fordham 4684 — MAIN FLOOR canonical geometry  (v3 — segment-true)
+   Re-measured from the revised permit scan at 23.5 px/ft using black-run
+   segment detection: walls exist ONLY where the scan shows the double black
+   line; every gap is a real opening (passages, doorways). Blue = windows on
+   exterior walls. Named millwork/furniture taken from the scan labels.
+   Origin = NW corner. x = east, z = south, y = up. Units: FEET.
    ========================================================================== */
 (function (root) {
   const FT_M = 0.3048, CEIL = 8;
 
-  // Rooms: [x0,z0,x1,z1, name, use]
+  // Rooms/zones: [x0,z0,x1,z1, name, use]
   const ROOMS = [
     [0,   0,    9.4, 19.2, "MEETING ROOM",  "room"],
-    [0,   19.2, 9.4, 23.0, "ENTRY",         "circ"],
-    [9.4, 0,    22.3,23.0, "LIVING ROOM",   "room"],
-    [22.3,3.5,  26.5,9.0,  "PANTRY",        "util"],
-    [22.3,9.0,  26.5,23.0, "STAIRS",        "stair"],
-    [26.5,0,    44.0,23.0, "KITCHEN / DINING","room"],
-    [44.0,0,    47.5,4.0,  "HALL CLOSET",   "closet"],
-    [44.0,4.0,  47.5,17.3, "HALL",          "circ"],
-    [49.4,0,    54.9,3.5,  "VANITY",        "bath"],
-    [47.5,6.9,  50.6,11.4, "TOILET",        "bath"],
-    [50.6,6.9,  54.9,11.4, "SHOWER",        "bath"],
-    [47.5,11.4, 54.9,15.2, "LAUNDRY",       "util"],
-    [44.0,17.3, 54.9,31.3, "OFFICE",        "room"],
-    [44.0,34.1, 54.9,43.3, "GARAGE",        "garage"],
-    [22.3,23.0, 29.0,30.0, "FOYER",         "circ"],
-    [9.4, 23.0, 44.0,31.7, "COVERED PORCH", "porch"],
+    [9.4, 0,    22.35,23.15,"LIVING ROOM",  "room"],
+    [22.35,9.7, 26.5,19.5, "STAIRS",        "stair"],
+    [22.35,0,   43.8,23.15,"KITCHEN / DINING","room"],
+    [43.8,0,    47.5,3.5,  "HALL CLOSET",   "closet"],
+    [43.8,3.5,  47.5,11.4, "HALL",          "circ"],
+    [47.5,0,    54.8,6.9,  "VANITY",        "bath"],
+    [47.5,6.9,  50.7,11.4, "TOILET",        "bath"],
+    [50.7,6.9,  54.8,11.4, "SHOWER",        "bath"],
+    [47.5,11.4, 54.8,20.6, "LAUNDRY",       "util"],
+    [47.5,20.6, 54.8,23.15,"CLOSET",        "closet"],
+    [43.8,23.15,54.8,31.4, "OFFICE",        "room"],
+    [43.8,31.4, 50.7,34.1, "CLOSET",        "closet"],
+    [43.8,34.1, 54.8,41.7, "GARAGE",        "garage"],
+    [23.6,23.15,30.9,31.4, "FOYER",         "circ"],
+    [9.4, 23.15,43.8,31.4, "COVERED PORCH", "porch"],
   ];
 
   const W=(a,b,ext,ops)=>({a,b,ext:!!ext,ops:ops||[]});
   const win=(s,e,h)=>({s,e,kind:'win',h:h||6});
   const door=(s,e,h)=>({s,e,kind:'door',h:h||6.667});
 
+  /* Walls are the measured black segments — gaps between them are real
+     floor-to-ceiling openings (passages), per the scan. */
   const WALLS = [
-    /* ---- envelope (L-shape: main body x0-44 to z23 + right column x44-54.9 to z43.3) ---- */
-    W([0,0],[54.9,0], true, [ win(1.5,4,3), win(10,15,6), win(18,23,6), win(27,31,3), win(35,41,6) ]), // NORTH
-    W([54.9,0],[54.9,43.3], true, []),                       // EAST
-    W([54.9,43.3],[44,43.3], true, [ {s:0.5,e:11,kind:'garage',h:7.5} ]),  // GARAGE S (12' door)
-    W([44,43.3],[44,23], true, []),                          // right-column west (faces porch/garage)
-    W([44,23],[29,23], true, [ win(6,11,5) ]),               // main body S (kitchen side, faces porch)
-    W([29,23],[29,30], true, []),                            // foyer E (projects into porch)
-    W([29,30],[22.3,30], true, [ door(1.5,7.5,6.667) ]),     // foyer S (front entry 6')
-    W([22.3,30],[22.3,23], true, []),                        // foyer W
-    W([22.3,23],[9.4,23], true, [ win(2,7,5) ]),             // main body S (living side)
-    W([9.4,23],[0,23], true, [ door(1.5,4.5,6.5) ]),         // SW ext (eng-beam door)
-    W([0,23],[0,0], true, [ win(4,9,6), win(11,16,6) ]),     // WEST (meeting windows)
+    /* ---------- exterior ---------- */
+    // NORTH (windows from blue runs)
+    W([0,0],[54.8,0], true, [ win(2.8,7.0,3), win(10.8,15.3,6), win(17.1,21.3,6), win(25.2,28.9,5), win(34.0,41.3,6) ]),
+    // EAST
+    W([54.8,0],[54.8,41.7], true, []),
+    // GARAGE SOUTH (12' overhead door)
+    W([54.8,41.7],[43.8,41.7], true, [ {s:0.4,e:10.6,kind:'garage',h:7.5} ]),
+    // WEST (meeting glass wall)
+    W([0,0],[0,19.2], true, [ win(2.4,5.4,6), win(6.7,9.4,6), win(10.4,16.8,6) ]),
+    // MEETING SOUTH (exterior; eng-beam door)
+    W([0,19.2],[9.4,19.2], true, [ door(5.3,7.9,6.5) ]),
+    // LIVING SOUTH (to porch; 5x5 window)
+    W([9.4,23.15],[22.35,23.15], true, [ win(3.4,8.4,5) ]),
+    // between living-south and foyer W (short stub)
+    W([22.77,23.15],[24.0,23.15], true, []),
+    // KITCHEN SOUTH (to porch; 5x5 window)  — foyer mouth is the gap 24.0..29.3
+    W([29.3,23.15],[43.8,23.15], true, [ win(3.3,8.1,5) ]),
+    // FOYER (projects into porch; 6' front door)
+    W([23.6,23.15],[23.6,31.4], true, []),
+    W([30.9,23.15],[30.9,31.4], true, []),
+    W([23.6,31.4],[30.9,31.4], true, [ door(1.2,7.2,6.667) ]),
 
-    /* ---- interior partitions (no false doors) ---- */
-    W([9.4,0],[9.4,19.2], false, [ door(15,17.7) ]),         // meeting | living
-    W([0,19.2],[9.4,19.2], false, []),                        // meeting | entry
-    W([22.3,0],[22.3,23], false, []),                         // living | stairs+pantry
-    W([26.5,0],[26.5,23], false, []),                         // stairs+pantry | kitchen
-    W([22.3,9],[26.5,9], false, []),                          // pantry | stairs
-    W([44,0],[44,23], false, [ door(19,21.7) ]),              // kitchen | right column (office door)
-    W([47.5,0],[47.5,15.2], false, [ door(5,7.7) ]),          // hall | wet rooms (bath door)
-    W([49.4,0],[49.4,3.5], false, []),                        // hall | vanity
-    W([47.5,3.5],[54.9,3.5], false, []),                      // vanity row bottom
-    W([47.5,6.9],[54.9,6.9], false, []),                      // hall | toilet+shower
-    W([50.6,6.9],[50.6,11.4], false, []),                     // toilet | shower
-    W([47.5,11.4],[54.9,11.4], false, []),                    // wet | laundry
-    W([47.5,15.2],[54.9,15.2], false, [ door(9,11.7) ]),      // laundry | office
-    W([44,17.3],[54.9,17.3], false, []),                      // (office north)
-    W([44,31.3],[54.9,31.3], false, []),                      // office | (garage lobby)
+    /* ---------- interior (segment-true; gaps = passages) ---------- */
+    // meeting | living — doorway near the NORTH end (playroom door)
+    W([9.4,0],[9.4,2.5], false, []),
+    W([9.4,4.3],[9.4,19.2], false, []),
+    // living | kitchen strip — passage at the NORTH (kitchen<->living), open at the SOUTH
+    W([22.35,0],[22.35,2.8], false, []),
+    W([22.35,5.3],[22.35,20.0], false, []),
+    // stairs east wall (contained run; open at its south end)
+    W([26.5,0],[26.5,1.8], false, []),
+    W([26.5,9.7],[26.5,19.5], false, []),
+    // main body | right column: hallway entry is the gap z10.1..12.3;
+    // window onto porch at the office desk (z26.9..28.9)
+    W([43.8,0],[43.8,10.1], true, []),
+    W([43.8,12.3],[43.8,26.9], true, []),
+    W([43.8,26.9],[43.8,28.9], true, [ win(0,2,4) ]),
+    W([43.8,28.9],[43.8,41.7], true, []),
+    // hall closet bottom
+    W([43.8,3.5],[47.5,3.5], false, []),
+    // hall | wet rooms (door gap 6.0..6.8; opening 15.5..18.1)
+    W([47.5,0],[47.5,6.0], false, []),
+    W([47.5,6.8],[47.5,15.5], false, []),
+    W([47.5,18.1],[47.5,22.8], false, []),
+    // vanity | shower divider
+    W([50.6,6.9],[54.8,6.9], false, []),
+    // toilet | shower
+    W([50.7,6.9],[50.7,11.4], false, []),
+    // wet | laundry
+    W([47.5,11.4],[54.8,11.4], false, []),
+    // laundry | closet
+    W([47.5,20.6],[53.8,20.6], false, []),
+    // closet | office (office door = gap x43.8..46.6)
+    W([46.6,23.15],[54.3,23.15], false, []),
+    // office south
+    W([43.8,31.4],[54.3,31.4], false, []),
+    // garage closet
+    W([43.8,34.1],[50.8,34.1], false, []),
+    W([50.7,31.4],[50.7,34.1], false, []),
   ];
 
-  // Furniture / fixtures massing: [x0,z0,x1,z1, h_ft, shape]  shape: 0 box, 1 cyl
+  // Named millwork & furniture (from the scan labels): [x0,z0,x1,z1,h_ft,shape,name]
   const FURN = [
-    [10.2,3.0, 13.2,11.5, 2.4,0,"couch"],
-    [14.0,6.0, 17.0,11.0, 1.4,0,"coffee table"],
-    [13.0,20.0,18.5,22.4, 2.4,0,"loveseat"],
-    [11.0,18.5,13.5,21.5, 1.6,0,"side table"],
-    [33.5,9.5, 40.5,14.5, 3.0,1,"kitchen island"],
-    [26.9,0.4,31.5,2.2, 3.0,0,"pantry/appliance"],
-    [41.0,0.4,44.0,3.0, 3.0,0,"fridge/ovens"],
+    [22.9,0.3, 32.3,2.4, 3.0,0,"counter + sink"],
+    [41.5,0.3, 43.8,10.2,3.0,0,"fridge · ovens · sink"],
+    [23.3,5.4, 28.2,9.2, 3.0,0,"pantry / appl garage"],
+    [33.0,4.5, 39.0,10.0,3.0,1,"kitchen island"],
     [34.3,18.2,40.4,21.2,2.5,0,"dining table"],
-    [49.6,0.4,54.6,2.0, 2.9,0,"vanity"],
-    [50.8,7.1,54.6,11.0,0.4,0,"shower base"],
-    [47.7,11.6,54.6,13.5,3.0,0,"wash/dry"],
-    [45.0,24.5,48.0,30.5,2.4,0,"office couch"],
-    [44.4,26.5,47.0,28.0,2.4,0,"office desk"],
+    [20.7,8.8, 22.3,13.9,3.5,0,"f.p."],
+    [10.4,6.9, 14.0,17.3,2.4,0,"couch"],
+    [15.2,9.2, 17.4,13.9,1.4,0,"coffee table"],
+    [11.5,1.6, 14.3,3.9, 2.4,0,"arm chair"],
+    [20.0,18.1,22.1,20.3,1.6,0,"side table"],
+    [14.3,18.4,18.9,22.1,2.4,0,"loveseat"],
+    [50.0,0.3, 54.5,2.0, 2.9,0,'54" vanity'],
+    [47.9,7.2, 50.4,10.9,1.4,0,"toilet"],
+    [50.9,7.1, 54.6,11.2,0.4,0,"shower"],
+    [47.8,11.6,54.5,13.6,3.0,0,"sink · wash · dry"],
+    [44.0,0.3, 47.2,3.2, 6.0,0,"hall closet"],
+    [51.7,23.5,54.0,30.7,2.4,0,"couch"],
+    [44.2,26.9,45.6,29.1,2.4,0,"desk"],
+    [48.0,20.8,53.8,22.9,6.0,0,"closet"],
+    [44.0,31.6,50.4,33.9,6.0,0,"closet"],
   ];
 
   root.FLOOR = {
     units:"ft", FT_M, ceiling:CEIL,
-    bounds:{ x0:0, z0:0, x1:54.9, z1:43.3 },
+    bounds:{ x0:0, z0:0, x1:54.8, z1:41.7 },
     scale_px_per_ft: 23.5,
     ROOMS, WALLS, FURN,
-    porch:[9.4,23.0,44.0,31.7],
-    foyer:[22.3,23.0,29.0,30.0],
+    porch:[9.4,23.15,43.8,31.4],
+    foyer:[23.6,23.15,30.9,31.4],
+    stairs:[22.35,9.7,26.5,19.5],
   };
 })(typeof window!=="undefined"?window:globalThis);
