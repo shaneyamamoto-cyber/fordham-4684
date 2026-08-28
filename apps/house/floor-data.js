@@ -25,7 +25,7 @@
     [43.8,23.15,54.8,31.4, "OFFICE",        "room"],
     [43.8,31.4, 50.7,34.1, "CLOSET",        "closet"],
     [43.8,34.1, 54.8,41.7, "GARAGE",        "garage"],
-    [23.6,23.15,30.9,31.4, "FOYER",         "circ"],
+    [23.6,23.15,30.9,27.6, "FOYER",         "circ"],
     [9.4, 23.15,43.8,31.4, "COVERED PORCH", "porch"],
   ];
 
@@ -54,9 +54,9 @@
     // KITCHEN SOUTH (to porch; 5x5 window)  — foyer mouth is the gap 24.0..29.3
     W([29.3,23.15],[43.8,23.15], true, [ win(3.3,8.1,5) ]),
     // FOYER (projects into porch; 6' front door)
-    W([23.6,23.15],[23.6,31.4], true, []),
-    W([30.9,23.15],[30.9,31.4], true, []),
-    W([23.6,31.4],[30.9,31.4], true, [ door(1.2,7.2,6.667) ]),
+    W([23.6,23.15],[23.6,27.6], true, []),
+    W([30.9,23.15],[30.9,27.6], true, []),
+    W([23.6,27.6],[30.9,27.6], true, [ door(0.7,6.7,6.667) ]),
 
     /* ---------- interior (segment-true; gaps = passages) ---------- */
     // meeting | living — doorway near the NORTH end (playroom door)
@@ -127,7 +127,7 @@
     scale_px_per_ft: 23.5,
     ROOMS, WALLS, FURN,
     porch:[9.4,23.15,43.8,31.4],
-    foyer:[23.6,23.15,30.9,31.4],
+    foyer:[23.6,23.15,30.9,27.6],
     stairs:[22.35,9.7,26.5,19.5],
   };
 })(typeof window!=="undefined"?window:globalThis);
