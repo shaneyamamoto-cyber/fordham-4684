@@ -71,6 +71,12 @@ F.WALLS.forEach(w=>{
     if(o.kind==='win'){ add("line",{x1:X(sx),y1:Y(sz),x2:X(ex),y2:Y(ez),stroke:"var(--win)","stroke-width":3});
       const tag="W"+(wn++); const lx=vert?X(mx)-16:X(mx), ly=vert?Y(mz):Y(mz)-13;
       add("rect",{x:lx-11,y:ly-7,width:22,height:14,rx:3,fill:"var(--win)"}); txt(lx,ly,tag,{s:9,c:"#fff",w:600});
+    } else if(o.kind==='slider'){ // sliding screen doors: two offset panels
+      const q=(o.e-o.s)/2;
+      add("line",{x1:X(sx),y1:Y(sz)-2.5,x2:X(sx+nx*(q*1.15)),y2:Y(sz+nz*(q*1.15))-2.5,stroke:"var(--win)","stroke-width":3});
+      add("line",{x1:X(ex-nx*(q*1.15)),y1:Y(ez-nz*(q*1.15))+2.5,x2:X(ex),y2:Y(ez)+2.5,stroke:"var(--win)","stroke-width":3});
+      const lx=X(mx), ly=Y(mz)-13;
+      add("rect",{x:lx-13,y:ly-7,width:26,height:14,rx:3,fill:"var(--win)"}); txt(lx,ly,"SD",{s:9,c:"#fff",w:600});
     } else { // door / garage: swing arc
       const c="var(--"+(o.kind==='garage'?'door':'door')+")";
       // perpendicular inward

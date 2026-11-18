@@ -38,7 +38,7 @@
   const WALLS = [
     /* ---------- exterior ---------- */
     // NORTH (windows from blue runs)
-    W([0,0],[54.8,0], true, [ win(2.8,7.0,3), win(10.8,15.3,6), win(17.1,21.3,6), win(25.2,28.9,5), win(34.0,41.3,6) ]),
+    W([0,0],[54.8,0], true, [ win(2.8,7.0,3), win(10.8,15.3,6), win(17.1,21.3,6), win(25.2,28.9,5), {s:34.0,e:41.3,kind:'slider',h:6.8} ]),
     // EAST
     W([54.8,0],[54.8,41.7], true, []),
     // GARAGE SOUTH (12' overhead door)
@@ -99,7 +99,7 @@
 
   // Named millwork & furniture (from the scan labels): [x0,z0,x1,z1,h_ft,shape,name]
   const FURN = [
-    [22.9,0.3, 41.5,2.4, 3.0,0,"counter"],
+    [22.9,0.3, 33.9,2.4, 3.0,0,"counter"],
     [23.0,0.3, 25.2,2.4, 4.5,0,"upper cab"],
     [25.5,0.5, 28.9,2.2, 3.0,0,"sink"],
     [29.1,0.3, 32.3,2.4, 4.5,0,"upper cab"],

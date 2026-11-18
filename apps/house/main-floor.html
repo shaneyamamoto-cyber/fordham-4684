@@ -112,11 +112,12 @@ function buildWall(w){
     const s=o.s*M,e=o.e*M; let y0,y1;
     if(o.kind==='win'){ y1=Math.min(2.05, h-0.1); y0=Math.max(0.15,y1-o.h*M); }
     else { y0=0; y1=Math.min(o.h*M, h-0.05); }
+    const glassy=(o.kind==='win'||o.kind==='slider');
     const p=new THREE.Path(); p.moveTo(s,y0);p.lineTo(e,y0);p.lineTo(e,y1);p.lineTo(s,y1);p.lineTo(s,y0);
     shp.holes.push(p);
-    if(o.kind==='win'){ const g=new THREE.Mesh(new THREE.BoxGeometry(e-s,y1-y0,0.03),matGlass);
+    if(glassy){ const g=new THREE.Mesh(new THREE.BoxGeometry(e-s,y1-y0,0.03),matGlass);
       posOn(g,ax,az,ang,(s+e)/2,(y0+y1)/2); G.glass.add(g); }
-    const fr=frame(e-s,y1-y0,o.kind!=='win'); posOn(fr,ax,az,ang,(s+e)/2,(y0+y1)/2); G.frame.add(fr);
+    const fr=frame(e-s,y1-y0,!glassy); posOn(fr,ax,az,ang,(s+e)/2,(y0+y1)/2); G.frame.add(fr);
   });
   const geo=new THREE.ExtrudeGeometry(shp,{depth:t,bevelEnabled:false,curveSegments:1});
   geo.translate(0,0,-t/2);
@@ -221,7 +222,7 @@ function planJSON(){ return {
     a_ft:w.a,b_ft:w.b,exterior:w.ext,thickness_m:+((w.ext?0.66:0.42)*M).toFixed(3),
     openings:w.ops.map(o=>({kind:o.kind,start_ft:o.s,end_ft:o.e,height_ft:o.h||(o.kind==='door'?6.667:6)}))})),
 }; }
-window.__planJSON=planJSON; window.__exportGroup=exportGroup; window.THREE=THREE; window.GLTFExporter=GLTFExporter;
+window.__planJSON=planJSON; window.__exportGroup=exportGroup; window.THREE=THREE; window.GLTFExporter=GLTFExporter; window.OBJExporter=OBJExporter;
 
 addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
 (function loop(){ requestAnimationFrame(loop); controls.update(); renderer.render(scene,camera); })();
